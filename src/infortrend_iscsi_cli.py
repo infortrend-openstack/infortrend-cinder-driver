@@ -1,0 +1,262 @@
+# Copyright (c) 2015 Infortrend Technology, Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+"""
+iSCSI Driver for Infortrend Eonstor based on CLI.
+"""
+
+from oslo_log import log as logging
+
+from cinder.i18n import _LI
+from cinder.volume import driver
+from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
+
+LOG = logging.getLogger(__name__)
+
+
+class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
+
+    """Infortrend iSCSI Driver for Eonstor DS using CLI
+
+    Version history:
+        1.0.0 - Initial driver
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(InfortrendCLIISCSIDriver, self).__init__(*args, **kwargs)
+        self.common = common_cli.InfortrendCommon(
+            'iSCSI', configuration=self.configuration)
+
+    def check_for_setup_error(self):
+        LOG.debug(_LI('check_for_setup_error start'))
+        self.common.check_for_setup_error()
+
+    def create_volume(self, volume):
+        """Creates a volume. Can optionally return a Dictionary of
+        changes to the volume object to be persisted.
+
+        If volume_type extra specs includes
+        'capabilities:replication <is> True' the driver
+        needs to create a volume replica (secondary), and setup replication
+        between the newly created volume and the secondary volume.
+        Returned dictionary should include:
+            volume['replication_status'] = 'copying'
+            volume['replication_extended_status'] = driver specific value
+            volume['driver_data'] = driver specific value
+
+        """
+        LOG.info(_LI('create_volume volume id=%s'), volume['id'])
+        return self.common.create_volume(volume)
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        the driver needs to create a volume replica (secondary),
+        and setup replication between the newly created volume and
+        the secondary volume.
+        """
+        LOG.info(_LI(
+            'create_volume_from_snapshot volume id=%(volume_id)s '
+            'snapshot id=%(snapshot_id)s'), {
+                'volume_id': volume['id'], 'snapshot_id': snapshot['id']})
+        return self.common.create_volume_from_snapshot(volume, snapshot)
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume.
+
+        If volume_type extra specs includes 'replication: <is> True' the
+        driver needs to create a volume replica (secondary)
+        and setup replication between the newly created volume
+        and the secondary volume.
+        """
+        LOG.info(_LI(
+            'create_cloned_volume volume id=%(volume_id)s '
+            'src_vref provider_location=%(provider_location)s'), {
+                'volume_id': volume['id'],
+                'provider_location': src_vref['provider_location']})
+        return self.common.create_cloned_volume(volume, src_vref)
+
+    def extend_volume(self, volume, new_size):
+        """Extend a volume."""
+        LOG.info(_LI(
+            'extend_volume volume id=%(volume_id)s new_size=%(size)s'), {
+                'volume_id': volume['id'], 'size': new_size})
+        self.common.extend_volume(volume, new_size)
+
+    def delete_volume(self, volume):
+        """Deletes a volume.
+
+        If volume_type extra specs includes 'replication: <is> True'
+        then the driver needs to delete the volume replica too.
+        """
+        LOG.info(_LI('delete_volume volume id=%s'), volume['id'])
+        return self.common.delete_volume(volume)
+
+    def migrate_volume(self, ctxt, volume, host):
+        """Migrate the volume to the specified host.
+
+        Returns a boolean indicating whether the migration occurred, as well as
+        model_update.
+
+        :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        """
+        LOG.info(_LI('migrate_volume volime id=%(volume_id)s host=%(host)s'), {
+            'volume_id': volume['id'], 'host': host['host']})
+        return self.common.migrate_volume(volume, host)
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot."""
+        LOG.info(_LI(
+            'create_snapshot snapshot id=%(snapshot_id)s '
+            'snapshot volume_id=%(volume_id)s'), {
+                'snapshot_id': snapshot['id'],
+                'volume_id': snapshot['volume_id']})
+        return self.common.create_snapshot(snapshot)
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot."""
+        LOG.info(_LI(
+            'delete_snapshot snapshot id=%(snapshot_id)s '
+            'snapshot volume_id=%(volume_id)s'), {
+                'snapshot_id': snapshot['id'],
+                'volume_id': snapshot['volume_id']})
+        self.common.delete_snapshot(snapshot)
+
+    def ensure_export(self, context, volume):
+        """Synchronously recreates an export for a volume."""
+        pass
+
+    def create_export(self, context, volume):
+        """Exports the volume.
+
+        Can optionally return a Dictionary of changes
+        to the volume object to be persisted.
+        """
+        LOG.info(_LI('create_export volume provider_location=%s'), (
+            volume['provider_location']))
+        return self.common.create_export(context, volume)
+
+    def remove_export(self, context, volume):
+        """Removes an export for a volume."""
+        pass
+
+    def initialize_connection(self, volume, connector):
+        """Initializes the connection and returns connection information.
+
+        The iscsi driver returns a driver_volume_type of 'iscsi'.
+        The format of the driver data is defined in _get_iscsi_properties.
+        Example return value::
+
+            {
+                'driver_volume_type': 'iscsi'
+                'data': {
+                    'target_discovered': True,
+                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
+                    'target_portal': '127.0.0.0.1:3260',
+                    'volume_id': 1,
+                    'access_mode': 'rw'
+                }
+            }
+        """
+        LOG.info(_LI(
+            'initialize_connection volume id=%(volume_id)s '
+            'connector initiator=%(initiator)s'), {
+                'volume_id': volume['id'],
+                'initiator': connector['initiator']})
+        return self.common.initialize_connection(volume, connector)
+
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Disallow connection from connector"""
+        LOG.info(_LI('terminate_connection volume id=%s'), (
+            volume['id']))
+        self.common.terminate_connection(volume, connector)
+
+    def get_volume_stats(self, refresh=False):
+        """Get volume stats.
+
+        If 'refresh' is True, run update the stats first.
+        """
+        LOG.info(_LI('get_volume_stats refresh=%s'), refresh)
+        return self.common.get_volume_stats(refresh)
+
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing lun in the array.
+
+        The lun should be in a manageable pool backend, otherwise
+        error would return.
+        Rename the backend storage object so that it matches the,
+        volume['name'] which is how drivers traditionally map between a
+        cinder volume and the associated backend storage object.
+
+        existing_ref:{
+            'id':lun_id
+        }
+        """
+        LOG.info(_LI(
+            'manage_existing volume id=%(volume_id)s '
+            'existing_ref source_id=%(source_id)s'), {
+                'volume_id': volume['id'],
+                'source_id': existing_ref['source-id']})
+        return self.common.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        When calculating the size, round up to the next GB.
+        """
+        LOG.info(_LI(
+            'manage_existing_get_size volume id=%(volume_id)s '
+            'existing_ref source_id=%(source_id)s'), {
+                'volume_id': volume['id'],
+                'source_id': existing_ref['source-id']})
+        return self.common.manage_existing_get_size(volume, existing_ref)
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        """Convert the volume to be of the new type.
+
+            Returns either:
+        A boolean indicating whether the retype occurred, or
+        A tuple (retyped, model_update) where retyped is a boolean
+        indicating if the retype occurred, and the model_update includes
+        changes for the volume db.
+        if diff['extra_specs'] includes 'replication' then:
+            if  ('True', _ ) then replication should be disabled:
+                Volume replica should be deleted
+                volume['replication_status'] should be changed to 'disabled'
+                volume['replication_extended_status'] = None
+                volume['replication_driver_data'] = None
+            if  (_, 'True') then replication should be enabled:
+                Volume replica (secondary) should be created, and replication
+                should be setup between the volume and the newly created
+                replica
+                volume['replication_status'] = 'copying'
+                volume['replication_extended_status'] = driver specific value
+                volume['replication_driver_data'] = driver specific value
+            :param ctxt: Context
+        :param volume: A dictionary describing the volume to migrate
+        :param new_type: A dictionary describing the volume type to convert to
+        :param diff: A dictionary with the difference between the two types
+        :param host: A dictionary describing the host to migrate to, where
+                     host['host'] is its name, and host['capabilities'] is a
+                     dictionary of its reported capabilities.
+        """
+        LOG.info(_LI(
+            'retype volume id=%(volume_id)s new_type id=%(type_id)s'), {
+                'volume_id': volume['id'], 'type_id': new_type['id']})
+        return self.common.retype(ctxt, volume, new_type, diff, host)
