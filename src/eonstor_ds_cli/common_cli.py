@@ -18,6 +18,7 @@ Infortrend Common CLI.
 import math
 import time
 
+from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -1261,6 +1262,7 @@ class InfortrendCommon(object):
 
         return model_update
 
+    @lockutils.synchronized('infortrend-connection', external=True)
     def initialize_connection(self, volume, connector):
         if self.protocol == 'iSCSI':
             multipath = connector.get('multipath', False)
@@ -1604,6 +1606,7 @@ class InfortrendCommon(object):
             'size %(size)s'), {
                 'volume_id': volume['id'], 'size': new_size})
 
+    @lockutils.synchronized('infortrend-connection', external=True)
     def terminate_connection(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
         multipath = connector.get('multipath', False)
