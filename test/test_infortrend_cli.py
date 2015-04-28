@@ -1700,6 +1700,19 @@ Return: 0x0000
 """
         return msg
 
+    def get_test_show_wwn_with_g_model(self):
+        return (0, [{
+            'ID': 'ID:112',
+            'WWPN': self.fake_target_wwpns[0],
+            'CH': '0',
+            'WWNN': self.fake_target_wwnns[0]
+        }, {
+            'ID': 'ID:112',
+            'WWPN': self.fake_target_wwpns[1],
+            'CH': '5',
+            'WWNN': self.fake_target_wwnns[0]
+        }])
+
     def get_test_show_wwn(self):
         return (0, [{
             'ID': 'AID:112',
