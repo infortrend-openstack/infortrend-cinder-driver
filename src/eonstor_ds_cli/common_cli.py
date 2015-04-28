@@ -789,7 +789,6 @@ class InfortrendCommon(object):
 
     def _get_mapping_info_with_multi_lun_on_iscsi_mcs(self):
         """Get the minimun mapping channel id and multi lun id mapping info
-           on iSCSI MCS
 
         # R model with mcs
         map_chl = {
