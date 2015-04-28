@@ -1,5 +1,10 @@
 Eonstor DS Cinder Driver - Alpha Version
 =============
+| Branch  | Unit Test Status |
+| ------- | ------------ |
+| master  | [![Travis branch][travis-ci-img]][travis-ci-url] |
+| develop | [![Travis branch][travis-ci-dev-img]][travis-ci-dev-url] |
+
 Copyright (c) 2015 Infortrend Technology, Inc. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -51,3 +56,9 @@ Execute Bash file and it would git clone cinder driver to run unit test.
 ```
 ./run_test.sh
 ```
+
+[travis-ci-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver.svg?style=flat-square
+[travis-ci-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver/branches
+
+[travis-ci-dev-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver/develop.svg?style=flat-square
+[travis-ci-dev-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver/branches
