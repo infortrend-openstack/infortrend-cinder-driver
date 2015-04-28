@@ -143,7 +143,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn()
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
         }
         self._driver_setup(mock_commands)
 
@@ -184,7 +184,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn()
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
         }
         self._driver_setup(mock_commands)
 

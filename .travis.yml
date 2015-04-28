@@ -1,0 +1,19 @@
+language: python
+
+python:
+  - '3.4'
+
+sudo: false
+
+git:
+  depth: 1
+
+branches:
+  except:
+  - gh-pages
+
+before_script:
+  - chmod +x ./run_test.sh
+
+script:
+  - ./run_test.sh
