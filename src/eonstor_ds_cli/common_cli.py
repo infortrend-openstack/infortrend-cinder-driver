@@ -1151,7 +1151,7 @@ class InfortrendCommon(object):
             'volume_backend_name': backend_name,
             'vendor_name': 'Infortrend',
             'driver_version': self.VERSION,
-            'storage_protocol': 'iSCSI',
+            'storage_protocol': self.protocol,
             'pools': self._update_pools_stats(),
         }
         self._volume_stats = data
@@ -1161,8 +1161,10 @@ class InfortrendCommon(object):
 
         if 'Thin Provisioning' in enable_specs_dict.keys():
             provisioning = 'thin'
+            provisioning_support = True
         else:
             provisioning = 'full'
+            provisioning_support = False
 
         pools_info = self._show_lv()
         pools = []
@@ -1173,14 +1175,21 @@ class InfortrendCommon(object):
                     float(pool['Size'].split(' ', 1)[0]) / 1024)
                 free_capacity_gb = round(
                     float(pool['Available'].split(' ', 1)[0]) / 1024)
+                provisioned_capacity_gb = round(
+                    float(total_capacity_gb) - float(free_capacity_gb), 2)
+                provisioning_factor = self.configuration.safe_get(
+                    'max_over_subscription_ratio')
                 new_pool = {
                     'pool_name': pool['Name'],
                     'pool_id': pool['ID'],
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'reserved_percentage': 0,
-                    'QoS_support': 'False',
-
+                    'QoS_support': False,
+                    'provisioned_capacity_gb': provisioned_capacity_gb,
+                    'max_over_subscription_ratio': provisioning_factor,
+                    'thin_provisioning_support': provisioning_support,
+                    'thick_provisioning_support': True,
                     'infortrend_provisioning': provisioning,
                 }
                 pools.append(new_pool)

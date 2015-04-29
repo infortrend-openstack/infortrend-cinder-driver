@@ -271,7 +271,12 @@ class InfortrendCLITestData(object):
         'total_capacity_gb': round(857982.0 / 1024),
         'free_capacity_gb': round(841978.0 / 1024),
         'reserved_percentage': 0,
-        'QoS_support': 'False',
+        'QoS_support': False,
+        'max_over_subscription_ratio': 20.0,
+        'thin_provisioning_support': False,
+        'thick_provisioning_support': True,
+        'provisioned_capacity_gb':
+            round(857982.0 / 1024) - round(841978.0 / 1024),
         'infortrend_provisioning': 'full',
     }]
 
@@ -298,7 +303,7 @@ class InfortrendCLITestData(object):
         'total_capacity_gb': round(857982.0 / 1024),
         'free_capacity_gb': round(841978.0 / 1024),
         'reserved_percentage': 0,
-        'QoS_support': 'False',
+        'QoS_support': False,
         'infortrend_provisioning': 'full'
     }
 
@@ -317,7 +322,7 @@ class InfortrendCLITestData(object):
         'total_capacity_gb': round(857982.0 / 1024),
         'free_capacity_gb': round(841978.0 / 1024),
         'reserved_percentage': 0,
-        'QoS_support': 'False',
+        'QoS_support': False,
         'infortrend_provisioning': 'full'
     }
 
