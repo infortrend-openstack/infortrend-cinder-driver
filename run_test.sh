@@ -18,7 +18,7 @@ fi
 
 cp ./src/* $CINDER_DIR/$INFORTREND_DRIVER_DIR/ -r
 cp ./test/* $CINDER_DIR/$CINDER_TEST_DIR/ -r
-cp ./lib/* $CINDER_LIB/ -r
+# cp ./lib/* $CINDER_LIB/ -r
 
 cd $CINDER_DIR
 

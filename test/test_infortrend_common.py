@@ -18,13 +18,13 @@ import re
 
 import mock
 
-from cinder import exception
 from cinder import test
 from cinder.tests.unit.test_infortrend_cli import InfortrendCLITestData
 from cinder.tests.unit import utils
 from cinder.volume.configuration import Configuration
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
 from cinder.volume.drivers.infortrend.eonstor_ds_cli.common_cli import LOG
+from cinder.volume.drivers.infortrend import infortrend_exception as exception
 
 SUCCEED = (0, '')
 FAKE_ERROR_RETURN = (-1, '')

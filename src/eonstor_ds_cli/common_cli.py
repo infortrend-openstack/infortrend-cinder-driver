@@ -22,10 +22,10 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
 
-from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
+from cinder.volume.drivers.infortrend import infortrend_exception as exception
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 
