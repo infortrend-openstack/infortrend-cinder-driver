@@ -130,9 +130,9 @@ class ExecuteCommand(BaseCommand):
 
     """The Common ExecuteCommand"""
 
-    def __init__(self, cli_init):
+    def __init__(self, cli_conf):
         super(ExecuteCommand, self).__init__()
-        self.cli_retry_time = cli_init.get('cli_retry_time')
+        self.cli_retry_time = cli_conf.get('cli_retry_time')
 
     @retry_cli
     def execute(self, *args, **kwargs):
@@ -157,13 +157,13 @@ class CLIBaseCommand(BaseCommand):
 
     """The CLIBaseCommand class."""
 
-    def __init__(self, cli_init):
+    def __init__(self, cli_conf):
         super(CLIBaseCommand, self).__init__()
         self.java = "java -jar"
-        self.execute_file = cli_init.get('path')
-        self.ip = cli_init.get('ip')
-        self.password = cli_init.get('password')
-        self.cli_retry_time = cli_init.get('cli_retry_time')
+        self.execute_file = cli_conf.get('path')
+        self.ip = cli_conf.get('ip')
+        self.password = cli_conf.get('password')
+        self.cli_retry_time = cli_conf.get('cli_retry_time')
         self.command = ""
         self.parameters = ()
         self.command_line = ""
