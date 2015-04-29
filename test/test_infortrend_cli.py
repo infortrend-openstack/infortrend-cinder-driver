@@ -1700,6 +1700,19 @@ Return: 0x0000
 """
         return msg
 
+    def get_test_show_wwn_with_g_model(self):
+        return (0, [{
+            'ID': 'ID:112',
+            'WWPN': self.fake_target_wwpns[0],
+            'CH': '0',
+            'WWNN': self.fake_target_wwnns[0]
+        }, {
+            'ID': 'ID:112',
+            'WWPN': self.fake_target_wwpns[1],
+            'CH': '5',
+            'WWNN': self.fake_target_wwnns[0]
+        }])
+
     def get_test_show_wwn(self):
         return (0, [{
             'ID': 'AID:112',
@@ -1858,26 +1871,26 @@ class InfortrendCLITestCase(test.TestCase):
         super(InfortrendCLITestCase, self).setUp()
 
     def _cli_set(self, cli, fake_result):
-        cli_init = {
+        cli_conf = {
             'path': '',
             'password': '',
             'ip': '',
             'cli_retry_time': 1
         }
-        cli = cli(cli_init)
+        cli = cli(cli_conf)
 
         cli._execute = mock.Mock(return_value=fake_result)
 
         return cli
 
     def _cli_multi_set(self, cli, fake_result_list):
-        cli_init = {
+        cli_conf = {
             'path': '',
             'password': '',
             'ip': '',
             'cli_retry_time': 5,
         }
-        cli = cli(cli_init)
+        cli = cli(cli_conf)
 
         cli._execute = mock.Mock(side_effect=fake_result_list)
 

@@ -39,34 +39,20 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
             'iSCSI', configuration=self.configuration)
 
     def check_for_setup_error(self):
-        LOG.debug(_LI('check_for_setup_error start'))
+        LOG.debug('check_for_setup_error start')
         self.common.check_for_setup_error()
 
     def create_volume(self, volume):
-        """Creates a volume. Can optionally return a Dictionary of
-        changes to the volume object to be persisted.
+        """Creates a volume.
 
-        If volume_type extra specs includes
-        'capabilities:replication <is> True' the driver
-        needs to create a volume replica (secondary), and setup replication
-        between the newly created volume and the secondary volume.
-        Returned dictionary should include:
-            volume['replication_status'] = 'copying'
-            volume['replication_extended_status'] = driver specific value
-            volume['driver_data'] = driver specific value
-
+        Can optionally return a Dictionary of changes
+        to the volume object to be persisted.
         """
         LOG.info(_LI('create_volume volume id=%s'), volume['id'])
         return self.common.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot.
-
-        If volume_type extra specs includes 'replication: <is> True'
-        the driver needs to create a volume replica (secondary),
-        and setup replication between the newly created volume and
-        the secondary volume.
-        """
+        """Creates a volume from a snapshot."""
         LOG.info(_LI(
             'create_volume_from_snapshot volume id=%(volume_id)s '
             'snapshot id=%(snapshot_id)s'), {
@@ -74,13 +60,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         return self.common.create_volume_from_snapshot(volume, snapshot)
 
     def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume.
-
-        If volume_type extra specs includes 'replication: <is> True' the
-        driver needs to create a volume replica (secondary)
-        and setup replication between the newly created volume
-        and the secondary volume.
-        """
+        """Creates a clone of the specified volume."""
         LOG.info(_LI(
             'create_cloned_volume volume id=%(volume_id)s '
             'src_vref provider_location=%(provider_location)s'), {
@@ -96,11 +76,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         self.common.extend_volume(volume, new_size)
 
     def delete_volume(self, volume):
-        """Deletes a volume.
-
-        If volume_type extra specs includes 'replication: <is> True'
-        then the driver needs to delete the volume replica too.
-        """
+        """Deletes a volume."""
         LOG.info(_LI('delete_volume volume id=%s'), volume['id'])
         return self.common.delete_volume(volume)
 
@@ -230,25 +206,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
-            Returns either:
-        A boolean indicating whether the retype occurred, or
-        A tuple (retyped, model_update) where retyped is a boolean
-        indicating if the retype occurred, and the model_update includes
-        changes for the volume db.
-        if diff['extra_specs'] includes 'replication' then:
-            if  ('True', _ ) then replication should be disabled:
-                Volume replica should be deleted
-                volume['replication_status'] should be changed to 'disabled'
-                volume['replication_extended_status'] = None
-                volume['replication_driver_data'] = None
-            if  (_, 'True') then replication should be enabled:
-                Volume replica (secondary) should be created, and replication
-                should be setup between the volume and the newly created
-                replica
-                volume['replication_status'] = 'copying'
-                volume['replication_extended_status'] = driver specific value
-                volume['replication_driver_data'] = driver specific value
-            :param ctxt: Context
+        :param ctxt: Context
         :param volume: A dictionary describing the volume to migrate
         :param new_type: A dictionary describing the volume type to convert to
         :param diff: A dictionary with the difference between the two types
