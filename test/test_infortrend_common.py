@@ -234,6 +234,54 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             test_connector)
         self.assertTrue(re.match(r'.*Failed to get wwn info.*', ex.msg))
 
+    @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_initialize_connection_with_zoning(self):
+
+        test_volume = self.cli_data.test_volume
+        test_connector = self.cli_data.test_connector
+        test_initiator_wwpns = test_connector['wwpns']
+        test_partition_id = self.cli_data.fake_partition_id[0]
+        test_all_target_wwpns = self.cli_data.fake_target_wwpns[:]
+        test_all_target_wwpns[1] = self.cli_data.fake_target_wwpns[2]
+        test_all_target_wwpns[2] = self.cli_data.fake_target_wwpns[1]
+        test_lookup_map = self.cli_data.fake_lookup_map
+
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
+            'ShowMap': self.cli_data.get_test_show_map(),
+            'CreateMap': SUCCEED,
+            'ShowWWN': self.cli_data.get_test_show_wwn()
+        }
+        self._driver_setup(mock_commands)
+        self.driver.fc_lookup_service = mock.Mock()
+        get_device_mapping_from_network = \
+            self.driver.fc_lookup_service.get_device_mapping_from_network
+        get_device_mapping_from_network.return_value = test_lookup_map
+
+        properties = self.driver.initialize_connection(
+            test_volume, test_connector)
+
+        get_device_mapping_from_network.assert_has_calls(
+            [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
+
+        expect_cli_cmd = [
+            mock.call('ShowChannel'),
+            mock.call('ShowMap'),
+            mock.call('ShowWWN'),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[1]),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[1])
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+
+        self.assertDictMatch(
+            properties, self.cli_data.test_fc_properties_zoning)
+
 
 class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 

@@ -247,6 +247,22 @@ class InfortrendCLITestData(object):
         }
     }
 
+    test_initiator_target_map_zoning = {
+        fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
+        fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
+    }
+
+    test_fc_properties_zoning = {
+        'driver_volume_type': 'fibre_channel',
+        'data': {
+            'target_discovered': True,
+            'target_lun': fake_lun_map[0],
+            'target_wwn': fake_target_wwpns[0:2],
+            'access_mode': 'rw',
+            'initiator_target_map': test_initiator_target_map_zoning
+        }
+    }
+
     test_connector = {
         'ip': fake_host_ip[0],
         'initiator': fake_initiator_iqn[0],
@@ -337,6 +353,13 @@ class InfortrendCLITestData(object):
     }
 
     fake_volume_id = [test_volume['id'], test_dst_volume['id']]
+
+    fake_lookup_map = {
+        '12345678': {
+            'initiator_port_wwn_list': fake_initiator_wwpns[:],
+            'target_port_wwn_list': fake_target_wwpns[0:2]
+        }
+    }
 
     test_new_type_tp0 = {
         'id': '0'
