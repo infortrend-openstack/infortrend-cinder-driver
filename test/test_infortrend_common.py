@@ -217,16 +217,14 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         test_connector = self.cli_data.test_connector
         test_initiator_wwpns = test_connector['wwpns']
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_all_target_wwpns = self.cli_data.fake_target_wwpns[:]
-        test_all_target_wwpns[1] = self.cli_data.fake_target_wwpns[2]
-        test_all_target_wwpns[2] = self.cli_data.fake_target_wwpns[1]
+        test_all_target_wwpns = self.cli_data.fake_target_wwpns[0:2]
         test_lookup_map = self.cli_data.fake_lookup_map
 
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
+            'ShowChannel': self.cli_data.get_test_show_channel(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn()
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
         }
         self._driver_setup(mock_commands)
         self.driver.fc_lookup_service = mock.Mock()
