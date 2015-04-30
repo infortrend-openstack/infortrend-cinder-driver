@@ -73,21 +73,9 @@ class InfortrendTestCass(test.TestCase):
             return FAKE_ERROR_RETURN
         return fake_execute_command
 
-    def _mock_show_lv_for_tiering(self, *args, **kwargs):
-        if 'tier' in args:
-            return self.cli_data.get_test_show_lv_tier_for_tiering()
-        else:
-            return self.cli_data.get_test_show_lv()
-
     def _mock_show_lv_for_migrate(self, *args, **kwargs):
         if 'tier' in args:
             return self.cli_data.get_test_show_lv_tier_for_migration()
-        else:
-            return self.cli_data.get_test_show_lv()
-
-    def _mock_show_lv_4tier(self, *args, **kwargs):
-        if 'tier' in args:
-            return self.cli_data.get_test_show_lv_4tiers()
         else:
             return self.cli_data.get_test_show_lv()
 
@@ -96,18 +84,6 @@ class InfortrendTestCass(test.TestCase):
             return self.cli_data.get_test_show_lv_tier()
         else:
             return self.cli_data.get_test_show_lv()
-
-    def _mock_thin_provisioning_diff(self, *args, **kwargs):
-        if '0' in args:
-            return self.cli_data.get_fake_thin_provisioning_no_support()
-        elif '1' in args:
-            return self.cli_data.get_fake_thin_provisioning_support()
-
-    def _mock_tiering_diff(self, *args, **kwargs):
-        if '4' in args:
-            return self.cli_data.get_fake_4tiers_support()
-        elif '2' in args:
-            return self.cli_data.get_fake_2tiers_support()
 
     def _assert_cli_has_calls(self, expect_cli_cmd):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
@@ -281,6 +257,54 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         self.assertDictMatch(
             properties, self.cli_data.test_fc_properties_zoning)
+
+    @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_initialize_connection_with_zoning_r_model(self):
+
+        test_volume = self.cli_data.test_volume
+        test_connector = self.cli_data.test_connector
+        test_initiator_wwpns = test_connector['wwpns']
+        test_partition_id = self.cli_data.fake_partition_id[0]
+        test_all_target_wwpns = self.cli_data.fake_target_wwpns[:]
+        test_all_target_wwpns[1] = self.cli_data.fake_target_wwpns[2]
+        test_all_target_wwpns[2] = self.cli_data.fake_target_wwpns[1]
+        test_lookup_map = self.cli_data.fake_lookup_map_r_model
+
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
+            'ShowMap': self.cli_data.get_test_show_map(),
+            'CreateMap': SUCCEED,
+            'ShowWWN': self.cli_data.get_test_show_wwn()
+        }
+        self._driver_setup(mock_commands)
+        self.driver.fc_lookup_service = mock.Mock()
+        get_device_mapping_from_network = \
+            self.driver.fc_lookup_service.get_device_mapping_from_network
+        get_device_mapping_from_network.return_value = test_lookup_map
+
+        properties = self.driver.initialize_connection(
+            test_volume, test_connector)
+
+        get_device_mapping_from_network.assert_has_calls(
+            [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
+
+        expect_cli_cmd = [
+            mock.call('ShowChannel'),
+            mock.call('ShowMap'),
+            mock.call('ShowWWN'),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '113', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[1]),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '113', '0',
+                      'wwn=%s' % test_initiator_wwpns[1])
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+
+        self.assertDictMatch(
+            properties, self.cli_data.test_fc_properties_zoning_r_model)
 
 
 class InfortrendiSCSICommonTestCase(InfortrendTestCass):

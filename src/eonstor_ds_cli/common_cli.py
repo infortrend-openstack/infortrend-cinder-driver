@@ -995,7 +995,7 @@ class InfortrendCommon(object):
             lun_id_exist = False
             for slot_name in ['slot_a', 'slot_b']:
                 for wwpn in wwpn_channel_info:
-                    channel_id = wwpn_channel_info[wwpn]
+                    channel_id = wwpn_channel_info[wwpn]['channel']
                     if channel_id not in self.map_dict[slot_name]:
                         continue
                     elif lun_id not in self.map_dict[slot_name][channel_id]:
@@ -1412,9 +1412,11 @@ class InfortrendCommon(object):
 
         for initiator_wwpn in initiator_target_map:
             for target_wwpn in initiator_target_map[initiator_wwpn]:
-                channel_id = wwpn_channel_info[target_wwpn]
+                channel_id = wwpn_channel_info[target_wwpn]['channel']
+                controller = wwpn_channel_info[target_wwpn]['slot']
                 self._create_map_with_lun_filter(
-                    part_id, channel_id, map_lun, initiator_wwpn)
+                    part_id, channel_id, map_lun, initiator_wwpn,
+                    controller=controller)
 
         return map_lun, target_wwpns, initiator_target_map
 
@@ -1735,7 +1737,15 @@ class InfortrendCommon(object):
 
         for entry in wwn_list:
             wwpn_list.append(entry['WWPN'])
-            wwpn_channel_info[entry['WWPN']] = entry['CH']
+
+            if 'BID:113' == entry['ID']:
+                slot_name = 'slot_b'
+            else:
+                slot_name = 'slot_a'
+            wwpn_channel_info[entry['WWPN']] = {
+                'channel': entry['CH'],
+                'slot': slot_name
+            }
 
         return wwpn_list, wwpn_channel_info
 

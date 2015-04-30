@@ -263,6 +263,22 @@ class InfortrendCLITestData(object):
         }
     }
 
+    test_initiator_target_map_zoning_r_model = {
+        fake_initiator_wwpns[0]: fake_target_wwpns[1:3],
+        fake_initiator_wwpns[1]: fake_target_wwpns[1:3]
+    }
+
+    test_fc_properties_zoning_r_model = {
+        'driver_volume_type': 'fibre_channel',
+        'data': {
+            'target_discovered': True,
+            'target_lun': fake_lun_map[0],
+            'target_wwn': fake_target_wwpns[1:3],
+            'access_mode': 'rw',
+            'initiator_target_map': test_initiator_target_map_zoning_r_model
+        }
+    }
+
     test_connector = {
         'ip': fake_host_ip[0],
         'initiator': fake_initiator_iqn[0],
@@ -361,26 +377,11 @@ class InfortrendCLITestData(object):
         }
     }
 
-    test_new_type_tp0 = {
-        'id': '0'
-    }
-
-    test_old_volume_tp1 = {
-        'volume_type_id': '1',
-        'id': fake_volume_id[0]
-    }
-
-    test_new_type_4tiers = {
-        'id': '4'
-    }
-
-    test_old_volume_2tiers = {
-        'volume_type_id': '2',
-        'id': fake_volume_id[0]
-    }
-
-    test_new_type = {
-        'id': None
+    fake_lookup_map_r_model = {
+        '12345678': {
+            'initiator_port_wwn_list': fake_initiator_wwpns[:],
+            'target_port_wwn_list': fake_target_wwpns[1:3]
+        }
     }
 
     def get_fake_cli_failed(self):
@@ -1128,41 +1129,6 @@ Return: 0x0000
 """
         return msg % self.fake_lv_id[0]
 
-    def get_test_show_lv_tier_for_tiering(self):
-        return (0, [{
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '0',
-            'Size': '418.93 GB',
-            'Used': '10 GB(2.4%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '10.0%',
-        }, {
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '1',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }, {
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '2',
-            'Size': '418.93 GB',
-            'Used': '10 GB(2.4%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '10.0%',
-        }, {
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '3',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }])
-
     def get_test_show_lv_tier_for_migration(self):
         return (0, [{
             'LV-Name': 'TierLV',
@@ -1175,41 +1141,6 @@ Return: 0x0000
         }, {
             'LV-Name': 'TierLV',
             'LV-ID': self.fake_lv_id[1],
-            'Tier': '3',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }])
-
-    def get_test_show_lv_4tiers(self):
-        return (0, [{
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '0',
-            'Size': '418.93 GB',
-            'Used': '10 GB(2.4%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '10.0%',
-        }, {
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '1',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }, {
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '2',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }, {
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
             'Tier': '3',
             'Size': '931.02 GB',
             'Used': '0 MB(0.0%)',
@@ -1615,42 +1546,6 @@ Return: 0x0000
                       self.fake_partition_id[0],
                       self.fake_partition_id[0])
 
-    def get_test_show_license_for_retype(self):
-        return (0, {
-            'Storage Tiering': {
-                'Support': True,
-                'Amount': '4'
-            },
-            'Thin Provisioning': {
-                'Support': True,
-                'Amount': '---'
-            }
-        })
-
-    def get_test_show_license_for_retype_without_thin_provisioning(self):
-        return (0, {
-            'Storage Tiering': {
-                'Support': True,
-                'Amount': '4'
-            },
-            'Thin Provisioning': {
-                'Support': False,
-                'Amount': '---'
-            }
-        })
-
-    def get_test_show_license_for_retype_without_tiering(self):
-        return (0, {
-            'Storage Tiering': {
-                'Support': False,
-                'Amount': '2'
-            },
-            'Thin Provisioning': {
-                'Support': True,
-                'Amount': '---'
-            }
-        })
-
     def get_test_show_license(self):
         return (0, {
             'Local Volume Copy': {
@@ -1838,41 +1733,6 @@ Return: 0x0000
             result.append(template % (
                 target_portals[i], target_iqns[i]))
         return (0, '\n'.join(result))
-
-    def get_fake_thin_provisioning_no_support(self):
-        return ({
-            'infortrend_provisioning': 'full'})
-
-    def get_fake_thin_provisioning_support(self):
-        return ({
-            'infortrend_provisioning': 'thin'})
-
-    def get_fake_2tiers_support(self):
-        return ({
-            'infortrend_tiering': '2'})
-
-    def get_fake_4tiers_support(self):
-        return ({
-            'infortrend_tiering': '4'})
-
-    def get_test_show_partition_for_thin_provisioning(
-            self, volume_id=None, pool_id=None):
-        result = [{
-            'ID': self.fake_partition_id[0],
-            'Used': '200',
-            'Name': self.fake_volume_id[0].replace('-', ''),
-            'Size': '1000',
-            'Min-reserve': '200',
-            'LV-ID': self.fake_lv_id[0]
-        }, {
-            'ID': self.fake_partition_id[1],
-            'Used': '200',
-            'Name': self.fake_volume_id[1].replace('-', ''),
-            'Size': '2000',
-            'Min-reserve': '200',
-            'LV-ID': self.fake_lv_id[0]
-        }]
-        return (0, result)
 
 
 class InfortrendCLITestCase(test.TestCase):
