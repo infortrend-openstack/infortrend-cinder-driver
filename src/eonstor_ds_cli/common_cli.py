@@ -28,6 +28,7 @@ from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
+from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -138,6 +139,8 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.InfortrendDriverException(data=msg)
 
+        self.fc_lookup_service = zm_utils.create_lookup_service()
+
         self._volume_stats = None
         self._model_type = 'R'
         self._base_logical_channel = 16
@@ -231,9 +234,7 @@ class InfortrendCommon(object):
 
         if rc == 20:
             LOG.warning(_LW('The MCS Channel is grouped'))
-            return rc
-
-        if rc != 0:
+        elif rc != 0:
             msg = _('Failed to create map')
             LOG.error(msg)
             raise exception.InfortrendCliException(
@@ -987,6 +988,23 @@ class InfortrendCommon(object):
         else:
             return min_map_chl
 
+    def _get_common_lun_map_id(self, wwpn_channel_info):
+        map_lun = None
+
+        for lun_id in range(self.constants['MAX_LUN_MAP_PER_CHL']):
+            lun_id_exist = False
+            for slot_name in ['slot_a', 'slot_b']:
+                for wwpn in wwpn_channel_info:
+                    channel_id = wwpn_channel_info[wwpn]['channel']
+                    if channel_id not in self.map_dict[slot_name]:
+                        continue
+                    elif lun_id not in self.map_dict[slot_name][channel_id]:
+                        lun_id_exist = True
+            if not lun_id_exist:
+                map_lun = str(lun_id)
+                break
+        return map_lun
+
     def _concat_provider_location(self, model_dict):
         return '@'.join([i + '^' + str(model_dict[i]) for i in model_dict])
 
@@ -1357,11 +1375,57 @@ class InfortrendCommon(object):
         self._init_map_info(multipath)
         self._update_map_info(multipath)
 
+        if self.fc_lookup_service is not None:
+            map_lun, target_wwpns, initiator_target_map = (
+                self._do_fc_zoning_connect(volume, connector)
+            )
+        else:
+            map_lun, target_wwpns, initiator_target_map = (
+                self._do_fc_normal_connect(volume, connector, multipath)
+            )
+        properties = self._generate_fc_connection_properties(
+            map_lun, target_wwpns, initiator_target_map)
+
+        LOG.info(_LI('Successfully initialize connection '
+                     'target_wwn: %(target_wwn)s '
+                     'initiator_target_map: %(initiator_target_map)s'
+                     'lun: %(target_lun)s '), properties['data'])
+        return properties
+
+    def _do_fc_zoning_connect(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
         target_wwpns = []
 
         partition_data = self._extract_all_provider_location(
-            volume['provider_location'])  # system_id, part_id
+            volume['provider_location'])
+        part_id = partition_data['partition_id']
+
+        if part_id == 'None':
+            part_id = self._get_part_id(volume_id)
+
+        wwpn_list, wwpn_channel_info = self._get_wwpn_list()
+
+        initiator_target_map, target_wwpns = self._build_initiator_target_map(
+            connector, wwpn_list)
+
+        map_lun = self._get_common_lun_map_id(wwpn_channel_info)
+
+        for initiator_wwpn in initiator_target_map:
+            for target_wwpn in initiator_target_map[initiator_wwpn]:
+                channel_id = wwpn_channel_info[target_wwpn]['channel']
+                controller = wwpn_channel_info[target_wwpn]['slot']
+                self._create_map_with_lun_filter(
+                    part_id, channel_id, map_lun, initiator_wwpn,
+                    controller=controller)
+
+        return map_lun, target_wwpns, initiator_target_map
+
+    def _do_fc_normal_connect(self, volume, connector, multipath):
+        volume_id = volume['id'].replace('-', '')
+        target_wwpns = []
+
+        partition_data = self._extract_all_provider_location(
+            volume['provider_location'])
         part_id = partition_data['partition_id']
 
         if part_id == 'None':
@@ -1400,17 +1464,10 @@ class InfortrendCommon(object):
 
             target_wwpns.append(wwpn)
 
-        initiator_target_map = self._build_initiator_target_map(
+        initiator_target_map, target_wwpns = self._build_initiator_target_map(
             connector, target_wwpns)
 
-        properties = self._generate_fc_connection_properties(
-            map_lun, target_wwpns, initiator_target_map)
-
-        LOG.info(_LI('Successfully initialize connection '
-                     'target_wwn: %(target_wwn)s '
-                     'initiator_target_map: %(initiator_target_map)s'
-                     'lun: %(target_lun)s '), properties['data'])
-        return properties
+        return map_lun, target_wwpns, initiator_target_map
 
     def _initialize_connection_fc_multipath(
             self, map_chl, map_lun, part_id, wwn_list, connector):
@@ -1436,15 +1493,28 @@ class InfortrendCommon(object):
 
         return wwpn
 
-    def _build_initiator_target_map(self, connector, target_wwpns):
+    def _build_initiator_target_map(self, connector, all_target_wwpns):
         initiator_target_map = {}
+        target_wwpns = []
 
-        initiator_wwns = connector['wwpns']
+        if self.fc_lookup_service is not None:
+            lookup_map = (
+                self.fc_lookup_service.get_device_mapping_from_network(
+                    connector['wwpns'], all_target_wwpns)
+            )
+            for fabric_name in lookup_map:
+                fabric = lookup_map[fabric_name]
+                target_wwpns.extend(fabric['target_port_wwn_list'])
+                for initiator in fabric['initiator_port_wwn_list']:
+                    initiator_target_map[initiator] = \
+                        fabric['target_port_wwn_list']
+        else:
+            initiator_wwns = connector['wwpns']
+            target_wwpns = all_target_wwpns
+            for initiator in initiator_wwns:
+                initiator_target_map[initiator] = all_target_wwpns
 
-        for initiator in initiator_wwns:
-            initiator_target_map[initiator] = target_wwpns
-
-        return initiator_target_map
+        return initiator_target_map, target_wwpns
 
     def _generate_fc_connection_properties(
             self, lun_id, target_wwpns, initiator_target_map):
@@ -1658,6 +1728,26 @@ class InfortrendCommon(object):
             if entry['CH'] == channel_id and entry['ID'] == slot_name:
                 return entry['WWPN']
         return None
+
+    def _get_wwpn_list(self):
+        wwn_list = self._show_wwn()
+
+        wwpn_list = []
+        wwpn_channel_info = {}
+
+        for entry in wwn_list:
+            wwpn_list.append(entry['WWPN'])
+
+            if 'BID:113' == entry['ID']:
+                slot_name = 'slot_b'
+            else:
+                slot_name = 'slot_a'
+            wwpn_channel_info[entry['WWPN']] = {
+                'channel': entry['CH'],
+                'slot': slot_name
+            }
+
+        return wwpn_list, wwpn_channel_info
 
     @log_func
     def _generate_iscsi_connection_properties(

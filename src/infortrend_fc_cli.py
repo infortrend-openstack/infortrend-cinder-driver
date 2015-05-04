@@ -22,6 +22,7 @@ from oslo_log import log as logging
 from cinder.i18n import _LI
 from cinder.volume import driver
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
+from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -133,6 +134,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Removes an export for a volume."""
         pass
 
+    @zm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -158,6 +160,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'initiator': connector['initiator']})
         return self.common.initialize_connection(volume, connector)
 
+    @zm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
         LOG.info(_LI('terminate_connection volume id=%s') % (
