@@ -54,10 +54,7 @@ infortrend_esds_opts = [
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot B '
                'for openstack usage. It is separated with comma.'
-               'By default, it is the channel 0~7'),
-    cfg.BoolOpt('infortrend_iscsi_mcs',
-                default=False,
-                help='Enable iSCSI MCS multipath')
+               'By default, it is the channel 0~7')
 ]
 
 infortrend_esds_extra_opts = [
@@ -123,7 +120,8 @@ class InfortrendCommon(object):
         self.configuration.append_config_values(infortrend_esds_opts)
         self.configuration.append_config_values(infortrend_esds_extra_opts)
 
-        self.iscsi_mcs = self.configuration.infortrend_iscsi_mcs
+        self.iscsi_multipath = self.configuration.use_multipath_for_image_xfer
+        self.iscsi_multi_session = False  # Didn't support multi-session now
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
@@ -150,7 +148,8 @@ class InfortrendCommon(object):
         self._init_pool_list()
         self._init_channel_list()
 
-        if self.iscsi_mcs:
+        # use mcs instead of multi-session
+        if self.iscsi_multipath and not self.iscsi_multi_session:
             self.mcs_dict = {
                 'slot_a': {},
                 'slot_b': {}
@@ -492,7 +491,7 @@ class InfortrendCommon(object):
 
                 if entry['Ch'] in self.channel_list[controller]:
                     self.map_dict[controller][entry['Ch']] = []
-                    if self.iscsi_mcs:
+                    if self.iscsi_multipath and not self.iscsi_multi_session:
                         self._update_mcs_dict(
                             entry['Ch'], entry['MCS'], controller)
 
@@ -778,7 +777,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _get_mapping_info_with_multi_lun(self, multipath):
-        if self.iscsi_mcs and not multipath:
+        if self.iscsi_multipath and not self.iscsi_multi_session:
             return self._get_mapping_info_with_multi_lun_on_iscsi_mcs()
         else:
             return self._get_mapping_info_with_multi_lun_on_iscsi_multipath(
@@ -1281,7 +1280,10 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         if self.protocol == 'iSCSI':
-            multipath = connector.get('multipath', False)
+            if self.iscsi_multipath:
+                multipath = connector.get('multipath', False)
+            else:
+                multipath = False
             return self._initialize_connection_iscsi(
                 volume, connector, multipath)
         elif self.protocol == 'FC':
@@ -1396,7 +1398,7 @@ class InfortrendCommon(object):
 
         lun_id = map_lun[0]
 
-        if self.iscsi_mcs:
+        if self.iscsi_multipath and not self.iscsi_multi_session:
             channel_id = self._create_map_with_mcs(
                 part_id, map_chl['slot_a'], lun_id, connector['initiator'])
         else:
@@ -1427,7 +1429,7 @@ class InfortrendCommon(object):
             'port': self.constants['ISCSI_PORT']
         }]
 
-        if multipath:
+        if multipath and self.iscsi_multi_session:
             init_iqn = connector['initiator']
             partition_data, ip = self._initialize_connection_iscsi_multipath(
                 map_chl, map_lun, part_id, net_list, partition_data, init_iqn)
@@ -1603,7 +1605,7 @@ class InfortrendCommon(object):
         properties = {}
         discovery_exist = False
 
-        if multipath:
+        if multipath and self.iscsi_multi_session:
             target_portals = []
             target_iqns = []
             target_luns = []
