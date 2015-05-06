@@ -57,10 +57,7 @@ infortrend_esds_opts = [
                'By default, it is the channel 0~7'),
     cfg.BoolOpt('infortrend_iscsi_mcs',
                 default=False,
-                help='Enable iSCSI MCS multipath'),
-    cfg.BoolOpt('infortrend_fc_multipath',
-                default=False,
-                help='Enable FC multipath')
+                help='Enable iSCSI MCS multipath')
 ]
 
 infortrend_esds_extra_opts = [
@@ -127,7 +124,6 @@ class InfortrendCommon(object):
         self.configuration.append_config_values(infortrend_esds_extra_opts)
 
         self.iscsi_mcs = self.configuration.infortrend_iscsi_mcs
-        self.fc_multipath = self.configuration.infortrend_fc_multipath
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
@@ -891,79 +887,6 @@ class InfortrendCommon(object):
 
         return map_chl, map_lun, None
 
-    def _get_mapping_info_with_single_lun(self, multipath):
-        """Get the minimun mapping channel id and a lun id mapping info
-
-        # R model with multipath
-        map_chl = {
-            'slot_a': ['1'],
-            'slot_b': ['2']
-        }
-        map_lun = '0'
-
-        # G model with multipath
-        map_chl = {
-            'slot_a': ['1', '2']
-        }
-        map_lun = '0'
-
-        :returns: minimun mapping channel id per slot and a lun id
-        """
-        map_chl = {
-            'slot_a': []
-        }
-        check_map = True
-        map_lun = None
-        multipath_mapping_slot = 'slot_a'
-
-        if self._model_type == 'R' and multipath:
-            multipath_mapping_slot = 'slot_b'
-            map_chl['slot_b'] = []
-
-        for lun_id in range(self.constants['MAX_LUN_MAP_PER_CHL']):
-
-            ret_chl = self._get_minimun_mapping_channel_id_by_lun(
-                lun_id, 'slot_a')
-            if ret_chl is None:
-                check_map = False
-                continue
-
-            map_chl['slot_a'].append(ret_chl)
-
-            if multipath:
-                ret_chl = self._get_minimun_mapping_channel_id_by_lun(
-                    lun_id, multipath_mapping_slot, exclude_channel=ret_chl)
-                if ret_chl is None:
-                    check_map = False
-                    continue
-                map_chl[multipath_mapping_slot].append(ret_chl)
-
-            check_map = True
-            break
-
-        if check_map:
-            map_lun = str(lun_id)
-
-        return map_chl, map_lun
-
-    def _get_minimun_mapping_channel_id_by_lun(
-            self, lun_id, controller, exclude_channel=None):
-
-        empty_lun_num = 0
-        min_map_chl = None
-        for key, value in self.map_dict[controller].items():
-
-            if (exclude_channel is not None and
-                    controller == 'slot_a' and
-                    exclude_channel == key):
-                continue
-
-            if empty_lun_num < len(value) and lun_id in value:
-                min_map_chl = key
-                empty_lun_num = len(value)
-
-        return min_map_chl
-
     @log_func
     def _get_minimun_mapping_channel_id(
             self, controller, exclude_channel=None):
@@ -1357,32 +1280,26 @@ class InfortrendCommon(object):
         return model_update
 
     def initialize_connection(self, volume, connector):
-        multipath = connector.get('multipath', False)
-
         if self.protocol == 'iSCSI':
+            multipath = connector.get('multipath', False)
             return self._initialize_connection_iscsi(
                 volume, connector, multipath)
         elif self.protocol == 'FC':
-            multipath = multipath or self.fc_multipath
             return self._initialize_connection_fc(
-                volume, connector, multipath)
+                volume, connector)
         else:
             msg = _('Unknown protocol')
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
-    def _initialize_connection_fc(self, volume, connector, multipath):
-        self._init_map_info(multipath)
-        self._update_map_info(multipath)
+    def _initialize_connection_fc(self, volume, connector):
+        self._init_map_info(True)
+        self._update_map_info(True)
 
-        if self.fc_lookup_service is not None:
-            map_lun, target_wwpns, initiator_target_map = (
-                self._do_fc_zoning_connect(volume, connector)
-            )
-        else:
-            map_lun, target_wwpns, initiator_target_map = (
-                self._do_fc_normal_connect(volume, connector, multipath)
-            )
+        map_lun, target_wwpns, initiator_target_map = (
+            self._do_fc_connection(volume, connector)
+        )
+
         properties = self._generate_fc_connection_properties(
             map_lun, target_wwpns, initiator_target_map)
 
@@ -1392,7 +1309,7 @@ class InfortrendCommon(object):
                      'lun: %(target_lun)s '), properties['data'])
         return properties
 
-    def _do_fc_zoning_connect(self, volume, connector):
+    def _do_fc_connection(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
         target_wwpns = []
 
@@ -1419,79 +1336,6 @@ class InfortrendCommon(object):
                     controller=controller)
 
         return map_lun, target_wwpns, initiator_target_map
-
-    def _do_fc_normal_connect(self, volume, connector, multipath):
-        volume_id = volume['id'].replace('-', '')
-        target_wwpns = []
-
-        partition_data = self._extract_all_provider_location(
-            volume['provider_location'])
-        part_id = partition_data['partition_id']
-
-        if part_id == 'None':
-            part_id = self._get_part_id(volume_id)
-
-        map_chl, map_lun = self._get_mapping_info_with_single_lun(multipath)
-
-        if map_lun is None:
-            msg = _('Can not find the enough channel for mapping '
-                    'with volume_id %s') % volume_id
-            LOG.error(msg)
-            raise exception.InfortrendDriverException(err=msg)
-
-        channel_id = map_chl['slot_a'][0]
-
-        for wwpn in connector['wwpns']:
-            self._create_map_with_lun_filter(
-                part_id, channel_id, map_lun, wwpn)
-
-        wwn_list = self._show_wwn()
-        wwpn = self._get_wwpn_by_channel(channel_id, wwn_list)
-
-        if wwpn is None:
-            msg = _(
-                'Failed to get wwpn on Channel %(channel_id)s '
-                'with volume_id %(volume_id)s') % {
-                    'channel_id': channel_id, 'volume_id': volume_id}
-            LOG.error(msg)
-            raise exception.InfortrendDriverException(err=msg)
-
-        target_wwpns.append(wwpn)
-
-        if multipath:
-            wwpn = self._initialize_connection_fc_multipath(
-                map_chl, map_lun, part_id, wwn_list, connector)
-
-            target_wwpns.append(wwpn)
-
-        initiator_target_map, target_wwpns = self._build_initiator_target_map(
-            connector, target_wwpns)
-
-        return map_lun, target_wwpns, initiator_target_map
-
-    def _initialize_connection_fc_multipath(
-            self, map_chl, map_lun, part_id, wwn_list, connector):
-
-        if self._model_type == 'R':
-            controller = 'slot_b'
-            channel_id = map_chl['slot_b'][0]
-        else:
-            controller = 'slot_a'
-            channel_id = map_chl['slot_a'][1]
-
-        for wwpn in connector['wwpns']:
-            self._create_map_with_lun_filter(
-                part_id, channel_id, map_lun, wwpn, controller)
-
-        wwpn = self._get_wwpn_by_channel(
-            channel_id, wwn_list, controller=controller)
-
-        if wwpn is None:
-            msg = _('Failed to get wwpn on Channel %s') % (channel_id)
-            LOG.error(msg)
-            raise exception.InfortrendDriverException(err=msg)
-
-        return wwpn
 
     def _build_initiator_target_map(self, connector, all_target_wwpns):
         initiator_target_map = {}
@@ -1736,16 +1580,19 @@ class InfortrendCommon(object):
         wwpn_channel_info = {}
 
         for entry in wwn_list:
-            wwpn_list.append(entry['WWPN'])
-
+            channel_id = entry['CH']
             if 'BID:113' == entry['ID']:
                 slot_name = 'slot_b'
             else:
                 slot_name = 'slot_a'
-            wwpn_channel_info[entry['WWPN']] = {
-                'channel': entry['CH'],
-                'slot': slot_name
-            }
+
+            if channel_id in self.map_dict[slot_name]:
+                wwpn_list.append(entry['WWPN'])
+
+                wwpn_channel_info[entry['WWPN']] = {
+                    'channel': channel_id,
+                    'slot': slot_name
+                }
 
         return wwpn_list, wwpn_channel_info
 

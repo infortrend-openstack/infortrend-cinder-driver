@@ -200,8 +200,8 @@ class InfortrendCLITestData(object):
     }
 
     test_initiator_target_map = {
-        fake_initiator_wwpns[0]: fake_target_wwpns[0:1],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0:1]
+        fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
+        fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
     }
 
     test_fc_properties = {
@@ -209,15 +209,38 @@ class InfortrendCLITestData(object):
         'data': {
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
-            'target_wwn': fake_target_wwpns[0:1],
+            'target_wwn': fake_target_wwpns[0:2],
             'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map
         }
     }
 
+    test_initiator_target_map_specific_channel = {
+        fake_initiator_wwpns[0]: [fake_target_wwpns[1]],
+        fake_initiator_wwpns[1]: [fake_target_wwpns[1]]
+    }
+
+    test_fc_properties_with_specific_channel = {
+        'driver_volume_type': 'fibre_channel',
+        'data': {
+            'target_discovered': True,
+            'target_lun': fake_lun_map[0],
+            'target_wwn': [fake_target_wwpns[1]],
+            'access_mode': 'rw',
+            'initiator_target_map': test_initiator_target_map_specific_channel
+        }
+    }
+
+    test_target_wwpns_map_multipath_r_model = [
+        fake_target_wwpns[0],
+        fake_target_wwpns[2],
+        fake_target_wwpns[1],
+        fake_target_wwpns[3]
+    ]
+
     test_initiator_target_map_multipath_r_model = {
-        fake_initiator_wwpns[0]: fake_target_wwpns[0::2],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0::2]
+        fake_initiator_wwpns[0]: test_target_wwpns_map_multipath_r_model[:],
+        fake_initiator_wwpns[1]: test_target_wwpns_map_multipath_r_model[:]
     }
 
     test_fc_properties_multipath_r_model = {
@@ -225,25 +248,9 @@ class InfortrendCLITestData(object):
         'data': {
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
-            'target_wwn': fake_target_wwpns[0::2],
+            'target_wwn': test_target_wwpns_map_multipath_r_model[:],
             'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_multipath_r_model
-        }
-    }
-
-    test_initiator_target_map_multipath_g_model = {
-        fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
-    }
-
-    test_fc_properties_multipath_g_model = {
-        'driver_volume_type': 'fibre_channel',
-        'data': {
-            'target_discovered': True,
-            'target_lun': fake_lun_map[0],
-            'target_wwn': fake_target_wwpns[0:2],
-            'access_mode': 'rw',
-            'initiator_target_map': test_initiator_target_map_multipath_g_model
         }
     }
 

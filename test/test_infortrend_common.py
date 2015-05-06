@@ -129,11 +129,32 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.assertDictMatch(properties, self.cli_data.test_fc_properties)
 
     @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_initialize_connection_specific_channel(self):
+
+        test_volume = self.cli_data.test_volume
+        test_connector = self.cli_data.test_connector
+        configuration = copy.copy(self.configuration)
+        configuration.infortrend_slots_a_channels_id = '5'
+
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel(),
+            'ShowMap': self.cli_data.get_test_show_map(),
+            'CreateMap': SUCCEED,
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
+        }
+        self._driver_setup(mock_commands, configuration)
+
+        properties = self.driver.initialize_connection(
+            test_volume, test_connector)
+
+        self.assertDictMatch(
+            properties, self.cli_data.test_fc_properties_with_specific_channel)
+
+    @mock.patch.object(LOG, 'info', mock.Mock())
     def test_initialize_connection_multipath_with_r_model(self):
 
         test_volume = self.cli_data.test_volume
         test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_connector['multipath'] = True
 
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
@@ -148,47 +169,6 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         self.assertDictMatch(
             properties, self.cli_data.test_fc_properties_multipath_r_model)
-
-    @mock.patch.object(LOG, 'info', mock.Mock())
-    def test_initialize_connection_multipath_with_g_model(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel(),
-            'ShowMap': self.cli_data.get_test_show_map(),
-            'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
-        }
-        self._driver_setup(mock_commands)
-
-        properties = self.driver.initialize_connection(
-            test_volume, test_connector)
-
-        self.assertDictMatch(
-            properties, self.cli_data.test_fc_properties_multipath_g_model)
-
-    def test_initialize_connection_multipath_with_g_model_single_channel(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_single(),
-            'ShowMap': self.cli_data.get_test_show_map()
-        }
-        self._driver_setup(mock_commands)
-
-        ex = self.assertRaises(
-            exception.InfortrendDriverException,
-            self.driver.initialize_connection,
-            test_volume,
-            test_connector)
-        self.assertTrue(re.match(
-            r'.*Can not find the enough channel for mapping.*', ex.msg))
 
     def test_initialize_connection_with_get_wwn_fail(self):
 
