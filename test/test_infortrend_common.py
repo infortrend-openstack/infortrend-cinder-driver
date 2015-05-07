@@ -73,21 +73,9 @@ class InfortrendTestCass(test.TestCase):
             return FAKE_ERROR_RETURN
         return fake_execute_command
 
-    def _mock_show_lv_for_tiering(self, *args, **kwargs):
-        if 'tier' in args:
-            return self.cli_data.get_test_show_lv_tier_for_tiering()
-        else:
-            return self.cli_data.get_test_show_lv()
-
     def _mock_show_lv_for_migrate(self, *args, **kwargs):
         if 'tier' in args:
             return self.cli_data.get_test_show_lv_tier_for_migration()
-        else:
-            return self.cli_data.get_test_show_lv()
-
-    def _mock_show_lv_4tier(self, *args, **kwargs):
-        if 'tier' in args:
-            return self.cli_data.get_test_show_lv_4tiers()
         else:
             return self.cli_data.get_test_show_lv()
 
@@ -96,18 +84,6 @@ class InfortrendTestCass(test.TestCase):
             return self.cli_data.get_test_show_lv_tier()
         else:
             return self.cli_data.get_test_show_lv()
-
-    def _mock_thin_provisioning_diff(self, *args, **kwargs):
-        if '0' in args:
-            return self.cli_data.get_fake_thin_provisioning_no_support()
-        elif '1' in args:
-            return self.cli_data.get_fake_thin_provisioning_support()
-
-    def _mock_tiering_diff(self, *args, **kwargs):
-        if '4' in args:
-            return self.cli_data.get_fake_4tiers_support()
-        elif '2' in args:
-            return self.cli_data.get_fake_2tiers_support()
 
     def _assert_cli_has_calls(self, expect_cli_cmd):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
@@ -153,11 +129,32 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.assertDictMatch(properties, self.cli_data.test_fc_properties)
 
     @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_initialize_connection_specific_channel(self):
+
+        test_volume = self.cli_data.test_volume
+        test_connector = self.cli_data.test_connector
+        configuration = copy.copy(self.configuration)
+        configuration.infortrend_slots_a_channels_id = '5'
+
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel(),
+            'ShowMap': self.cli_data.get_test_show_map(),
+            'CreateMap': SUCCEED,
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
+        }
+        self._driver_setup(mock_commands, configuration)
+
+        properties = self.driver.initialize_connection(
+            test_volume, test_connector)
+
+        self.assertDictMatch(
+            properties, self.cli_data.test_fc_properties_with_specific_channel)
+
+    @mock.patch.object(LOG, 'info', mock.Mock())
     def test_initialize_connection_multipath_with_r_model(self):
 
         test_volume = self.cli_data.test_volume
         test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_connector['multipath'] = True
 
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
@@ -172,47 +169,6 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         self.assertDictMatch(
             properties, self.cli_data.test_fc_properties_multipath_r_model)
-
-    @mock.patch.object(LOG, 'info', mock.Mock())
-    def test_initialize_connection_multipath_with_g_model(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel(),
-            'ShowMap': self.cli_data.get_test_show_map(),
-            'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
-        }
-        self._driver_setup(mock_commands)
-
-        properties = self.driver.initialize_connection(
-            test_volume, test_connector)
-
-        self.assertDictMatch(
-            properties, self.cli_data.test_fc_properties_multipath_g_model)
-
-    def test_initialize_connection_multipath_with_g_model_single_channel(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_single(),
-            'ShowMap': self.cli_data.get_test_show_map()
-        }
-        self._driver_setup(mock_commands)
-
-        ex = self.assertRaises(
-            exception.InfortrendDriverException,
-            self.driver.initialize_connection,
-            test_volume,
-            test_connector)
-        self.assertTrue(re.match(
-            r'.*Can not find the enough channel for mapping.*', ex.msg))
 
     def test_initialize_connection_with_get_wwn_fail(self):
 
@@ -233,6 +189,100 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             test_volume,
             test_connector)
         self.assertTrue(re.match(r'.*Failed to get wwn info.*', ex.msg))
+
+    @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_initialize_connection_with_zoning(self):
+
+        test_volume = self.cli_data.test_volume
+        test_connector = self.cli_data.test_connector
+        test_initiator_wwpns = test_connector['wwpns']
+        test_partition_id = self.cli_data.fake_partition_id[0]
+        test_all_target_wwpns = self.cli_data.fake_target_wwpns[0:2]
+        test_lookup_map = self.cli_data.fake_lookup_map
+
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel(),
+            'ShowMap': self.cli_data.get_test_show_map(),
+            'CreateMap': SUCCEED,
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
+        }
+        self._driver_setup(mock_commands)
+        self.driver.fc_lookup_service = mock.Mock()
+        get_device_mapping_from_network = \
+            self.driver.fc_lookup_service.get_device_mapping_from_network
+        get_device_mapping_from_network.return_value = test_lookup_map
+
+        properties = self.driver.initialize_connection(
+            test_volume, test_connector)
+
+        get_device_mapping_from_network.assert_has_calls(
+            [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
+
+        expect_cli_cmd = [
+            mock.call('ShowChannel'),
+            mock.call('ShowMap'),
+            mock.call('ShowWWN'),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[1]),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[1])
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+
+        self.assertDictMatch(
+            properties, self.cli_data.test_fc_properties_zoning)
+
+    @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_initialize_connection_with_zoning_r_model(self):
+
+        test_volume = self.cli_data.test_volume
+        test_connector = self.cli_data.test_connector
+        test_initiator_wwpns = test_connector['wwpns']
+        test_partition_id = self.cli_data.fake_partition_id[0]
+        test_all_target_wwpns = self.cli_data.fake_target_wwpns[:]
+        test_all_target_wwpns[1] = self.cli_data.fake_target_wwpns[2]
+        test_all_target_wwpns[2] = self.cli_data.fake_target_wwpns[1]
+        test_lookup_map = self.cli_data.fake_lookup_map_r_model
+
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
+            'ShowMap': self.cli_data.get_test_show_map(),
+            'CreateMap': SUCCEED,
+            'ShowWWN': self.cli_data.get_test_show_wwn()
+        }
+        self._driver_setup(mock_commands)
+        self.driver.fc_lookup_service = mock.Mock()
+        get_device_mapping_from_network = \
+            self.driver.fc_lookup_service.get_device_mapping_from_network
+        get_device_mapping_from_network.return_value = test_lookup_map
+
+        properties = self.driver.initialize_connection(
+            test_volume, test_connector)
+
+        get_device_mapping_from_network.assert_has_calls(
+            [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
+
+        expect_cli_cmd = [
+            mock.call('ShowChannel'),
+            mock.call('ShowMap'),
+            mock.call('ShowWWN'),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '113', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
+                      'wwn=%s' % test_initiator_wwpns[1]),
+            mock.call('CreateMap', 'part', test_partition_id, '0', '113', '0',
+                      'wwn=%s' % test_initiator_wwpns[1])
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+
+        self.assertDictMatch(
+            properties, self.cli_data.test_fc_properties_zoning_r_model)
 
 
 class InfortrendiSCSICommonTestCase(InfortrendTestCass):
@@ -274,10 +324,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_map_dict = {
             'slot_a': {'1': [], '2': [], '4': []},
-            'slot_b': {}
+            'slot_b': {'1': [], '2': [], '4': []}
         }
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel()
+            'ShowChannel': self.cli_data.get_test_show_channel_r_model()
         }
         self._driver_setup(mock_commands)
 
@@ -290,7 +340,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         configuration = copy.copy(self.configuration)
         configuration.infortrend_slots_a_channels_id = '2, 4'
 
-        test_base_logical_channel = 1
         test_map_dict = {
             'slot_a': {'2': [], '4': []},
             'slot_b': {}
@@ -303,13 +352,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._init_map_info()
 
         self.assertDictMatch(self.driver.map_dict, test_map_dict)
-        self.assertEqual(
-            self.driver._base_logical_channel, test_base_logical_channel)
 
     def test_update_mcs_dict(self):
 
         configuration = copy.copy(self.configuration)
-        configuration.infortrend_iscsi_mcs = True
+        configuration.use_multipath_for_image_xfer = True
 
         test_mcs_dict = {
             'slot_a': {'1': ['1', '2'], '2': ['4']},
@@ -327,7 +374,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_mapping_info_with_mcs(self):
 
         configuration = copy.copy(self.configuration)
-        configuration.infortrend_iscsi_mcs = True
+        configuration.use_multipath_for_image_xfer = True
 
         fake_mcs_dict = {
             'slot_a': {'0': ['1', '2'], '2': ['4']},
@@ -348,8 +395,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.mcs_dict = fake_mcs_dict
         self.driver.map_dict = fake_map_dict
 
-        map_chl, map_lun, mcs_id = \
-            self.driver._get_mapping_info_with_multi_lun_on_iscsi_mcs()
+        map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
         self.assertEqual(map_lun, test_map_lun)
@@ -358,7 +404,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_mapping_info_with_mcs_multi_group(self):
 
         configuration = copy.copy(self.configuration)
-        configuration.infortrend_iscsi_mcs = True
+        configuration.use_multipath_for_image_xfer = True
 
         fake_mcs_dict = {
             'slot_a': {'0': ['1', '2'], '1': ['3', '4'], '2': ['5']},
@@ -385,8 +431,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.mcs_dict = fake_mcs_dict
         self.driver.map_dict = fake_map_dict
 
-        map_chl, map_lun, mcs_id = \
-            self.driver._get_mapping_info_with_multi_lun_on_iscsi_mcs()
+        map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
         self.assertEqual(map_lun, test_map_lun)
@@ -1054,68 +1099,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.assertTrue(re.match(r'.*Failed to get network info.*', ex.msg))
 
     @mock.patch.object(LOG, 'info', mock.Mock())
-    def test_initialize_connection_multipath_with_r_model(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_iscsi_properties = \
-            self.cli_data.test_iscsi_properties_multipath_r_model
-        test_target_protals = test_iscsi_properties['data']['target_portals']
-        test_target_iqns = test_iscsi_properties['data']['target_iqns']
-
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
-            'ShowMap': self.cli_data.get_test_show_map(),
-            'ShowIQN': self.cli_data.get_test_show_iqn(),
-            'CreateMap': SUCCEED,
-            'ShowNet': self.cli_data.get_test_show_net(),
-            'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqns, test_target_protals)
-        }
-        self._driver_setup(mock_commands)
-
-        properties = self.driver.initialize_connection(
-            test_volume, test_connector)
-
-        self.assertDictMatch(
-            properties, self.cli_data.test_iscsi_properties_multipath_r_model)
-
-    @mock.patch.object(LOG, 'info', mock.Mock())
-    def test_initialize_connection_multipath_with_g_model(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_iscsi_properties = \
-            self.cli_data.test_iscsi_properties_multipath_g_model
-        test_target_protals = test_iscsi_properties['data']['target_portals']
-        test_target_iqns = test_iscsi_properties['data']['target_iqns']
-
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel(),
-            'ShowMap': self.cli_data.get_test_show_map(),
-            'ShowIQN': self.cli_data.get_test_show_iqn(),
-            'CreateMap': SUCCEED,
-            'ShowNet': self.cli_data.get_test_show_net(),
-            'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqns, test_target_protals)
-        }
-        self._driver_setup(mock_commands)
-
-        properties = self.driver.initialize_connection(
-            test_volume, test_connector)
-
-        self.assertDictMatch(
-            properties, self.cli_data.test_iscsi_properties_multipath_g_model)
-
-    @mock.patch.object(LOG, 'info', mock.Mock())
     def test_initialize_connection_with_mcs(self):
 
         configuration = copy.copy(self.configuration)
-        configuration.infortrend_iscsi_mcs = True
+        configuration.use_multipath_for_image_xfer = True
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]

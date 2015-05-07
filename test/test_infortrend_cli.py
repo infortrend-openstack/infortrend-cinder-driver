@@ -157,51 +157,9 @@ class InfortrendCLITestData(object):
         }
     }
 
-    test_iqn_multipath_r_model = [(
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 1, 0, 1), (
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 0, 1, 2)
-    ]
-
-    test_iscsi_properties_multipath_r_model = {
-        'driver_volume_type': 'iscsi',
-        'data': {
-            'target_discovered': True,
-            'target_portals': [
-                '%s:3260' % fake_data_port_ip[2],
-                '%s:3260' % fake_data_port_ip[1]
-            ],
-            'target_iqns': test_iqn_multipath_r_model,
-            'target_luns': [0, 0],
-            'volume_id': test_volume['id']
-        }
-    }
-
-    test_iqn_multipath_g_model = [(
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 1, 0, 1), (
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 3, 0, 1)
-    ]
-
-    test_iscsi_properties_multipath_g_model = {
-        'driver_volume_type': 'iscsi',
-        'data': {
-            'target_discovered': True,
-            'target_portals': [
-                '%s:3260' % fake_data_port_ip[2],
-                '%s:3260' % fake_data_port_ip[4]
-            ],
-            'target_iqns': test_iqn_multipath_g_model,
-            'target_luns': [0, 1],
-            'volume_id': test_volume['id']
-        }
-    }
-
     test_initiator_target_map = {
-        fake_initiator_wwpns[0]: fake_target_wwpns[0:1],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0:1]
+        fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
+        fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
     }
 
     test_fc_properties = {
@@ -209,15 +167,38 @@ class InfortrendCLITestData(object):
         'data': {
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
-            'target_wwn': fake_target_wwpns[0:1],
+            'target_wwn': fake_target_wwpns[0:2],
             'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map
         }
     }
 
+    test_initiator_target_map_specific_channel = {
+        fake_initiator_wwpns[0]: [fake_target_wwpns[1]],
+        fake_initiator_wwpns[1]: [fake_target_wwpns[1]]
+    }
+
+    test_fc_properties_with_specific_channel = {
+        'driver_volume_type': 'fibre_channel',
+        'data': {
+            'target_discovered': True,
+            'target_lun': fake_lun_map[0],
+            'target_wwn': [fake_target_wwpns[1]],
+            'access_mode': 'rw',
+            'initiator_target_map': test_initiator_target_map_specific_channel
+        }
+    }
+
+    test_target_wwpns_map_multipath_r_model = [
+        fake_target_wwpns[0],
+        fake_target_wwpns[2],
+        fake_target_wwpns[1],
+        fake_target_wwpns[3]
+    ]
+
     test_initiator_target_map_multipath_r_model = {
-        fake_initiator_wwpns[0]: fake_target_wwpns[0::2],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0::2]
+        fake_initiator_wwpns[0]: test_target_wwpns_map_multipath_r_model[:],
+        fake_initiator_wwpns[1]: test_target_wwpns_map_multipath_r_model[:]
     }
 
     test_fc_properties_multipath_r_model = {
@@ -225,25 +206,41 @@ class InfortrendCLITestData(object):
         'data': {
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
-            'target_wwn': fake_target_wwpns[0::2],
+            'target_wwn': test_target_wwpns_map_multipath_r_model[:],
             'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_multipath_r_model
         }
     }
 
-    test_initiator_target_map_multipath_g_model = {
+    test_initiator_target_map_zoning = {
         fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
         fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
     }
 
-    test_fc_properties_multipath_g_model = {
+    test_fc_properties_zoning = {
         'driver_volume_type': 'fibre_channel',
         'data': {
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': fake_target_wwpns[0:2],
             'access_mode': 'rw',
-            'initiator_target_map': test_initiator_target_map_multipath_g_model
+            'initiator_target_map': test_initiator_target_map_zoning
+        }
+    }
+
+    test_initiator_target_map_zoning_r_model = {
+        fake_initiator_wwpns[0]: fake_target_wwpns[1:3],
+        fake_initiator_wwpns[1]: fake_target_wwpns[1:3]
+    }
+
+    test_fc_properties_zoning_r_model = {
+        'driver_volume_type': 'fibre_channel',
+        'data': {
+            'target_discovered': True,
+            'target_lun': fake_lun_map[0],
+            'target_wwn': fake_target_wwpns[1:3],
+            'access_mode': 'rw',
+            'initiator_target_map': test_initiator_target_map_zoning_r_model
         }
     }
 
@@ -271,7 +268,12 @@ class InfortrendCLITestData(object):
         'total_capacity_gb': round(857982.0 / 1024),
         'free_capacity_gb': round(841978.0 / 1024),
         'reserved_percentage': 0,
-        'QoS_support': 'False',
+        'QoS_support': False,
+        'max_over_subscription_ratio': 20.0,
+        'thin_provisioning_support': False,
+        'thick_provisioning_support': True,
+        'provisioned_capacity_gb':
+            round(857982.0 / 1024) - round(841978.0 / 1024),
         'infortrend_provisioning': 'full',
     }]
 
@@ -298,7 +300,7 @@ class InfortrendCLITestData(object):
         'total_capacity_gb': round(857982.0 / 1024),
         'free_capacity_gb': round(841978.0 / 1024),
         'reserved_percentage': 0,
-        'QoS_support': 'False',
+        'QoS_support': False,
         'infortrend_provisioning': 'full'
     }
 
@@ -317,7 +319,7 @@ class InfortrendCLITestData(object):
         'total_capacity_gb': round(857982.0 / 1024),
         'free_capacity_gb': round(841978.0 / 1024),
         'reserved_percentage': 0,
-        'QoS_support': 'False',
+        'QoS_support': False,
         'infortrend_provisioning': 'full'
     }
 
@@ -333,26 +335,18 @@ class InfortrendCLITestData(object):
 
     fake_volume_id = [test_volume['id'], test_dst_volume['id']]
 
-    test_new_type_tp0 = {
-        'id': '0'
+    fake_lookup_map = {
+        '12345678': {
+            'initiator_port_wwn_list': fake_initiator_wwpns[:],
+            'target_port_wwn_list': fake_target_wwpns[0:2]
+        }
     }
 
-    test_old_volume_tp1 = {
-        'volume_type_id': '1',
-        'id': fake_volume_id[0]
-    }
-
-    test_new_type_4tiers = {
-        'id': '4'
-    }
-
-    test_old_volume_2tiers = {
-        'volume_type_id': '2',
-        'id': fake_volume_id[0]
-    }
-
-    test_new_type = {
-        'id': None
+    fake_lookup_map_r_model = {
+        '12345678': {
+            'initiator_port_wwn_list': fake_initiator_wwpns[:],
+            'target_port_wwn_list': fake_target_wwpns[1:3]
+        }
     }
 
     def get_fake_cli_failed(self):
@@ -1100,41 +1094,6 @@ Return: 0x0000
 """
         return msg % self.fake_lv_id[0]
 
-    def get_test_show_lv_tier_for_tiering(self):
-        return (0, [{
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '0',
-            'Size': '418.93 GB',
-            'Used': '10 GB(2.4%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '10.0%',
-        }, {
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '1',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }, {
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '2',
-            'Size': '418.93 GB',
-            'Used': '10 GB(2.4%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '10.0%',
-        }, {
-            'LV-Name': 'LV-1',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '3',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }])
-
     def get_test_show_lv_tier_for_migration(self):
         return (0, [{
             'LV-Name': 'TierLV',
@@ -1147,41 +1106,6 @@ Return: 0x0000
         }, {
             'LV-Name': 'TierLV',
             'LV-ID': self.fake_lv_id[1],
-            'Tier': '3',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }])
-
-    def get_test_show_lv_4tiers(self):
-        return (0, [{
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '0',
-            'Size': '418.93 GB',
-            'Used': '10 GB(2.4%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '10.0%',
-        }, {
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '1',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }, {
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
-            'Tier': '2',
-            'Size': '931.02 GB',
-            'Used': '0 MB(0.0%)',
-            'Data Service': '0 MB(0.0%)',
-            'Reserved Ratio': '0.0%',
-        }, {
-            'LV-Name': 'TierLV',
-            'LV-ID': self.fake_lv_id[0],
             'Tier': '3',
             'Size': '931.02 GB',
             'Used': '0 MB(0.0%)',
@@ -1587,42 +1511,6 @@ Return: 0x0000
                       self.fake_partition_id[0],
                       self.fake_partition_id[0])
 
-    def get_test_show_license_for_retype(self):
-        return (0, {
-            'Storage Tiering': {
-                'Support': True,
-                'Amount': '4'
-            },
-            'Thin Provisioning': {
-                'Support': True,
-                'Amount': '---'
-            }
-        })
-
-    def get_test_show_license_for_retype_without_thin_provisioning(self):
-        return (0, {
-            'Storage Tiering': {
-                'Support': True,
-                'Amount': '4'
-            },
-            'Thin Provisioning': {
-                'Support': False,
-                'Amount': '---'
-            }
-        })
-
-    def get_test_show_license_for_retype_without_tiering(self):
-        return (0, {
-            'Storage Tiering': {
-                'Support': False,
-                'Amount': '2'
-            },
-            'Thin Provisioning': {
-                'Support': True,
-                'Amount': '---'
-            }
-        })
-
     def get_test_show_license(self):
         return (0, {
             'Local Volume Copy': {
@@ -1810,41 +1698,6 @@ Return: 0x0000
             result.append(template % (
                 target_portals[i], target_iqns[i]))
         return (0, '\n'.join(result))
-
-    def get_fake_thin_provisioning_no_support(self):
-        return ({
-            'infortrend_provisioning': 'full'})
-
-    def get_fake_thin_provisioning_support(self):
-        return ({
-            'infortrend_provisioning': 'thin'})
-
-    def get_fake_2tiers_support(self):
-        return ({
-            'infortrend_tiering': '2'})
-
-    def get_fake_4tiers_support(self):
-        return ({
-            'infortrend_tiering': '4'})
-
-    def get_test_show_partition_for_thin_provisioning(
-            self, volume_id=None, pool_id=None):
-        result = [{
-            'ID': self.fake_partition_id[0],
-            'Used': '200',
-            'Name': self.fake_volume_id[0].replace('-', ''),
-            'Size': '1000',
-            'Min-reserve': '200',
-            'LV-ID': self.fake_lv_id[0]
-        }, {
-            'ID': self.fake_partition_id[1],
-            'Used': '200',
-            'Name': self.fake_volume_id[1].replace('-', ''),
-            'Size': '2000',
-            'Min-reserve': '200',
-            'LV-ID': self.fake_lv_id[0]
-        }]
-        return (0, result)
 
 
 class InfortrendCLITestCase(test.TestCase):
