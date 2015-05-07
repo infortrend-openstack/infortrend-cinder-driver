@@ -121,7 +121,6 @@ class InfortrendCommon(object):
         self.configuration.append_config_values(infortrend_esds_extra_opts)
 
         self.iscsi_multipath = self.configuration.use_multipath_for_image_xfer
-        self.iscsi_multi_session = False  # Didn't support multi-session now
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
@@ -137,23 +136,20 @@ class InfortrendCommon(object):
 
         self._volume_stats = None
         self._model_type = 'R'
-        self._base_logical_channel = 16
         self._replica_timeout = 30 * 60  # 30 min
+
         self.map_dict = {
             'slot_a': {},
             'slot_b': {}
         }
         self.map_dict_init = False
+        self.mcs_dict = {
+            'slot_a': {},
+            'slot_b': {}
+        }
 
         self._init_pool_list()
         self._init_channel_list()
-
-        # use mcs instead of multi-session
-        if self.iscsi_multipath and not self.iscsi_multi_session:
-            self.mcs_dict = {
-                'slot_a': {},
-                'slot_b': {}
-            }
 
         self.cli_conf = {
             'path': self.path,
@@ -429,10 +425,10 @@ class InfortrendCommon(object):
             else:
                 self._model_type = 'G'
 
-            self._set_iscsi_channel_id(channel_info, 'slot_a')
+            self._set_iscsi_channel_id(channel_info, 'slot_a', multipath)
 
             if multipath and self._model_type == 'R':
-                self._set_iscsi_channel_id(channel_info, 'slot_b')
+                self._set_iscsi_channel_id(channel_info, 'slot_b', multipath)
 
             self.map_dict_init = True
 
@@ -477,7 +473,9 @@ class InfortrendCommon(object):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
     @log_func
-    def _set_iscsi_channel_id(self, channel_info, controller='slot_a'):
+    def _set_iscsi_channel_id(
+            self, channel_info, controller='slot_a', multipath=False):
+
         if self.protocol == 'iSCSI':
             check_channel_type = 'NETWORK'
         else:
@@ -485,15 +483,12 @@ class InfortrendCommon(object):
 
         for entry in channel_info:
             if entry['Type'] == check_channel_type:
-                # Get the logical channel base
-                if int(entry['Ch']) < self._base_logical_channel:
-                    self._base_logical_channel = int(entry['Ch'])
 
                 if entry['Ch'] in self.channel_list[controller]:
                     self.map_dict[controller][entry['Ch']] = []
-                    if self.iscsi_multipath and not self.iscsi_multi_session:
-                        self._update_mcs_dict(
-                            entry['Ch'], entry['MCS'], controller)
+
+                    self._update_mcs_dict(
+                        entry['Ch'], entry['MCS'], controller)
 
     def _update_mcs_dict(self, channel_id, mcs_id, controller):
         """Record the iSCSI MCS topology
@@ -776,14 +771,13 @@ class InfortrendCommon(object):
             return lun_id
 
     @log_func
-    def _get_mapping_info_with_multi_lun(self, multipath):
-        if self.iscsi_multipath and not self.iscsi_multi_session:
-            return self._get_mapping_info_with_multi_lun_on_iscsi_mcs()
+    def _get_mapping_info(self, multipath):
+        if self.iscsi_multipath or multipath:
+            return self._get_mapping_info_with_mcs()
         else:
-            return self._get_mapping_info_with_multi_lun_on_iscsi_multipath(
-                multipath)
+            return self._get_mapping_info_with_normal()
 
-    def _get_mapping_info_with_multi_lun_on_iscsi_mcs(self):
+    def _get_mapping_info_with_mcs(self):
         """Get the minimun mapping channel id and multi lun id mapping info
 
         # R model with mcs
@@ -842,63 +836,37 @@ class InfortrendCommon(object):
         return map_lun
 
     @log_func
-    def _get_mapping_info_with_multi_lun_on_iscsi_multipath(self, multipath):
-        """Get the minimun mapping channel id and multi lun id mapping info
+    def _get_mapping_info_with_normal(self):
+        """Get the minimun mapping channel id and lun id mapping info
 
-        # R model with multipath
+        # G model and R model
         map_chl = {
-            'slot_a': ['1'],
-            'slot_b': ['2']
+            'slot_a': ['1']
         }
-        map_lun = ['0', '1']
+        map_lun = ['0']
 
-        # G model with multipath
-        map_chl = {
-            'slot_a': ['1', '2']
-        }
-        map_lun = ['0', '1']
-
-        :returns: minimun mapping channel id per slot and multi lun id
+        :returns: minimun mapping channel id per slot and lun id
         """
         map_chl = {
             'slot_a': []
         }
         map_lun = []
-        multipath_mapping_slot = 'slot_a'
-
-        if self._model_type == 'R' and multipath:
-            multipath_mapping_slot = 'slot_b'
-            map_chl['slot_b'] = []
 
         ret_chl = self._get_minimun_mapping_channel_id('slot_a')
         lun_id = self._get_lun_id(ret_chl, 'slot_a')
+        mcs_id = self._get_mcs_id_by_channel_id(ret_chl)
 
         map_chl['slot_a'].append(ret_chl)
         map_lun.append(str(lun_id))
 
-        if multipath:
-            ret_chl = self._get_minimun_mapping_channel_id(
-                multipath_mapping_slot, exclude_channel=ret_chl)
-            lun_id = self._get_lun_id(ret_chl, multipath_mapping_slot)
-
-            map_chl[multipath_mapping_slot].append(ret_chl)
-            map_lun.append(str(lun_id))
-
-        return map_chl, map_lun, None
+        return map_chl, map_lun, mcs_id
 
     @log_func
-    def _get_minimun_mapping_channel_id(
-            self, controller, exclude_channel=None):
-
+    def _get_minimun_mapping_channel_id(self, controller):
         empty_lun_num = 0
         min_map_chl = -1
+
         for key, value in self.map_dict[controller].items():
-
-            if (exclude_channel is not None and
-                    controller == 'slot_a' and
-                    exclude_channel == key):
-                continue
-
             if empty_lun_num < len(value):
                 min_map_chl = key
                 empty_lun_num = len(value)
@@ -926,6 +894,21 @@ class InfortrendCommon(object):
                 map_lun = str(lun_id)
                 break
         return map_lun
+
+    def _get_mcs_id_by_channel_id(self, channel_id):
+        mcs_id = None
+
+        for mcs in self.mcs_dict['slot_a']:
+            if channel_id in self.mcs_dict['slot_a'][mcs]:
+                mcs_id = mcs
+                break
+
+        if mcs_id is None:
+            msg = _('Cannot get mcs_id by channel_id %s') % channel_id
+            LOG.error(msg)
+            raise exception.InfortrendDriverException(err=msg)
+
+        return mcs_id
 
     def _concat_provider_location(self, model_dict):
         return '@'.join([i + '^' + str(model_dict[i]) for i in model_dict])
@@ -1280,10 +1263,7 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         if self.protocol == 'iSCSI':
-            if self.iscsi_multipath:
-                multipath = connector.get('multipath', False)
-            else:
-                multipath = False
+            multipath = connector.get('multipath', False)
             return self._initialize_connection_iscsi(
                 volume, connector, multipath)
         elif self.protocol == 'FC':
@@ -1393,17 +1373,15 @@ class InfortrendCommon(object):
 
         self._set_host_iqn(connector['initiator'])
 
-        map_chl, map_lun, mcs_id = self._get_mapping_info_with_multi_lun(
-            multipath)
+        map_chl, map_lun, mcs_id = self._get_mapping_info(multipath)
 
         lun_id = map_lun[0]
 
-        if self.iscsi_multipath and not self.iscsi_multi_session:
+        if self.iscsi_multipath or multipath:
             channel_id = self._create_map_with_mcs(
                 part_id, map_chl['slot_a'], lun_id, connector['initiator'])
         else:
             channel_id = map_chl['slot_a'][0]
-            mcs_id = str(int(channel_id) - self._base_logical_channel)
 
             self._create_map_with_lun_filter(
                 part_id, channel_id, lun_id, connector['initiator'])
@@ -1429,53 +1407,11 @@ class InfortrendCommon(object):
             'port': self.constants['ISCSI_PORT']
         }]
 
-        if multipath and self.iscsi_multi_session:
-            init_iqn = connector['initiator']
-            partition_data, ip = self._initialize_connection_iscsi_multipath(
-                map_chl, map_lun, part_id, net_list, partition_data, init_iqn)
-
-            property_value.append({
-                'lun_id': partition_data['lun_id'],
-                'iqn': self._generate_iqn(partition_data),
-                'ip': ip,
-                'port': self.constants['ISCSI_PORT']
-            })
-
         properties = self._generate_iscsi_connection_properties(
-            property_value, volume, multipath)
+            property_value, volume)
         LOG.info(_LI('Successfully initialize connection '
                      'volume: %(volume_id)s'), properties['data'])
         return properties
-
-    @log_func
-    def _initialize_connection_iscsi_multipath(
-            self, map_chl, map_lun, part_id, net_list, partition_data, iqn):
-
-        if self._model_type == 'R':
-            controller = 'slot_b'
-            channel_id = map_chl['slot_b'][0]
-        else:
-            controller = 'slot_a'
-            channel_id = map_chl['slot_a'][1]
-
-        mcs_id = str(int(channel_id) - self._base_logical_channel)
-        lun_id = map_lun[1]
-
-        self._create_map_with_lun_filter(
-            part_id, channel_id, lun_id, iqn, controller)
-
-        ip = self._get_ip_by_channel(
-            channel_id, net_list, controller=controller)
-
-        if ip is None:
-            msg = _('Failed to get ip on Channel %s') % (channel_id)
-            LOG.error(msg)
-            raise exception.InfortrendDriverException(err=msg)
-
-        partition_data = self._combine_channel_lun_target_id(
-            partition_data, mcs_id, lun_id, controller)
-
-        return partition_data, ip
 
     @log_func
     def _combine_channel_lun_target_id(
@@ -1531,17 +1467,6 @@ class InfortrendCommon(object):
                 'lun_id': map_entry_dict['LUN']
             })
         return lun_map
-
-    def _check_lun_exist(self, partition_data, lun_map, multipath):
-        check_exist = False
-
-        for map_entry in lun_map:
-            if (map_entry['channel_id'] == partition_data['channel_id'] and
-                    map_entry['target_id'] == partition_data['target_id'] and
-                    map_entry['lun_id'] == partition_data['lun_id']):
-                check_exist = True
-
-        return check_exist
 
     @log_func
     def _generate_iqn(self, partition_data):
@@ -1600,42 +1525,22 @@ class InfortrendCommon(object):
 
     @log_func
     def _generate_iscsi_connection_properties(
-            self, property_value, volume, multipath=False):
+            self, property_value, volume):
 
         properties = {}
         discovery_exist = False
 
-        if multipath and self.iscsi_multi_session:
-            target_portals = []
-            target_iqns = []
-            target_luns = []
+        specific_property = property_value[0]
 
-            for specific_property in property_value:
-                discovery_ip = '%s:%s' % (
-                    specific_property['ip'], specific_property['port'])
-                discovery_iqn = specific_property['iqn']
+        discovery_ip = '%s:%s' % (
+            specific_property['ip'], specific_property['port'])
+        discovery_iqn = specific_property['iqn']
 
-                if self._do_iscsi_discovery(discovery_iqn, discovery_ip):
-                    target_portals.append(discovery_ip)
-                    target_iqns.append(discovery_iqn)
-                    target_luns.append(int(specific_property['lun_id']))
-                    discovery_exist = True
-
-            properties['target_portals'] = target_portals
-            properties['target_iqns'] = target_iqns
-            properties['target_luns'] = target_luns
-        else:
-            specific_property = property_value[0]
-
-            discovery_ip = '%s:%s' % (
-                specific_property['ip'], specific_property['port'])
-            discovery_iqn = specific_property['iqn']
-
-            if self._do_iscsi_discovery(discovery_iqn, discovery_ip):
-                properties['target_portal'] = discovery_ip
-                properties['target_iqn'] = discovery_iqn
-                properties['target_lun'] = int(specific_property['lun_id'])
-                discovery_exist = True
+        if self._do_iscsi_discovery(discovery_iqn, discovery_ip):
+            properties['target_portal'] = discovery_ip
+            properties['target_iqn'] = discovery_iqn
+            properties['target_lun'] = int(specific_property['lun_id'])
+            discovery_exist = True
 
         if not discovery_exist:
             msg = _('Could not find iSCSI target for %s') % volume['id']

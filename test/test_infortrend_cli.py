@@ -157,48 +157,6 @@ class InfortrendCLITestData(object):
         }
     }
 
-    test_iqn_multipath_r_model = [(
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 1, 0, 1), (
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 0, 1, 2)
-    ]
-
-    test_iscsi_properties_multipath_r_model = {
-        'driver_volume_type': 'iscsi',
-        'data': {
-            'target_discovered': True,
-            'target_portals': [
-                '%s:3260' % fake_data_port_ip[2],
-                '%s:3260' % fake_data_port_ip[1]
-            ],
-            'target_iqns': test_iqn_multipath_r_model,
-            'target_luns': [0, 0],
-            'volume_id': test_volume['id']
-        }
-    }
-
-    test_iqn_multipath_g_model = [(
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 1, 0, 1), (
-        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 3, 0, 1)
-    ]
-
-    test_iscsi_properties_multipath_g_model = {
-        'driver_volume_type': 'iscsi',
-        'data': {
-            'target_discovered': True,
-            'target_portals': [
-                '%s:3260' % fake_data_port_ip[2],
-                '%s:3260' % fake_data_port_ip[4]
-            ],
-            'target_iqns': test_iqn_multipath_g_model,
-            'target_luns': [0, 1],
-            'volume_id': test_volume['id']
-        }
-    }
-
     test_initiator_target_map = {
         fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
         fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
