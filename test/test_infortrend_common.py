@@ -340,7 +340,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         configuration = copy.copy(self.configuration)
         configuration.infortrend_slots_a_channels_id = '2, 4'
 
-        test_base_logical_channel = 1
         test_map_dict = {
             'slot_a': {'2': [], '4': []},
             'slot_b': {}
@@ -353,8 +352,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._init_map_info()
 
         self.assertDictMatch(self.driver.map_dict, test_map_dict)
-        self.assertEqual(
-            self.driver._base_logical_channel, test_base_logical_channel)
 
     def test_update_mcs_dict(self):
 

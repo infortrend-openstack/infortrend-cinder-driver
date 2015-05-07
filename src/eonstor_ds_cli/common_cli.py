@@ -136,7 +136,6 @@ class InfortrendCommon(object):
 
         self._volume_stats = None
         self._model_type = 'R'
-        self._base_logical_channel = 16
         self._replica_timeout = 30 * 60  # 30 min
 
         self.map_dict = {
@@ -484,15 +483,12 @@ class InfortrendCommon(object):
 
         for entry in channel_info:
             if entry['Type'] == check_channel_type:
-                # Get the logical channel base
-                if int(entry['Ch']) < self._base_logical_channel:
-                    self._base_logical_channel = int(entry['Ch'])
 
                 if entry['Ch'] in self.channel_list[controller]:
                     self.map_dict[controller][entry['Ch']] = []
-                    if self.iscsi_multipath or multipath:
-                        self._update_mcs_dict(
-                            entry['Ch'], entry['MCS'], controller)
+
+                    self._update_mcs_dict(
+                        entry['Ch'], entry['MCS'], controller)
 
     def _update_mcs_dict(self, channel_id, mcs_id, controller):
         """Record the iSCSI MCS topology
@@ -858,11 +854,12 @@ class InfortrendCommon(object):
 
         ret_chl = self._get_minimun_mapping_channel_id('slot_a')
         lun_id = self._get_lun_id(ret_chl, 'slot_a')
+        mcs_id = self._get_mcs_id_by_channel_id(ret_chl)
 
         map_chl['slot_a'].append(ret_chl)
         map_lun.append(str(lun_id))
 
-        return map_chl, map_lun, None
+        return map_chl, map_lun, mcs_id
 
     @log_func
     def _get_minimun_mapping_channel_id(self, controller):
@@ -897,6 +894,21 @@ class InfortrendCommon(object):
                 map_lun = str(lun_id)
                 break
         return map_lun
+
+    def _get_mcs_id_by_channel_id(self, channel_id):
+        mcs_id = None
+
+        for mcs in self.mcs_dict['slot_a']:
+            if channel_id in self.mcs_dict['slot_a'][mcs]:
+                mcs_id = mcs
+                break
+
+        if mcs_id is None:
+            msg = _('Cannot get mcs_id by channel_id %s') % channel_id
+            LOG.error(msg)
+            raise exception.InfortrendDriverException(err=msg)
+
+        return mcs_id
 
     def _concat_provider_location(self, model_dict):
         return '@'.join([i + '^' + str(model_dict[i]) for i in model_dict])
@@ -1370,7 +1382,6 @@ class InfortrendCommon(object):
                 part_id, map_chl['slot_a'], lun_id, connector['initiator'])
         else:
             channel_id = map_chl['slot_a'][0]
-            mcs_id = str(int(channel_id) - self._base_logical_channel)
 
             self._create_map_with_lun_filter(
                 part_id, channel_id, lun_id, connector['initiator'])
