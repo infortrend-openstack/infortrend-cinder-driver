@@ -398,8 +398,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.mcs_dict = fake_mcs_dict
         self.driver.map_dict = fake_map_dict
 
-        map_chl, map_lun, mcs_id = \
-            self.driver._get_mapping_info_with_multi_lun_on_iscsi_mcs()
+        map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
         self.assertEqual(map_lun, test_map_lun)
@@ -435,8 +434,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.mcs_dict = fake_mcs_dict
         self.driver.map_dict = fake_map_dict
 
-        map_chl, map_lun, mcs_id = \
-            self.driver._get_mapping_info_with_multi_lun_on_iscsi_mcs()
+        map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
         self.assertEqual(map_lun, test_map_lun)
@@ -1102,70 +1100,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_connector)
 
         self.assertTrue(re.match(r'.*Failed to get network info.*', ex.msg))
-
-    @mock.patch.object(LOG, 'info', mock.Mock())
-    def test_initialize_connection_multi_session_with_r_model(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_iscsi_properties = \
-            self.cli_data.test_iscsi_properties_multipath_r_model
-        test_target_protals = test_iscsi_properties['data']['target_portals']
-        test_target_iqns = test_iscsi_properties['data']['target_iqns']
-
-        configuration = copy.copy(self.configuration)
-        configuration.use_multipath_for_image_xfer = True
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
-            'ShowMap': self.cli_data.get_test_show_map(),
-            'ShowIQN': self.cli_data.get_test_show_iqn(),
-            'CreateMap': SUCCEED,
-            'ShowNet': self.cli_data.get_test_show_net(),
-            'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqns, test_target_protals)
-        }
-        self._driver_setup(mock_commands, configuration)
-        self.driver.iscsi_multi_session = True
-
-        properties = self.driver.initialize_connection(
-            test_volume, test_connector)
-
-        self.assertDictMatch(
-            properties, self.cli_data.test_iscsi_properties_multipath_r_model)
-
-    @mock.patch.object(LOG, 'info', mock.Mock())
-    def test_initialize_connection_multi_session_with_g_model(self):
-
-        test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
-        test_iscsi_properties = \
-            self.cli_data.test_iscsi_properties_multipath_g_model
-        test_target_protals = test_iscsi_properties['data']['target_portals']
-        test_target_iqns = test_iscsi_properties['data']['target_iqns']
-
-        configuration = copy.copy(self.configuration)
-        configuration.use_multipath_for_image_xfer = True
-        test_connector['multipath'] = True
-
-        mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel(),
-            'ShowMap': self.cli_data.get_test_show_map(),
-            'ShowIQN': self.cli_data.get_test_show_iqn(),
-            'CreateMap': SUCCEED,
-            'ShowNet': self.cli_data.get_test_show_net(),
-            'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqns, test_target_protals)
-        }
-        self._driver_setup(mock_commands, configuration)
-        self.driver.iscsi_multi_session = True
-
-        properties = self.driver.initialize_connection(
-            test_volume, test_connector)
-
-        self.assertDictMatch(
-            properties, self.cli_data.test_iscsi_properties_multipath_g_model)
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_initialize_connection_with_mcs(self):
