@@ -18,6 +18,7 @@ Infortrend Common CLI.
 import math
 import time
 
+from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -1020,9 +1021,14 @@ class InfortrendCommon(object):
         if src_part_id == 'None':
             src_part_id = self._get_part_id(volume_id)
 
-        self._create_snapshot('part', src_part_id)
+        @lockutils.synchronized(
+            'snapshot-' + src_part_id, 'infortrend-', True)
+        def do_create_snapshot():
+            self._create_snapshot('part', src_part_id)
+            tmp_snapshot_list = self._show_snapshot('part=%s' % src_part_id)
+            return tmp_snapshot_list
 
-        snapshot_list = self._show_snapshot('part=%s' % src_part_id)
+        snapshot_list = do_create_snapshot()
 
         model_update = self._create_volume_from_snapshot_id(
             volume, snapshot_list[-1]['SI-ID'], 'Cloned')
@@ -1130,25 +1136,30 @@ class InfortrendCommon(object):
         model_update = {}
         part_id = self._get_part_id(volume_id)
 
-        if part_id is not None:
-            self._create_snapshot('part', part_id)
-
-            snapshot_list = self._show_snapshot('part=%s' % part_id)
-
-            LOG.info(_LI(
-                'Create success'
-                'Snapshot: %(snapshot)s '
-                'Snapshot_id: %(snapshot_id)s '
-                'volume: %(volume)s'), {
-                    'snapshot': snapshot_id,
-                    'snapshot_id': snapshot_list[-1]['SI-ID'],
-                    'volume': volume_id})
-            model_update['provider_location'] = snapshot_list[-1]['SI-ID']
-            return model_update
-        else:
+        if part_id is None:
             msg = _('Failed to get Partition ID for volume %s.') % volume_id
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
+
+        @lockutils.synchronized(
+            'snapshot-' + part_id, 'infortrend-', True)
+        def do_create_snapshot():
+            self._create_snapshot('part', part_id)
+            tmp_snapshot_list = self._show_snapshot('part=%s' % part_id)
+            return tmp_snapshot_list
+
+        snapshot_list = do_create_snapshot()
+
+        LOG.info(_LI(
+            'Create success'
+            'Snapshot: %(snapshot)s '
+            'Snapshot_id: %(snapshot_id)s '
+            'volume: %(volume)s'), {
+                'snapshot': snapshot_id,
+                'snapshot_id': snapshot_list[-1]['SI-ID'],
+                'volume': volume_id})
+        model_update['provider_location'] = snapshot_list[-1]['SI-ID']
+        return model_update
 
     def delete_snapshot(self, snapshot):
         """Delete the snapshot"""
@@ -1261,6 +1272,7 @@ class InfortrendCommon(object):
 
         return model_update
 
+    @lockutils.synchronized('connection', 'infortrend-', True)
     def initialize_connection(self, volume, connector):
         if self.protocol == 'iSCSI':
             multipath = connector.get('multipath', False)
@@ -1604,6 +1616,7 @@ class InfortrendCommon(object):
             'size %(size)s'), {
                 'volume_id': volume['id'], 'size': new_size})
 
+    @lockutils.synchronized('connection', 'infortrend-', True)
     def terminate_connection(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
         multipath = connector.get('multipath', False)
