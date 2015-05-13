@@ -738,7 +738,7 @@ Return: 0x0000
                       self.fake_lv_id[0])
 
     def get_test_show_replica_detail_for_migrate(
-            self, src_part_id, dst_part_id, volume_id):
+            self, src_part_id, dst_part_id, volume_id, status='Completed'):
         result = [{
             'Pair-ID': self.fake_pair_id[0],
             'Name': 'Cinder-Snapshot',
@@ -761,7 +761,7 @@ Return: 0x0000
             'Timeout': '---',
             'Incremental': '---',
             'Compression': '---',
-            'Status': 'Completed',
+            'Status': status,
             'Progress': '---',
             'Created-time': '01/11/2020 22:20 PM',
             'Sync-commence-time': '01/11/2020 22:20 PM',

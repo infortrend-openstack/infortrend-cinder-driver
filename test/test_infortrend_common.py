@@ -105,6 +105,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '0,5'
         self.configuration.infortrend_slots_b_channels_id = '0,5'
+        self.configuration.infortrend_cli_timeout = 30
 
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('FC', configuration=conf)
@@ -1357,6 +1358,42 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertTrue(re.match(
             r'.*Failed to create replica.*', ex.msg))
+
+    @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
+                new=utils.ZeroIntervalLoopingCall)
+    def test_migrate_volume_timeout(self):
+
+        test_host = copy.deepcopy(self.cli_data.test_migrate_func_host)
+        fake_pool = copy.deepcopy(self.cli_data.fake_pool)
+        test_volume = self.cli_data.test_volume
+        test_volume_id = test_volume['id'].replace('-', '')
+        test_src_part_id = self.cli_data.fake_partition_id[0]
+        test_dst_part_id = self.cli_data.fake_partition_id[2]
+
+        configuration = copy.copy(self.configuration)
+        configuration.infortrend_cli_timeout = 0
+
+        mock_commands = {
+            'CreatePartition': SUCCEED,
+            'ShowPartition': self.cli_data.get_test_show_partition(
+                test_volume['id'].replace('-', ''), fake_pool['pool_id']),
+            'CreateReplica': SUCCEED,
+            'ShowLV': self._mock_show_lv_for_migrate,
+            'ShowReplica':
+                self.cli_data.get_test_show_replica_detail_for_migrate(
+                    test_src_part_id, test_dst_part_id, test_volume_id,
+                    'Copy')
+        }
+        self._driver_setup(mock_commands, configuration)
+
+        ex = self.assertRaises(
+            exception.InfortrendDriverException,
+            self.driver.migrate_volume,
+            test_volume,
+            test_host)
+
+        self.assertTrue(re.match(
+            r'.*Wait replica complete timeout.*', ex.msg))
 
     def test_manage_existing_get_size(self):
 
