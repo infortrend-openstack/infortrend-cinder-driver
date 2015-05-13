@@ -46,6 +46,12 @@ infortrend_esds_opts = [
     cfg.IntOpt('infortrend_cli_max_retries',
                default=5,
                help='Maximum retry time for cli. Default is 5'),
+    cfg.IntOpt('infortrend_cli_timeout',
+               default=30,
+               help='Default timeout for CLI copy operations in minutes. '
+               'Support: migrate volume, create cloned volume and '
+               'create volume from snapshot. '
+               'By Default, it is 30 minutes.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot A '
@@ -126,6 +132,7 @@ class InfortrendCommon(object):
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
+        self.cli_timeout = self.configuration.infortrend_cli_timeout * 60
         self.iqn = "iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s"
 
         if self.ip == '':
@@ -137,7 +144,7 @@ class InfortrendCommon(object):
 
         self._volume_stats = None
         self._model_type = 'R'
-        self._replica_timeout = 30 * 60  # 30 min
+        self._replica_timeout = self.cli_timeout
 
         self.map_dict = {
             'slot_a': {},
