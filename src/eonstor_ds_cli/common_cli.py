@@ -18,6 +18,7 @@ Infortrend Common CLI.
 import math
 import time
 
+from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -45,6 +46,12 @@ infortrend_esds_opts = [
     cfg.IntOpt('infortrend_cli_max_retries',
                default=5,
                help='Maximum retry time for cli. Default is 5'),
+    cfg.IntOpt('infortrend_cli_timeout',
+               default=30,
+               help='Default timeout for CLI copy operations in minutes. '
+               'Support: migrate volume, create cloned volume and '
+               'create volume from snapshot. '
+               'By Default, it is 30 minutes.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot A '
@@ -125,6 +132,7 @@ class InfortrendCommon(object):
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
+        self.cli_timeout = self.configuration.infortrend_cli_timeout * 60
         self.iqn = "iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s"
 
         if self.ip == '':
@@ -136,7 +144,7 @@ class InfortrendCommon(object):
 
         self._volume_stats = None
         self._model_type = 'R'
-        self._replica_timeout = 30 * 60  # 30 min
+        self._replica_timeout = self.cli_timeout
 
         self.map_dict = {
             'slot_a': {},
@@ -1020,9 +1028,14 @@ class InfortrendCommon(object):
         if src_part_id == 'None':
             src_part_id = self._get_part_id(volume_id)
 
-        self._create_snapshot('part', src_part_id)
+        @lockutils.synchronized(
+            'snapshot-' + src_part_id, 'infortrend-', True)
+        def do_create_snapshot():
+            self._create_snapshot('part', src_part_id)
+            tmp_snapshot_list = self._show_snapshot('part=%s' % src_part_id)
+            return tmp_snapshot_list
 
-        snapshot_list = self._show_snapshot('part=%s' % src_part_id)
+        snapshot_list = do_create_snapshot()
 
         model_update = self._create_volume_from_snapshot_id(
             volume, snapshot_list[-1]['SI-ID'], 'Cloned')
@@ -1130,25 +1143,30 @@ class InfortrendCommon(object):
         model_update = {}
         part_id = self._get_part_id(volume_id)
 
-        if part_id is not None:
-            self._create_snapshot('part', part_id)
-
-            snapshot_list = self._show_snapshot('part=%s' % part_id)
-
-            LOG.info(_LI(
-                'Create success'
-                'Snapshot: %(snapshot)s '
-                'Snapshot_id: %(snapshot_id)s '
-                'volume: %(volume)s'), {
-                    'snapshot': snapshot_id,
-                    'snapshot_id': snapshot_list[-1]['SI-ID'],
-                    'volume': volume_id})
-            model_update['provider_location'] = snapshot_list[-1]['SI-ID']
-            return model_update
-        else:
+        if part_id is None:
             msg = _('Failed to get Partition ID for volume %s.') % volume_id
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
+
+        @lockutils.synchronized(
+            'snapshot-' + part_id, 'infortrend-', True)
+        def do_create_snapshot():
+            self._create_snapshot('part', part_id)
+            tmp_snapshot_list = self._show_snapshot('part=%s' % part_id)
+            return tmp_snapshot_list
+
+        snapshot_list = do_create_snapshot()
+
+        LOG.info(_LI(
+            'Create success'
+            'Snapshot: %(snapshot)s '
+            'Snapshot_id: %(snapshot_id)s '
+            'volume: %(volume)s'), {
+                'snapshot': snapshot_id,
+                'snapshot_id': snapshot_list[-1]['SI-ID'],
+                'volume': volume_id})
+        model_update['provider_location'] = snapshot_list[-1]['SI-ID']
+        return model_update
 
     def delete_snapshot(self, snapshot):
         """Delete the snapshot"""
@@ -1261,6 +1279,7 @@ class InfortrendCommon(object):
 
         return model_update
 
+    @lockutils.synchronized('connection', 'infortrend-', True)
     def initialize_connection(self, volume, connector):
         if self.protocol == 'iSCSI':
             multipath = connector.get('multipath', False)
@@ -1604,6 +1623,7 @@ class InfortrendCommon(object):
             'size %(size)s'), {
                 'volume_id': volume['id'], 'size': new_size})
 
+    @lockutils.synchronized('connection', 'infortrend-', True)
     def terminate_connection(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
         multipath = connector.get('multipath', False)
