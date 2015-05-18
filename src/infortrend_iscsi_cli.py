@@ -48,7 +48,8 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         Can optionally return a Dictionary of changes
         to the volume object to be persisted.
         """
-        LOG.info(_LI('create_volume volume id=%s'), volume['id'])
+        LOG.info(_LI('create_volume volume id=%(volume_id)s'), {
+            'volume_id': volume['id']})
         return self.common.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -71,13 +72,14 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
         LOG.info(_LI(
-            'extend_volume volume id=%(volume_id)s new_size=%(size)s'), {
+            'extend_volume volume id=%(volume_id)s new size=%(size)s'), {
                 'volume_id': volume['id'], 'size': new_size})
         self.common.extend_volume(volume, new_size)
 
     def delete_volume(self, volume):
         """Deletes a volume."""
-        LOG.info(_LI('delete_volume volume id=%s'), volume['id'])
+        LOG.info(_LI('delete_volume volume id=%(volume_id)s'), {
+            'volume_id': volume['id']})
         return self.common.delete_volume(volume)
 
     def migrate_volume(self, ctxt, volume, host):
@@ -100,7 +102,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         """Creates a snapshot."""
         LOG.info(_LI(
             'create_snapshot snapshot id=%(snapshot_id)s '
-            'snapshot volume_id=%(volume_id)s'), {
+            'volume_id=%(volume_id)s'), {
                 'snapshot_id': snapshot['id'],
                 'volume_id': snapshot['volume_id']})
         return self.common.create_snapshot(snapshot)
@@ -109,7 +111,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         """Deletes a snapshot."""
         LOG.info(_LI(
             'delete_snapshot snapshot id=%(snapshot_id)s '
-            'snapshot volume_id=%(volume_id)s'), {
+            'volume_id=%(volume_id)s'), {
                 'snapshot_id': snapshot['id'],
                 'volume_id': snapshot['volume_id']})
         self.common.delete_snapshot(snapshot)
@@ -124,8 +126,9 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         Can optionally return a Dictionary of changes
         to the volume object to be persisted.
         """
-        LOG.info(_LI('create_export volume provider_location=%s'), (
-            volume['provider_location']))
+        LOG.info(_LI(
+            'create_export volume provider_location=%(provider_location)s'), {
+                'provider_location': volume['provider_location']})
         return self.common.create_export(context, volume)
 
     def remove_export(self, context, volume):
@@ -159,8 +162,8 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
-        LOG.info(_LI('terminate_connection volume id=%s'), (
-            volume['id']))
+        LOG.info(_LI('terminate_connection volume id=%(volume_id)s'), {
+            'volume_id': volume['id']})
         self.common.terminate_connection(volume, connector)
 
     def get_volume_stats(self, refresh=False):
@@ -168,7 +171,8 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
         If 'refresh' is True, run update the stats first.
         """
-        LOG.info(_LI('get_volume_stats refresh=%s'), refresh)
+        LOG.info(_LI('get_volume_stats refresh=%(refresh)s'), {
+            'refresh': refresh})
         return self.common.get_volume_stats(refresh)
 
     def manage_existing(self, volume, existing_ref):
@@ -186,7 +190,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         """
         LOG.info(_LI(
             'manage_existing volume id=%(volume_id)s '
-            'existing_ref source_id=%(source_id)s'), {
+            'existing_ref source id=%(source_id)s'), {
                 'volume_id': volume['id'],
                 'source_id': existing_ref['source-id']})
         return self.common.manage_existing(volume, existing_ref)
@@ -198,7 +202,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         """
         LOG.info(_LI(
             'manage_existing_get_size volume id=%(volume_id)s '
-            'existing_ref source_id=%(source_id)s'), {
+            'existing_ref source id=%(source_id)s'), {
                 'volume_id': volume['id'],
                 'source_id': existing_ref['source-id']})
         return self.common.manage_existing_get_size(volume, existing_ref)

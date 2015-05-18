@@ -265,15 +265,15 @@ class InfortrendCLITestData(object):
     test_pools = [{
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[0],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
         'max_over_subscription_ratio': 20.0,
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
-            round(857982.0 / 1024) - round(841978.0 / 1024),
+            round((857982.0 - 841978.0) / 1024, 2),
         'infortrend_provisioning': 'full',
     }]
 
@@ -297,8 +297,8 @@ class InfortrendCLITestData(object):
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
         'infortrend_provisioning': 'full'
@@ -316,8 +316,8 @@ class InfortrendCLITestData(object):
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
         'infortrend_provisioning': 'full'
@@ -1755,7 +1755,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_succeed)
 
         rc, out = test_command.execute()
-        assert(rc == 0)
+        self.assertEqual(rc, 0)
 
     def _test_command_failed(self, command):
 
@@ -1763,7 +1763,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_failed)
 
         rc, out = test_command.execute()
-        assert(rc == int('0x000c', 16))
+        self.assertEqual(rc, int('0x000c', 16))
 
     def _test_command_failed_retry_succeed(self, log_error, command):
 
@@ -1780,7 +1780,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        assert(rc == 0)
+        self.assertEqual(rc, 0)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -1815,7 +1815,8 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        assert(rc == int('0x000b', 16) and out == 'No network')
+        self.assertEqual(rc, int('0x000b', 16))
+        self.assertEqual(out, 'No network')
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -1857,7 +1858,7 @@ class InfortrendCLITestCase(test.TestCase):
 
         rc, out = test_command.execute(*params)
 
-        assert(rc == test_data[0])
+        self.assertEqual(rc, test_data[0])
 
         if isinstance(out, list):
             for i in range(len(test_data[1])):
