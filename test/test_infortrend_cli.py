@@ -1755,7 +1755,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_succeed)
 
         rc, out = test_command.execute()
-        assert(rc == 0)
+        self.assertEqual(rc, 0)
 
     def _test_command_failed(self, command):
 
@@ -1763,7 +1763,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_failed)
 
         rc, out = test_command.execute()
-        assert(rc == int('0x000c', 16))
+        self.assertEqual(rc, int('0x000c', 16))
 
     def _test_command_failed_retry_succeed(self, log_error, command):
 
@@ -1780,7 +1780,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        assert(rc == 0)
+        self.assertEqual(rc, 0)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -1815,7 +1815,8 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        assert(rc == int('0x000b', 16) and out == 'No network')
+        self.assertEqual(rc, int('0x000b', 16))
+        self.assertEqual(out, 'No network')
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -1857,7 +1858,7 @@ class InfortrendCLITestCase(test.TestCase):
 
         rc, out = test_command.execute(*params)
 
-        assert(rc == test_data[0])
+        self.assertEqual(rc, test_data[0])
 
         if isinstance(out, list):
             for i in range(len(test_data[1])):
