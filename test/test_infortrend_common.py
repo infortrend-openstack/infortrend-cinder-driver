@@ -304,6 +304,66 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('iSCSI', configuration=conf)
 
+    @mock.patch.object(LOG, 'warning')
+    def test_create_map_warning_return_code(self, log_warning):
+
+        FAKE_RETURN_CODE = (20, '')
+        mock_commands = {
+            'CreateMap': FAKE_RETURN_CODE
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._create_map()
+        log_warning.assert_called_once_with('The MCS Channel is grouped')
+
+    @mock.patch.object(LOG, 'warning')
+    def test_delete_map_warning_return_code(self, log_warning):
+
+        FAKE_RETURN_CODE = (11, '')
+        mock_commands = {
+            'DeleteMap': FAKE_RETURN_CODE
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._delete_map()
+        log_warning.assert_called_once_with('No mapping')
+
+    @mock.patch.object(LOG, 'warning')
+    def test_create_iqn_warning_return_code(self, log_warning):
+
+        FAKE_RETURN_CODE = (20, '')
+        mock_commands = {
+            'CreateIQN': FAKE_RETURN_CODE
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._create_iqn()
+        log_warning.assert_called_once_with('IQN already existed')
+
+    @mock.patch.object(LOG, 'warning')
+    def test_delete_iqn_warning_return_code_has_map(self, log_warning):
+
+        FAKE_RETURN_CODE = (20, '')
+        mock_commands = {
+            'DeleteIQN': FAKE_RETURN_CODE
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._delete_iqn()
+        log_warning.assert_called_once_with('IQN has been used to create map')
+
+    @mock.patch.object(LOG, 'warning')
+    def test_delete_iqn_warning_return_code_no_such_name(self, log_warning):
+
+        FAKE_RETURN_CODE = (11, '')
+        mock_commands = {
+            'DeleteIQN': FAKE_RETURN_CODE
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._delete_iqn()
+        log_warning.assert_called_once_with('No such host alias name')
+
     def test_normal_channel(self):
 
         test_map_dict = {

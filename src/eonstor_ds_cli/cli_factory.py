@@ -29,7 +29,6 @@ LOG = logging.getLogger(__name__)
 
 
 def retry_cli(func):
-
     def inner(self, *args, **kwargs):
         total_retry_time = self.cli_retry_time
 
@@ -96,7 +95,6 @@ def table_to_dict(table):
 
 
 def content_lines_to_dict(content_lines):
-
     result = []
     resultEntry = {}
 
