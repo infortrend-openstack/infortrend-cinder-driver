@@ -124,8 +124,9 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         Can optionally return a Dictionary of changes
         to the volume object to be persisted.
         """
-        LOG.info(_LI('create_export volume provider_location=%s'), (
-            volume['provider_location']))
+        LOG.info(_LI(
+            'create_export volume '
+            'provider_location=%s'), volume['provider_location'])
         return self.common.create_export(context, volume)
 
     def remove_export(self, context, volume):
@@ -159,8 +160,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
-        LOG.info(_LI('terminate_connection volume id=%s'), (
-            volume['id']))
+        LOG.info(_LI('terminate_connection volume id=%s'), volume['id'])
         self.common.terminate_connection(volume, connector)
 
     def get_volume_stats(self, refresh=False):

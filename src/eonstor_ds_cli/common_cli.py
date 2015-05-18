@@ -22,6 +22,7 @@ from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
+from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -98,6 +99,14 @@ def log_func(func):
                 'ret': ret})
         return ret
     return inner
+
+
+def mi_to_gi(mi_size):
+    return mi_size * units.Mi / units.Gi
+
+
+def gi_to_mi(gi_size):
+    return gi_size * units.Gi / units.Mi
 
 
 class InfortrendCommon(object):
@@ -598,7 +607,7 @@ class InfortrendCommon(object):
 
     def _create_partition_with_pool(self, volume, pool_id):
         volume_id = volume['id'].replace('-', '')
-        volume_size = volume['size'] * 1024  # GB -> MB
+        volume_size = gi_to_mi(volume['size'])
 
         extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
 
@@ -726,8 +735,8 @@ class InfortrendCommon(object):
 
         for lv in lv_info:
             if lv['Name'] in self.pool_list:
-                free_capacity_gb = round(
-                    float(lv['Available'].split(' ', 1)[0]) / 1024)
+                available_space = float(lv['Available'].split(' ', 1)[0])
+                free_capacity_gb = round(mi_to_gi(available_space))
                 if free_capacity_gb > largest_free_capacity_gb:
                     largest_free_capacity_gb = free_capacity_gb
                     dest_pool_id = lv['ID']
@@ -771,7 +780,7 @@ class InfortrendCommon(object):
             self.map_dict[controller][ch_id].remove(lun_id)
 
         if lun_id == -1:
-            msg = _('LUN number is out of bound'
+            msg = _('LUN number is out of bound '
                     'on channel id: %s') % ch_id
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
@@ -1107,12 +1116,15 @@ class InfortrendCommon(object):
 
         for pool in pools_info:
             if pool['Name'] in self.pool_list:
-                total_capacity_gb = round(
-                    float(pool['Size'].split(' ', 1)[0]) / 1024)
-                free_capacity_gb = round(
-                    float(pool['Available'].split(' ', 1)[0]) / 1024)
+                total_space = float(pool['Size'].split(' ', 1)[0])
+                available_space = float(pool['Available'].split(' ', 1)[0])
+                provisioning_space = total_space - available_space
+
+                total_capacity_gb = round(mi_to_gi(total_space), 2)
+                free_capacity_gb = round(mi_to_gi(available_space), 2)
                 provisioned_capacity_gb = round(
-                    float(total_capacity_gb) - float(free_capacity_gb), 2)
+                    mi_to_gi(provisioning_space), 2)
+
                 provisioning_factor = self.configuration.safe_get(
                     'max_over_subscription_ratio')
                 new_pool = {
@@ -1137,7 +1149,7 @@ class InfortrendCommon(object):
         snapshot_id = snapshot['id'].replace('-', '')
         volume_id = snapshot['volume_id'].replace('-', '')
 
-        LOG.debug('Create Snapshot %(snapshot)s volume %(volume)s' %
+        LOG.debug('Create Snapshot %(snapshot)s volume %(volume)s',
                   {'snapshot': snapshot_id, 'volume': volume_id})
 
         model_update = {}
@@ -1158,7 +1170,7 @@ class InfortrendCommon(object):
         snapshot_list = do_create_snapshot()
 
         LOG.info(_LI(
-            'Create success'
+            'Create success '
             'Snapshot: %(snapshot)s '
             'Snapshot_id: %(snapshot_id)s '
             'volume: %(volume)s'), {
@@ -1306,7 +1318,7 @@ class InfortrendCommon(object):
 
         LOG.info(_LI('Successfully initialize connection '
                      'target_wwn: %(target_wwn)s '
-                     'initiator_target_map: %(initiator_target_map)s'
+                     'initiator_target_map: %(initiator_target_map)s '
                      'lun: %(target_lun)s '), properties['data'])
         return properties
 
@@ -1611,7 +1623,7 @@ class InfortrendCommon(object):
         expand_size = new_size - volume['size']
 
         if '.' in ('%s' % expand_size):
-            expand_size = round(float(expand_size) * 1024)
+            expand_size = round(gi_to_mi(float(expand_size)))
             expand_command = 'size=%sMB' % expand_size
         else:
             expand_command = 'size=%sGB' % expand_size
@@ -1639,7 +1651,7 @@ class InfortrendCommon(object):
             self._delete_iqn(self._truncate_host_name(connector['initiator']))
         self._update_map_info(multipath)
 
-        LOG.info(_LI('Successfully terminated connection'
+        LOG.info(_LI('Successfully terminated connection '
                      'for volume %s'), volume['id'])
 
     def migrate_volume(self, volume, host):
@@ -1775,7 +1787,7 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
-        return int(math.ceil(float(part_entry['Size'])) / 1024)
+        return int(math.ceil(mi_to_gi(float(part_entry['Size']))))
 
     def manage_existing(self, volume, ref):
         if 'source-id' not in ref:
@@ -1847,13 +1859,10 @@ class InfortrendCommon(object):
         LOG.info(_LI('Retype Volume is done'))
 
     def _diff_between_types(self, volume, new_type, key):
-        extraspec_diff = False
         old_extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
         new_extraspecs = self._get_extraspecs_dict(new_type['id'])
 
         old_extraspec = self._get_extraspecs_value(old_extraspecs, key)
         new_extraspec = self._get_extraspecs_value(new_extraspecs, key)
-        if new_extraspec != old_extraspec:
-            extraspec_diff = True
 
-        return extraspec_diff
+        return new_extraspec != old_extraspec

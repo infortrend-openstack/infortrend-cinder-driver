@@ -265,15 +265,15 @@ class InfortrendCLITestData(object):
     test_pools = [{
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[0],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
         'max_over_subscription_ratio': 20.0,
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
-            round(857982.0 / 1024) - round(841978.0 / 1024),
+            round((857982.0 - 841978.0) / 1024, 2),
         'infortrend_provisioning': 'full',
     }]
 
@@ -297,8 +297,8 @@ class InfortrendCLITestData(object):
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
         'infortrend_provisioning': 'full'
@@ -316,8 +316,8 @@ class InfortrendCLITestData(object):
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
         'infortrend_provisioning': 'full'

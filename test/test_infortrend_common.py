@@ -14,7 +14,6 @@
 #    under the License.
 
 import copy
-import re
 
 import mock
 
@@ -1385,7 +1384,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('ShowMap', 'part=%s' % test_partition_id)
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertEqual(size, 0)
+        self.assertEqual(size, 1)
 
     def test_manage_existing_get_size_in_use(self):
 
