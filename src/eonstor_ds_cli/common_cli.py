@@ -548,8 +548,8 @@ class InfortrendCommon(object):
             for pool in self.pool_list:
                 support_tier_levels = tier_levels_list[:]
                 for entry in lv_info:
-                    if entry['LV-Name'] == pool and \
-                            entry['Tier'] in support_tier_levels:
+                    if (entry['LV-Name'] == pool and
+                            entry['Tier'] in support_tier_levels):
                         support_tier_levels.remove(entry['Tier'])
                     if len(support_tier_levels) == 0:
                         break
@@ -573,7 +573,8 @@ class InfortrendCommon(object):
                 break
 
         if len(pool_list) != 0:
-            msg = _('Please create %s pool in advance!') % pool_list
+            msg = _('Please create %(pool_list)s pool in advance!') % {
+                'pool_list': pool_list}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
@@ -598,7 +599,8 @@ class InfortrendCommon(object):
         model_update = {
             "provider_location": self._concat_provider_location(model_dict)
         }
-        LOG.info(_LI('Create Volume %s done'), volume_id)
+        LOG.info(_LI('Create Volume %(volume_id)s done'), {
+            'volume_id': volume_id})
         return model_update
 
     def _create_partition_by_default(self, volume):
@@ -661,7 +663,8 @@ class InfortrendCommon(object):
                 if len(tier_levels) == 0:
                     break
         if len(tier_levels) != 0:
-            msg = _('Have not created %s tier(s)') % tier_levels
+            msg = _('Have not created %(tier_levels)s tier(s)') % {
+                'tier_levels': tier_levels}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
@@ -720,8 +723,8 @@ class InfortrendCommon(object):
     def _get_extraspecs_value(self, extraspecs, key):
         value = None
         if key == 'provisioning':
-            if extraspecs \
-                    and 'infortrend_provisioning' in extraspecs.keys():
+            if (extraspecs and
+                    'infortrend_provisioning' in extraspecs.keys()):
                 value = extraspecs['infortrend_provisioning'].lower()
             else:
                 value = self.configuration.infortrend_provisioning.lower()
@@ -757,7 +760,8 @@ class InfortrendCommon(object):
             pool_id = self._select_most_free_capacity_pool_id(lv_info)
 
         if pool_id is None:
-            msg = _('Failed to get pool id with volume %s') % volume['id']
+            msg = _('Failed to get pool id with volume %(volume_id)s') % {
+                'volume_id': volume['id']}
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
@@ -781,7 +785,7 @@ class InfortrendCommon(object):
 
         if lun_id == -1:
             msg = _('LUN number is out of bound '
-                    'on channel id: %s') % ch_id
+                    'on channel id: %(ch_id)s') % {'ch_id': ch_id}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
         else:
@@ -921,7 +925,8 @@ class InfortrendCommon(object):
                 break
 
         if mcs_id is None:
-            msg = _('Cannot get mcs_id by channel_id %s') % channel_id
+            msg = _('Cannot get mcs_id by channel id=%(channel_id)s') % {
+                'channel_id': channel_id}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
@@ -940,11 +945,13 @@ class InfortrendCommon(object):
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
-        (check_exist, have_map, part_id) = \
+        (check_exist, have_map, part_id) = (
             self._check_volume_exist(volume_id, part_id)
+        )
 
         if not check_exist:
-            LOG.warning(_LW('Volume %s already delete'), volume_id)
+            LOG.warning(_LW('Volume %(volume_id)s already delete'), {
+                'volume_id': volume_id})
             return
 
         replica_list = self._show_replica('-l')
@@ -954,8 +961,9 @@ class InfortrendCommon(object):
                     part_id == entry['Source']):
                 if not self._check_replica_completed(entry):
                     has_pair = True
-                    LOG.warning(_LW('Volume still %s '
-                                    'Cannot delete volume.'), entry['Status'])
+                    LOG.warning(_LW('Volume still %(status)s '
+                                    'Cannot delete volume.'), {
+                                        'status': entry['Status']})
                 else:
                     have_map = entry['Source-Mapped'] == 'Yes'
                     self._delete_replica(entry['Pair-ID'], '-y')
@@ -975,8 +983,9 @@ class InfortrendCommon(object):
 
                 if si_has_pair:
                     msg = _('Failed to delete SI '
-                            'for volume_id: %s '
-                            'because it has pair') % volume_id
+                            'for volume_id: %(volume_id)s '
+                            'because it has pair') % {
+                                'volume_id': volume_id}
                     LOG.error(msg)
                     raise exception.InfortrendDriverException(err=msg)
 
@@ -989,11 +998,13 @@ class InfortrendCommon(object):
 
             self._delete_part(part_id, '-y')
 
-            LOG.info(_LI('Delete Volume %s done'), volume_id)
+            LOG.info(_LI('Delete Volume %(volume_id)s done'), {
+                'volume_id': volume_id})
         else:
             msg = _('Failed to delete volume '
-                    'for volume_id: %s '
-                    'because it has pair') % volume_id
+                    'for volume_id: %(volume_id)s '
+                    'because it has pair') % {
+                        'volume_id': volume_id}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
@@ -1049,7 +1060,8 @@ class InfortrendCommon(object):
         model_update = self._create_volume_from_snapshot_id(
             volume, snapshot_list[-1]['SI-ID'], 'Cloned')
 
-        LOG.info(_LI('Create Cloned Volume %s done'), volume['id'])
+        LOG.info(_LI('Create Cloned Volume %(volume_id)s done'), {
+            'volume_id': volume['id']})
         return model_update
 
     def _extract_specific_provider_location(self, provider_location, key):
@@ -1059,7 +1071,7 @@ class InfortrendCommon(object):
         result = provider_location_dict.get(key, None)
         if result is None:
             msg = _('Failed to get result from '
-                    'provider location\'s key: %s') % key
+                    'provider location\'s key: %(key)s') % {'key': key}
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
         return result
@@ -1156,7 +1168,8 @@ class InfortrendCommon(object):
         part_id = self._get_part_id(volume_id)
 
         if part_id is None:
-            msg = _('Failed to get Partition ID for volume %s.') % volume_id
+            msg = _('Failed to get Partition ID for volume %(volume_id)s.') % {
+                'volume_id': volume_id}
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
@@ -1201,7 +1214,8 @@ class InfortrendCommon(object):
             if not has_pair:
                 self._delete_snapshot(raid_snapshot_id, '-y')
 
-                LOG.info(_LI('Delete Snapshot %s done'), snapshot_id)
+                LOG.info(_LI('Delete Snapshot %(snapshot_id)s done'), {
+                    'snapshot_id': snapshot_id})
             else:
                 msg = _('Failed to delete snapshot '
                         'for snapshot_id: %s '
@@ -1209,14 +1223,15 @@ class InfortrendCommon(object):
                 LOG.error(msg)
                 raise exception.InfortrendDriverException(err=msg)
         else:
-            msg = _('Failed to get Snapshot ID for volume %s.') % volume_id
+            msg = _('Failed to get Snapshot ID for volume %(volume_id)s.') % {
+                'volume_id': volume_id}
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
     def _get_snapshot_id(self, snapshot):
         if 'provider_location' not in snapshot:
-            LOG.warning(_LW('Failed to get snapshot_id and '
-                            'is not in snapshot'))
+            LOG.warning(_LW(
+                'Failed to get snapshot_id and is not in snapshot'))
             return None
         return snapshot['provider_location']
 
@@ -1228,8 +1243,8 @@ class InfortrendCommon(object):
                 if not self._check_replica_completed(entry):
                     has_pair = True
                     LOG.warning(_LW(
-                        'Snapshot still %s Cannot delete snapshot.'),
-                        entry['Status'])
+                        'Snapshot still %(status)s Cannot delete snapshot.'), {
+                            'status': entry['Status']})
                 else:
                     self._delete_replica(entry['Pair-ID'], '-y')
         return has_pair
@@ -1251,7 +1266,8 @@ class InfortrendCommon(object):
 
         if snapshot_id is None:
             msg = _('Failed to get Snapshot ID '
-                    'by snapshot: %s') % snapshot['id']
+                    'by snapshot: %(snapshot_id)s') % {
+                        'snapshot_id': snapshot['id']}
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
@@ -1363,8 +1379,9 @@ class InfortrendCommon(object):
                 fabric = lookup_map[fabric_name]
                 target_wwpns.extend(fabric['target_port_wwn_list'])
                 for initiator in fabric['initiator_port_wwn_list']:
-                    initiator_target_map[initiator] = \
+                    initiator_target_map[initiator] = (
                         fabric['target_port_wwn_list']
+                    )
         else:
             initiator_wwns = connector['wwpns']
             target_wwpns = all_target_wwpns
@@ -1574,7 +1591,8 @@ class InfortrendCommon(object):
             discovery_exist = True
 
         if not discovery_exist:
-            msg = _('Could not find iSCSI target for %s') % volume['id']
+            msg = _('Could not find iSCSI target for %(volume_id)s') % {
+                'volume_id': volume['id']}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
@@ -1600,7 +1618,7 @@ class InfortrendCommon(object):
                                 '-t', 'sendtargets', '-p',
                                 target_ip,
                                 run_as_root=True)
-        if rc < 0:
+        if rc != 0:
             LOG.error(_LE(
                 'Can not discovery in %(target_ip)s with %(target_iqn)s'), {
                     'target_ip': target_ip, 'target_iqn': target_iqn})
@@ -1651,12 +1669,14 @@ class InfortrendCommon(object):
             self._delete_iqn(self._truncate_host_name(connector['initiator']))
         self._update_map_info(multipath)
 
-        LOG.info(_LI('Successfully terminated connection '
-                     'for volume %s'), volume['id'])
+        LOG.info(_LI(
+            'Successfully terminated connection for volume %(volume_id)s'), {
+                'volume_id': volume['id']})
 
     def migrate_volume(self, volume, host):
-        is_valid, dst_pool_id = \
+        is_valid, dst_pool_id = (
             self._is_valid_for_storage_assisted_migration(host)
+        )
         if not is_valid:
             return (False, None)
 
@@ -1667,7 +1687,8 @@ class InfortrendCommon(object):
             "provider_location": self._concat_provider_location(model_dict)
         }
 
-        LOG.info(_LI('Migrate Volume %s done'), volume['id'])
+        LOG.info(_LI('Migrate Volume %(volume_id)s done'), {
+            'volume_id': volume['id']})
 
         return (True, model_update)
 
@@ -1701,7 +1722,8 @@ class InfortrendCommon(object):
             volume_id, pool_id=dst_pool_id)
 
         if dst_part_id is None:
-            msg = _('Fail to get new part id in new pool: %s') % dst_pool_id
+            msg = _('Fail to get new part id in new pool: %(pool_id)s') % {
+                'pool_id': dst_pool_id}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
@@ -1754,7 +1776,8 @@ class InfortrendCommon(object):
         if not extraspec:
             LOG.debug("The given extraspec is None.")
         elif extraspec not in validvalues:
-            msg = _("The extraspec: %s is not valid.") % extraspec
+            msg = _("The extraspec: %(extraspec)s is not valid.") % {
+                'extraspec': extraspec}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
@@ -1803,7 +1826,8 @@ class InfortrendCommon(object):
 
         self._set_part(part_entry['ID'], 'name=%s' % volume_id)
 
-        LOG.info(_LI('Rename Volume %s done'), volume['id'])
+        LOG.info(_LI('Rename Volume %(volume_id)s done'), {
+            'volume_id': volume['id']})
 
     def _get_specific_volume_dict(self, volume_id):
         ref_dict = {}
@@ -1852,7 +1876,8 @@ class InfortrendCommon(object):
             new_extraspecs = self._get_extraspecs_dict(new_type['id'])
             new_provisioning = self._get_extraspecs_value(
                 new_extraspecs, 'provisioning')
-            msg = _("The extraspec: %s is not valid.") % new_provisioning
+            msg = _("The extraspec: %(provisioning)s is not valid.") % {
+                'provisioning': new_provisioning}
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 

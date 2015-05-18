@@ -141,15 +141,13 @@ class ExecuteCommand(BaseCommand):
         try:
             result, err = utils.execute(*args, **kwargs)
         except processutils.ProcessExecutionError as pe:
-            rc = -2
+            rc = pe.exit_code
             result = pe.stdout
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
                 'Error on execute command. '
                 'Error code: %(exit_code)d Error msg: %(result)s'), {
                     'exit_code': pe.exit_code, 'result': result})
-        except Exception:
-            rc = -2
         return rc, result
 
 
@@ -216,22 +214,22 @@ class CLIBaseCommand(BaseCommand):
         :returns: execute result
         """
         command_line = self._generate_command(args)
+        LOG.debug('Execute %(command)s', {'command': command_line})
         rc = 0
         result = None
         try:
             content = self._execute(command_line)
             rc, result = self._parser(content)
         except processutils.ProcessExecutionError as pe:
-            rc = -2
+            rc = -2  # prevent confusing with cli real rc
             result = pe.stdout
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
-                'Error on execute command. '
+                'Error on execute %(command)s '
                 'Error code: %(exit_code)d Error msg: %(result)s'), {
-                    'exit_code': pe.exit_code, 'result': result})
-        except Exception:
-            rc = -2
-
+                    'command': command_line,
+                    'exit_code': pe.exit_code,
+                    'result': result})
         return rc, result
 
     def _execute(self, command_line):

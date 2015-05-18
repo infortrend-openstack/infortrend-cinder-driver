@@ -495,7 +495,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertDictMatch(model_update, test_model_update)
         log_info.assert_called_once_with(
-            'Create Volume %s done', test_volume['id'].replace('-', ''))
+            'Create Volume %(volume_id)s done', {
+                'volume_id': test_volume['id'].replace('-', '')})
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_volume_with_create_fail(self):
@@ -552,7 +553,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._assert_cli_has_calls(expect_cli_cmd)
 
         log_info.assert_called_once_with(
-            'Delete Volume %s done', test_volume['id'].replace('-', ''))
+            'Delete Volume %(volume_id)s done', {
+                'volume_id': test_volume['id'].replace('-', '')})
 
     @mock.patch.object(LOG, 'warning', mock.Mock())
     def test_delete_volume_with_sync_pair(self):
@@ -612,7 +614,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.delete_volume(test_volume)
 
         log_warning.assert_called_once_with(
-            'Volume %s already delete', test_volume_id)
+            'Volume %(volume_id)s already delete', {
+                'volume_id': test_volume_id})
 
     @mock.patch.object(LOG, 'info')
     def test_delete_volume_without_provider(self, log_info):
@@ -641,7 +644,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.delete_volume(test_volume)
 
         log_info.assert_called_once_with(
-            'Delete Volume %s done', test_volume_id)
+            'Delete Volume %(volume_id)s done', {'volume_id': test_volume_id})
 
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
@@ -682,7 +685,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertDictMatch(model_update, test_model_update)
         log_info.assert_called_once_with(
-            'Create Cloned Volume %s done', test_dst_volume['id'])
+            'Create Cloned Volume %(volume_id)s done', {
+                'volume_id': test_dst_volume['id']})
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_cloned_volume_with_create_replica_fail(self):
@@ -841,7 +845,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.delete_snapshot(test_snapshot)
 
         log_info.assert_called_once_with(
-            'Delete Snapshot %s done', test_snapshot['id'].replace('-', ''))
+            'Delete Snapshot %(snapshot_id)s done', {
+                'snapshot_id': test_snapshot['id'].replace('-', '')})
 
     def test_delete_snapshot_without_provider_location(self):
 
@@ -1475,7 +1480,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         log_info.assert_called_once_with(
-            'Rename Volume %s done', test_volume['id'])
+            'Rename Volume %(volume_id)s done', {
+                'volume_id': test_volume['id']})
 
     def test_manage_existing_rename_fail(self):
 
