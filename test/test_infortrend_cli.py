@@ -380,7 +380,7 @@ Return: 0x0000
         return (0, [])
 
     def get_test_show_snapshot(self, partition_id=None, snapshot_id=None):
-        if partition_id is not None and snapshot_id is not None:
+        if partition_id and snapshot_id:
             return (0, [{
                 'Map': 'No',
                 'Partition-ID': partition_id,
@@ -582,7 +582,7 @@ Return: 0x0000
             'Min-reserve': '200',
             'LV-ID': self.fake_lv_id[0]
         }]
-        if volume_id is not None and pool_id is not None:
+        if volume_id and pool_id:
             result.append({
                 'ID': self.fake_partition_id[2],
                 'Used': '200',
@@ -662,7 +662,7 @@ Return: 0x0000
             'Total-filled-block': '100',
             'Creation-time': 'Sat, Jan 11 22:18:40 2020'
         }]
-        if volume_id is not None and pool_id is not None:
+        if volume_id and pool_id:
             result.extend([{
                 'LV-ID': pool_id,
                 'Mapping': '---',
@@ -1413,7 +1413,7 @@ Return: 0x0000
         return msg
 
     def get_test_show_map(self, partition_id=None, channel_id=None):
-        if partition_id is not None and channel_id is not None:
+        if partition_id and channel_id:
             return (0, [{
                 'Ch': channel_id,
                 'LUN': '0',
@@ -1755,7 +1755,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_succeed)
 
         rc, out = test_command.execute()
-        self.assertEqual(rc, 0)
+        self.assertEqual(0, rc)
 
     def _test_command_failed(self, command):
 
@@ -1763,7 +1763,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_failed)
 
         rc, out = test_command.execute()
-        self.assertEqual(rc, int('0x000c', 16))
+        self.assertEqual(int('0x000c', 16), rc)
 
     def _test_command_failed_retry_succeed(self, log_error, command):
 
@@ -1780,7 +1780,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        self.assertEqual(rc, 0)
+        self.assertEqual(0, rc)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -1815,8 +1815,8 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        self.assertEqual(rc, int('0x000b', 16))
-        self.assertEqual(out, 'No network')
+        self.assertEqual(int('0x000b', 16), rc)
+        self.assertEqual('No network', out)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -1858,7 +1858,7 @@ class InfortrendCLITestCase(test.TestCase):
 
         rc, out = test_command.execute(*params)
 
-        self.assertEqual(rc, test_data[0])
+        self.assertEqual(test_data[0], rc)
 
         if isinstance(out, list):
             for i in range(len(test_data[1])):

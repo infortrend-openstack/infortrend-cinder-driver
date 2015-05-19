@@ -75,14 +75,12 @@ class InfortrendTestCass(test.TestCase):
     def _mock_show_lv_for_migrate(self, *args, **kwargs):
         if 'tier' in args:
             return self.cli_data.get_test_show_lv_tier_for_migration()
-        else:
-            return self.cli_data.get_test_show_lv()
+        return self.cli_data.get_test_show_lv()
 
     def _mock_show_lv(self, *args, **kwargs):
         if 'tier' in args:
             return self.cli_data.get_test_show_lv_tier()
-        else:
-            return self.cli_data.get_test_show_lv()
+        return self.cli_data.get_test_show_lv()
 
     def _assert_cli_has_calls(self, expect_cli_cmd):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
@@ -457,8 +455,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
-        self.assertEqual(map_lun, test_map_lun)
-        self.assertEqual(mcs_id, test_mcs_id)
+        self.assertEqual(test_map_lun, map_lun)
+        self.assertEqual(test_mcs_id, mcs_id)
 
     def test_mapping_info_with_mcs_multi_group(self):
 
@@ -493,8 +491,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
-        self.assertEqual(map_lun, test_map_lun)
-        self.assertEqual(mcs_id, test_mcs_id)
+        self.assertEqual(test_map_lun, map_lun)
+        self.assertEqual(test_mcs_id, mcs_id)
 
     def test_specific_channel_with_multipath(self):
 
@@ -832,7 +830,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         model_update = self.driver.create_snapshot(self.cli_data.test_snapshot)
 
-        self.assertEqual(model_update['provider_location'], fake_snapshot_id)
+        self.assertEqual(fake_snapshot_id, model_update['provider_location'])
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_snapshot_without_partition_id(self):
@@ -1449,7 +1447,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('ShowMap', 'part=%s' % test_partition_id)
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertEqual(size, 1)
+        self.assertEqual(1, size)
 
     def test_manage_existing_get_size_in_use(self):
 
