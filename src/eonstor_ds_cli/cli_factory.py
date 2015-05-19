@@ -42,14 +42,14 @@ def retry_cli(func):
 
             if rc == 0:
                 break
-            else:
-                LOG.error(_LE(
-                    'Retry %(retry)s time: %(method)s Fail '
-                    '%(rc)s: %(reason)s'), {
-                        'retry': retry_time,
-                        'method': self.__class__.__name__,
-                        'rc': rc,
-                        'reason': out})
+
+            LOG.error(_LE(
+                'Retry %(retry)s time: %(method)s Fail '
+                '%(rc)s: %(reason)s'), {
+                    'retry': retry_time,
+                    'method': self.__class__.__name__,
+                    'rc': rc,
+                    'reason': out})
         LOG.debug(
             'Method: %(method)s Return Code: %(rc)s '
             'Output: %(out)s', {
@@ -696,8 +696,7 @@ class ShowLicense(ShowCommand):
 
 class ShowReplica(ShowCommand):
 
-    """Show information of all current replication jobs,
-    or details for specific replication volume pairs.
+    """Show information of all replication jobs or specific job,
 
     show replica [id={volume-pair-IDs}] [-l] id={volume-pair-IDs}
     """

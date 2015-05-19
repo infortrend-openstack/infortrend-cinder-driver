@@ -638,7 +638,7 @@ class InfortrendCommon(object):
 
     def _get_extraspecs_dict(self, volume_type_id):
         extraspecs = {}
-        if volume_type_id is not None:
+        if volume_type_id:
             extraspecs = volume_types.get_volume_type_extra_specs(
                 volume_type_id)
 
@@ -1129,7 +1129,7 @@ class InfortrendCommon(object):
 
         raid_snapshot_id = self._get_snapshot_id(snapshot)
 
-        if raid_snapshot_id is not None:
+        if raid_snapshot_id:
 
             rc, replica_list = self._show_replica('-l')
 
@@ -1295,7 +1295,7 @@ class InfortrendCommon(object):
         initiator_target_map = {}
         target_wwpns = []
 
-        if self.fc_lookup_service is not None:
+        if self.fc_lookup_service:
             lookup_map = (
                 self.fc_lookup_service.get_device_mapping_from_network(
                     connector['wwpns'], all_target_wwpns)
@@ -1526,7 +1526,7 @@ class InfortrendCommon(object):
 
         if 'provider_auth' in volume:
             auth = volume['provider_auth']
-            if auth is not None:
+            if auth:
                 (auth_method, auth_username, auth_secret) = auth.split()
                 properties['auth_method'] = auth_method
                 properties['auth_username'] = auth_username
