@@ -672,7 +672,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.delete_volume(test_volume)
 
         log_warning.assert_called_once_with(
-            'Volume %(volume_id)s already delete', {
+            'Volume %(volume_id)s already deleted', {
                 'volume_id': test_volume_id})
 
     @mock.patch.object(LOG, 'info')
@@ -911,7 +911,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_snapshot = self.cli_data.test_snapshot
 
         self.driver = self._get_driver(self.configuration)
-        self.driver._get_snapshot_id = mock.Mock(return_value=None)
+        self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
         self.assertRaises(
             exception.InfortrendAPIException,
@@ -983,7 +983,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertDictMatch(model_update, test_model_update)
         log_info.assert_called_once_with(
-            'Create Volume %(volume_id)s form snapshot %(snapshot_id)s done', {
+            'Create Volume %(volume_id)s from snapshot %(snapshot_id)s done', {
                 'volume_id': test_dst_volume['id'],
                 'snapshot_id': test_snapshot['id']})
 
@@ -994,7 +994,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_dst_volume = self.cli_data.test_dst_volume
 
         self.driver = self._get_driver(self.configuration)
-        self.driver._get_snapshot_id = mock.Mock(return_value=None)
+        self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
         self.assertRaises(
             exception.InfortrendAPIException,

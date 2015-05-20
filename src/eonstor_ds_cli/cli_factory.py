@@ -169,7 +169,7 @@ class CLIBaseCommand(BaseCommand):
         self.parameters = parameters
         parameters_line = ' '.join(parameters)
 
-        if self.password != '':
+        if self.password:
             parameters_line = 'password=%s %s' % (
                 self.password, parameters_line)
 
@@ -696,7 +696,7 @@ class ShowLicense(ShowCommand):
 
 class ShowReplica(ShowCommand):
 
-    """Show information of all replication jobs or specific job,
+    """Show information of all replication jobs or specific job
 
     show replica [id={volume-pair-IDs}] [-l] id={volume-pair-IDs}
     """

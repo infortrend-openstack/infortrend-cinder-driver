@@ -874,7 +874,7 @@ class InfortrendCommon(object):
         )
 
         if not check_exist:
-            LOG.warning(_LW('Volume %(volume_id)s already delete'), {
+            LOG.warning(_LW('Volume %(volume_id)s already deleted'), {
                 'volume_id': volume_id})
             return
 
@@ -951,7 +951,7 @@ class InfortrendCommon(object):
             if entry['Name'] == volume_id:
                 check_exist = True
 
-                if part_id == 'None':
+                if part_id is None:
                     result_part_id = entry['ID']
                 if entry['Mapped'] == 'true':
                     have_map = True
@@ -969,7 +969,7 @@ class InfortrendCommon(object):
         src_part_id = self._extract_specific_provider_location(
             src_vref['provider_location'], 'partition_id')
 
-        if src_part_id == 'None':
+        if src_part_id is None:
             src_part_id = self._get_part_id(volume_id)
 
         @lockutils.synchronized(
@@ -994,11 +994,6 @@ class InfortrendCommon(object):
             provider_location)
 
         result = provider_location_dict.get(key, None)
-        if result is None:
-            msg = _('Failed to get result from '
-                    'provider location\'s key: %(key)s') % {'key': key}
-            LOG.error(msg)
-            raise exception.InfortrendAPIException(err=msg)
         return result
 
     @log_func
@@ -1007,6 +1002,8 @@ class InfortrendCommon(object):
         dict_entry = provider_location.split("@")
         for entry in dict_entry:
             key, value = entry.split('^', 1)
+            if value == 'None':
+                value = None
             provider_location_dict[key] = value
 
         return provider_location_dict
@@ -1110,10 +1107,10 @@ class InfortrendCommon(object):
         LOG.info(_LI(
             'Create success '
             'Snapshot: %(snapshot)s '
-            'Snapshot_id: %(snapshot_id)s '
+            'Snapshot ID in raid: %(raid_snapshot_id)s '
             'volume: %(volume)s'), {
                 'snapshot': snapshot_id,
-                'snapshot_id': snapshot_list[-1]['SI-ID'],
+                'raid_snapshot_id': snapshot_list[-1]['SI-ID'],
                 'volume': volume_id})
         model_update['provider_location'] = snapshot_list[-1]['SI-ID']
         return model_update
@@ -1127,7 +1124,7 @@ class InfortrendCommon(object):
         LOG.debug('Delete Snapshot %(snapshot)s volume %(volume)s',
                   {'snapshot': snapshot_id, 'volume': volume_id})
 
-        raid_snapshot_id = self._get_snapshot_id(snapshot)
+        raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
 
         if raid_snapshot_id:
 
@@ -1148,15 +1145,18 @@ class InfortrendCommon(object):
                 LOG.error(msg)
                 raise exception.InfortrendDriverException(err=msg)
         else:
-            msg = _('Failed to get Snapshot ID for volume %(volume_id)s.') % {
-                'volume_id': volume_id}
+            msg = _(
+                'Failed to get Raid Snapshot ID '
+                'from Snapshot %(snapshot_id)s.') % {
+                    'snapshot_id': snapshot_id}
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
-    def _get_snapshot_id(self, snapshot):
+    def _get_raid_snapshot_id(self, snapshot):
         if 'provider_location' not in snapshot:
             LOG.warning(_LW(
-                'Failed to get snapshot_id and is not in snapshot'))
+                'Failed to get Raid Snapshot ID and '
+                'did not store in snapshot'))
             return None
         return snapshot['provider_location']
 
@@ -1187,27 +1187,27 @@ class InfortrendCommon(object):
         return None
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        snapshot_id = self._get_snapshot_id(snapshot)
+        raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
 
-        if snapshot_id is None:
-            msg = _('Failed to get Snapshot ID '
-                    'by snapshot: %(snapshot_id)s') % {
+        if raid_snapshot_id is None:
+            msg = _('Failed to get Raid Snapshot ID '
+                    'from snapshot: %(snapshot_id)s') % {
                         'snapshot_id': snapshot['id']}
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
         model_update = self._create_volume_from_snapshot_id(
-            volume, snapshot_id, 'Snapshot')
+            volume, raid_snapshot_id, 'Snapshot')
 
         LOG.info(_LI(
-            'Create Volume %(volume_id)s form '
+            'Create Volume %(volume_id)s from '
             'snapshot %(snapshot_id)s done'), {
                 'volume_id': volume['id'],
                 'snapshot_id': snapshot['id']})
 
         return model_update
 
-    def _create_volume_from_snapshot_id(self, volume, snapshot_id, type):
+    def _create_volume_from_snapshot_id(self, volume, raid_snapshot_id, type):
         # create the target volume for volume copy
         dst_volume_id = volume['id'].replace('-', '')
 
@@ -1226,7 +1226,7 @@ class InfortrendCommon(object):
 
         # clone the volume from the snapshot
         self._create_replica(
-            'Cinder-%s' % type, 'si', snapshot_id, 'part', dst_part_id)
+            'Cinder-%s' % type, 'si', raid_snapshot_id, 'part', dst_part_id)
 
         self._wait_replica_complete(dst_part_id)
 
@@ -1271,7 +1271,7 @@ class InfortrendCommon(object):
             volume['provider_location'])
         part_id = partition_data['partition_id']
 
-        if part_id == 'None':
+        if part_id is None:
             part_id = self._get_part_id(volume_id)
 
         wwpn_list, wwpn_channel_info = self._get_wwpn_list()
@@ -1341,7 +1341,7 @@ class InfortrendCommon(object):
 
         part_id = partition_data['partition_id']
 
-        if part_id == 'None':
+        if part_id is None:
             part_id = self._get_part_id(volume_id)
 
         self._set_host_iqn(connector['initiator'])
@@ -1560,7 +1560,7 @@ class InfortrendCommon(object):
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
-        if part_id == 'None':
+        if part_id is None:
             part_id = self._get_part_id(volume_id)
 
         expand_size = new_size - volume['size']
@@ -1586,7 +1586,7 @@ class InfortrendCommon(object):
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
-        if part_id == 'None':
+        if part_id is None:
             part_id = self._get_part_id(volume_id)
 
         self._delete_map('part', part_id, '-y')
@@ -1637,7 +1637,7 @@ class InfortrendCommon(object):
 
         src_part_id = partition_data['partition_id']
 
-        if src_part_id == 'None':
+        if src_part_id is None:
             src_part_id = self._get_part_id(volume_id)
 
         # Create New Partition
