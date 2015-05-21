@@ -312,7 +312,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.driver._create_map()
-        log_warning.assert_called_once_with('The MCS Channel is grouped')
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(LOG, 'warning')
     def test_delete_map_warning_return_code(self, log_warning):
@@ -324,7 +324,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.driver._delete_map()
-        log_warning.assert_called_once_with('No mapping')
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(LOG, 'warning')
     def test_create_iqn_warning_return_code(self, log_warning):
@@ -336,7 +336,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.driver._create_iqn()
-        log_warning.assert_called_once_with('IQN already existed')
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(LOG, 'warning')
     def test_delete_iqn_warning_return_code_has_map(self, log_warning):
@@ -348,7 +348,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.driver._delete_iqn()
-        log_warning.assert_called_once_with('IQN has been used to create map')
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(LOG, 'warning')
     def test_delete_iqn_warning_return_code_no_such_name(self, log_warning):
@@ -360,7 +360,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.driver._delete_iqn()
-        log_warning.assert_called_once_with('No such host alias name')
+        self.assertEqual(1, log_warning.call_count)
 
     def test_normal_channel(self):
 
@@ -552,9 +552,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         model_update = self.driver.create_volume(test_volume)
 
         self.assertDictMatch(model_update, test_model_update)
-        log_info.assert_called_once_with(
-            'Create Volume %(volume_id)s done', {
-                'volume_id': test_volume['id'].replace('-', '')})
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_volume_with_create_fail(self):
@@ -609,10 +607,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('DeletePartition', test_partition_id, '-y')
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-
-        log_info.assert_called_once_with(
-            'Delete Volume %(volume_id)s done', {
-                'volume_id': test_volume['id'].replace('-', '')})
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(LOG, 'warning', mock.Mock())
     def test_delete_volume_with_sync_pair(self):
@@ -662,7 +657,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_delete_volume_with_partiton_not_found(self, log_warning):
 
         test_volume = self.cli_data.test_volume
-        test_volume_id = test_volume['id'].replace('-', '')
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_empty_list()
@@ -671,9 +665,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.driver.delete_volume(test_volume)
 
-        log_warning.assert_called_once_with(
-            'Volume %(volume_id)s already deleted', {
-                'volume_id': test_volume_id})
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(LOG, 'info')
     def test_delete_volume_without_provider(self, log_info):
@@ -682,7 +674,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_volume = copy.deepcopy(self.cli_data.test_volume)
         test_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
             int(test_system_id, 16), 'None')
-        test_volume_id = test_volume['id'].replace('-', '')
         test_partition_id = self.cli_data.fake_partition_id[0]
 
         mock_commands = {
@@ -701,8 +692,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.driver.delete_volume(test_volume)
 
-        log_info.assert_called_once_with(
-            'Delete Volume %(volume_id)s done', {'volume_id': test_volume_id})
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
@@ -742,9 +732,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_dst_volume, test_src_volume)
 
         self.assertDictMatch(model_update, test_model_update)
-        log_info.assert_called_once_with(
-            'Create Cloned Volume %(volume_id)s done', {
-                'volume_id': test_dst_volume['id']})
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_cloned_volume_with_create_replica_fail(self):
@@ -902,9 +890,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.driver.delete_snapshot(test_snapshot)
 
-        log_info.assert_called_once_with(
-            'Delete Snapshot %(snapshot_id)s done', {
-                'snapshot_id': test_snapshot['id'].replace('-', '')})
+        self.assertEqual(1, log_info.call_count)
 
     def test_delete_snapshot_without_provider_location(self):
 
@@ -982,10 +968,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_dst_volume, test_snapshot)
 
         self.assertDictMatch(model_update, test_model_update)
-        log_info.assert_called_once_with(
-            'Create Volume %(volume_id)s from snapshot %(snapshot_id)s done', {
-                'volume_id': test_dst_volume['id'],
-                'snapshot_id': test_snapshot['id']})
+        self.assertEqual(1, log_info.call_count)
 
     def test_create_volume_from_snapshot_without_provider_location(
             self):
@@ -1345,8 +1328,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertFalse(rc)
         self.assertTrue(model_update is None)
-        log_warning.assert_called_once_with(
-            'Failed to get target pool id')
+        self.assertEqual(1, log_warning.call_count)
 
     def test_migrate_volume_with_get_part_id_fail(self):
 
@@ -1537,9 +1519,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                       'name=%s' % test_volume['id'].replace('-', ''))
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        log_info.assert_called_once_with(
-            'Rename Volume %(volume_id)s done', {
-                'volume_id': test_volume['id']})
+        self.assertEqual(1, log_info.call_count)
 
     def test_manage_existing_rename_fail(self):
 
