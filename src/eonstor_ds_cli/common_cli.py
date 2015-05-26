@@ -1836,32 +1836,26 @@ class InfortrendCommon(object):
                            this backend as part of the migration process
         :return model_update to update DB with any needed changes
         """
-        src_volume_id = volume.get('id')
-        dst_volume_id = new_volume.get('id')
-        dst_volume_existence = False
-        LOG.debug('Update migrated volume: %(dst)s to %(src)s',
-                  {'dst': dst_volume_id,
-                   'src': src_volume_id})
-        if src_volume_id:
-            src_volume_id = src_volume_id.replace('-', '')
-            dst_volume_id = dst_volume_id.replace('-', '')
-            rc, part_list = self._show_part()
-            for entry in part_list:
-                if entry['Name'] == dst_volume_id:
-                    dst_volume_existence = True
-            if dst_volume_existence:
-                part_id = self._get_part_id(dst_volume_id)
-                self._set_part(part_id, 'name=%s' % src_volume_id)
-                system_id = self._get_system_id(self.ip)
-                model_dict = {
-                    'system_id': system_id,
-                    'partition_id': part_id
-                }
-                model_update = {
-                    "provider_location":
-                        self._concat_provider_location(model_dict)
-                }
-                return model_update
-        LOG.error(_LE('Unable to rename the partition for volume: %s'),
-                  src_volume_id)
-        return None
+        src_volume_id = volume['id'].replace('-', '')
+        dst_volume_id = new_volume['id'].replace('-', '')
+        part_id = self._extract_specific_provider_location(
+            new_volume['provider_location'], 'partition_id')
+
+        if part_id is None:
+            part_id = self._get_part_id(dst_volume_id)
+
+        LOG.debug(
+            'Rename partition %(part_id)s '
+            'into new volume %(new_volume)s', {
+                'part_id': part_id, 'new_volume': dst_volume_id})
+
+        self._set_part(part_id, 'name=%s' % src_volume_id)
+
+        LOG.info(_LI('Update migrated volume %(new_volume)s done'), {
+            'new_volume': new_volume['id']})
+
+        model_update = {
+            'provider_location': new_volume['provider_location']
+        }
+
+        return model_update
