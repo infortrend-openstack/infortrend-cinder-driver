@@ -70,7 +70,7 @@ class InfortrendCLITestData(object):
         'id': '5aa119a8-d25b-45a7-8d1b-88e127885635',
         'size': 1,
         'name': 'Part-1',
-        'host': 'infortrend-server1@backend_1',
+        'host': 'infortrend-server1@backend_1#LV-1',
         'name_id': '5aa119a8-d25b-45a7-8d1b-88e127885635',
         'provider_auth': None,
         'project_id': 'project',
@@ -78,6 +78,7 @@ class InfortrendCLITestData(object):
         'display_description': 'Part-1',
         'volume_type_id': None,
         'provider_location': test_provider_location[0],
+        'volume_attachment': [],
     }
 
     test_dst_volume = {
@@ -92,6 +93,7 @@ class InfortrendCLITestData(object):
         'display_description': 'Part-1-Copy',
         'volume_type_id': None,
         'provider_location': '',
+        'volume_attachment': [],
     }
 
     test_ref_volume = {
@@ -306,11 +308,11 @@ class InfortrendCLITestData(object):
     }
 
     test_migrate_host = {
-        'host': 'infortrend-server1@backend_1',
+        'host': 'infortrend-server1@backend_1#LV-2',
         'capabilities': test_migrate_volume_states,
     }
 
-    test_migrate_func_volume_states = {
+    test_migrate_volume_states_2 = {
         'volume_backend_name': 'infortrend_backend_1',
         'vendor_name': 'Infortrend',
         'driver_version': '99.99',
@@ -324,9 +326,9 @@ class InfortrendCLITestData(object):
         'infortrend_provisioning': 'full',
     }
 
-    test_migrate_func_host = {
-        'host': 'infortrend-server1@backend_1',
-        'capabilities': test_migrate_func_volume_states,
+    test_migrate_host_2 = {
+        'host': 'infortrend-server1@backend_1#LV-1',
+        'capabilities': test_migrate_volume_states_2,
     }
 
     fake_host = {
@@ -349,6 +351,16 @@ class InfortrendCLITestData(object):
             'target_port_wwn_list': fake_target_wwpns[1:3],
         },
     }
+
+    test_new_type = {
+        'name': 'type0',
+        'qos_specs_id': None,
+        'deleted': False,
+        'extra_specs': {'infortrend_provisioning': 'thin'},
+        'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+    }
+
+    test_diff = {'extra_specs': {'infortrend_provisioning': ('full', 'thin')}}
 
     def get_fake_cli_failed(self):
         return """
