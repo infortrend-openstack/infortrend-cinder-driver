@@ -1847,7 +1847,6 @@ class InfortrendCommon(object):
                     "provider_location":
                         self._concat_provider_location(model_dict)
                 }
-                print(model_update)
                 return model_update
         LOG.error(_LE('Unable to rename the partition for volume: %s'),
                   src_volume_id)

@@ -1568,3 +1568,34 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertDictMatch(model_update, test_model_update)
+
+    def test_update_migrated_volume_rename_fail(self):
+        src_volume = self.cli_data.test_volume
+        dst_volume = self.cli_data.test_dst_volume
+
+        mock_commands = {
+            'ShowPartition': self.cli_data.get_test_show_partition(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
+            'SetPartition': FAKE_ERROR_RETURN
+        }
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(
+            exception.InfortrendCliException,
+            self.driver.update_migrated_volume,
+            src_volume,
+            dst_volume)
+
+        expect_cli_cmd = [
+            mock.call('ShowPartition'),
+            mock.call('SetPartition', self.cli_data.fake_partition_id[1],
+                      'name=%s' % src_volume['id'].replace('-', ''))
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+
+
+    def test_update_migrated_volume_no_src_volume_id(self):
+        pass
+
+    def test_update_migrated_volume_no_dst_volume_id(self):
+        pass
