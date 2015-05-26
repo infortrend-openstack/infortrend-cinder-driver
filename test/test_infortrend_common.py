@@ -1542,3 +1542,47 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             self.driver.manage_existing,
             test_volume,
             test_ref_volume)
+
+    def test_update_migrated_volume(self):
+        src_volume = self.cli_data.test_volume
+        dst_volume = copy.deepcopy(self.cli_data.test_dst_volume)
+        test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
+        test_model_update = {
+            'provider_location': dst_volume['provider_location'],
+        }
+
+        mock_commands = {
+            'SetPartition': SUCCEED
+        }
+        self._driver_setup(mock_commands)
+
+        model_update = self.driver.update_migrated_volume(
+            None, src_volume, dst_volume)
+
+        expect_cli_cmd = [
+            mock.call('SetPartition', test_dst_part_id,
+                      'name=%s' % src_volume['id'].replace('-', ''))
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertDictMatch(model_update, test_model_update)
+
+    def test_update_migrated_volume_rename_fail(self):
+        src_volume = self.cli_data.test_volume
+        dst_volume = self.cli_data.test_dst_volume
+        test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
+
+        mock_commands = {
+            'SetPartition': FAKE_ERROR_RETURN
+        }
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(
+            exception.InfortrendCliException,
+            self.driver.update_migrated_volume,
+            None,
+            src_volume,
+            dst_volume)

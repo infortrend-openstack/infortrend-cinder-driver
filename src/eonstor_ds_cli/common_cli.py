@@ -1828,3 +1828,30 @@ class InfortrendCommon(object):
         new_extraspec = self._get_extraspecs_value(new_extraspecs, key)
 
         return new_extraspec != old_extraspec
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Return model update for migrated volume."""
+
+        src_volume_id = volume['id'].replace('-', '')
+        dst_volume_id = new_volume['id'].replace('-', '')
+        part_id = self._extract_specific_provider_location(
+            new_volume['provider_location'], 'partition_id')
+
+        if part_id is None:
+            part_id = self._get_part_id(dst_volume_id)
+
+        LOG.debug(
+            'Rename partition %(part_id)s '
+            'into new volume %(new_volume)s', {
+                'part_id': part_id, 'new_volume': dst_volume_id})
+
+        self._set_part(part_id, 'name=%s' % src_volume_id)
+
+        LOG.info(_LI('Update migrated volume %(new_volume)s done'), {
+            'new_volume': new_volume['id']})
+
+        model_update = {
+            'provider_location': new_volume['provider_location']
+        }
+
+        return model_update
