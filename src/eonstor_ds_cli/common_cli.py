@@ -62,7 +62,7 @@ infortrend_esds_opts = [
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot B '
                'for openstack usage. It is separated with comma.'
-               'By default, it is the channel 0~7')
+               'By default, it is the channel 0~7'),
 ]
 
 infortrend_esds_extra_opts = [
@@ -73,7 +73,7 @@ infortrend_esds_extra_opts = [
     cfg.StrOpt('infortrend_tiering',
                default='0',
                help='Let the volume use specific tiering level.'
-               'By default, it is the level 0.')
+               'By default, it is the level 0.'),
 ]
 
 CONF = cfg.CONF
@@ -86,11 +86,11 @@ CLI_RC_FILTER = {
     '_set_part': {'error': _('Failed to set partition')},
     '_create_map': {
         'warning': {20: _LW('The MCS Channel is grouped')},
-        'error': _('Failed to create map')
+        'error': _('Failed to create map'),
     },
     '_delete_map': {
         'warning': {11: _LW('No mapping')},
-        'error': _('Failed to delete map')
+        'error': _('Failed to delete map'),
     },
     '_create_snapshot': {'error': _('Failed to create snapshot')},
     '_delete_snapshot': {'error': _('Failed to delete snapshot')},
@@ -98,14 +98,14 @@ CLI_RC_FILTER = {
     '_delete_replica': {'error': _('Failed to delete replica')},
     '_create_iqn': {
         'warning': {20: _LW('IQN already existed')},
-        'error': _('Failed to create iqn')
+        'error': _('Failed to create iqn'),
     },
     '_delete_iqn': {
         'warning': {
             20: _LW('IQN has been used to create map'),
-            11: _LW('No such host alias name')
+            11: _LW('No such host alias name'),
         },
-        'error': _('Failed to delete iqn')
+        'error': _('Failed to delete iqn'),
     },
     '_show_lv': {'error': _('Failed to get lv info')},
     '_show_part': {'error': _('Failed to get partition info')},
@@ -117,7 +117,7 @@ CLI_RC_FILTER = {
     '_show_license': {'error': _('Failed to get license info')},
     '_show_replica': {'error': _('Failed to get replica info')},
     '_show_wwn': {'error': _('Failed to get wwn info')},
-    '_show_iqn': {'error': _('Failed to get iqn info')}
+    '_show_iqn': {'error': _('Failed to get iqn info')},
 }
 
 
@@ -214,12 +214,12 @@ class InfortrendCommon(object):
 
         self.map_dict = {
             'slot_a': {},
-            'slot_b': {}
+            'slot_b': {},
         }
         self.map_dict_init = False
         self.mcs_dict = {
             'slot_a': {},
-            'slot_b': {}
+            'slot_b': {},
         }
 
         self._init_pool_list()
@@ -229,7 +229,7 @@ class InfortrendCommon(object):
             'path': self.path,
             'password': self.password,
             'ip': self.ip,
-            'cli_retry_time': int(self.cli_retry_time)
+            'cli_retry_time': int(self.cli_retry_time),
         }
 
     def _init_pool_list(self):
@@ -245,7 +245,7 @@ class InfortrendCommon(object):
     def _init_channel_list(self):
         self.channel_list = {
             'slot_a': [],
-            'slot_b': []
+            'slot_b': [],
         }
         tmp_channel_list = (
             self.configuration.infortrend_slots_a_channels_id.split(',')
@@ -517,11 +517,11 @@ class InfortrendCommon(object):
 
         model_dict = {
             'system_id': system_id,
-            'partition_id': part_id
+            'partition_id': part_id,
         }
 
         model_update = {
-            "provider_location": self._concat_provider_location(model_dict)
+            "provider_location": self._concat_provider_location(model_dict),
         }
         LOG.info(_LI('Create Volume %(volume_id)s done'), {
             'volume_id': volume_id})
@@ -569,7 +569,7 @@ class InfortrendCommon(object):
         parameters = {
             'provisioning': 'min=%sMB',
             'tiering': 'tier=%s',
-            'init': 'init=%s'
+            'init': 'init=%s',
         }
         for extraspec in extraspecs_dict.keys():
             value = parameters[extraspec] % (extraspecs_dict[extraspec])
@@ -1010,6 +1010,10 @@ class InfortrendCommon(object):
 
     def create_export(self, context, volume):
         model_update = volume['provider_location']
+
+        LOG.info(_LI('Create export done from Volume %(volume_id)s'), {
+            'volume_id': volume['id']})
+
         return {'provider_location': model_update}
 
     def get_volume_stats(self, refresh=False):
@@ -1019,6 +1023,13 @@ class InfortrendCommon(object):
         """
         if self._volume_stats is None or refresh:
             self._update_volume_stats()
+
+        LOG.info(_LI(
+            'Successfully update volume stats '
+            'backend: %(volume_backend_name)s '
+            'vendor: %(vendor_name)s '
+            'driver version: %(driver_version)s '
+            'storage protocol: %(storage_protocol)s'), self._volume_stats)
 
         return self._volume_stats
 
@@ -1218,7 +1229,7 @@ class InfortrendCommon(object):
         system_id = self._get_system_id(self.ip)
         model_dict = {
             'system_id': system_id,
-            'partition_id': dst_part_id
+            'partition_id': dst_part_id,
         }
 
         model_info = self._concat_provider_location(model_dict)
@@ -1325,8 +1336,8 @@ class InfortrendCommon(object):
                 'target_lun': int(lun_id),
                 'target_wwn': target_wwpns,
                 'access_mode': 'rw',
-                'initiator_target_map': initiator_target_map
-            }
+                'initiator_target_map': initiator_target_map,
+            },
         }
 
     @log_func
@@ -1377,7 +1388,7 @@ class InfortrendCommon(object):
             'lun_id': partition_data['lun_id'],
             'iqn': self._generate_iqn(partition_data),
             'ip': ip,
-            'port': self.constants['ISCSI_PORT']
+            'port': self.constants['ISCSI_PORT'],
         }]
 
         properties = self._generate_iscsi_connection_properties(
@@ -1437,7 +1448,7 @@ class InfortrendCommon(object):
             lun_map.append({
                 'channel_id': map_entry_dict['CH'],
                 'target_id': map_entry_dict['ID'],
-                'lun_id': map_entry_dict['LUN']
+                'lun_id': map_entry_dict['LUN'],
             })
         return lun_map
 
@@ -1491,7 +1502,7 @@ class InfortrendCommon(object):
 
                 wwpn_channel_info[entry['WWPN']] = {
                     'channel': channel_id,
-                    'slot': slot_name
+                    'slot': slot_name,
                 }
 
         return wwpn_list, wwpn_channel_info
@@ -1534,7 +1545,7 @@ class InfortrendCommon(object):
 
         return {
             'driver_volume_type': 'iscsi',
-            'data': properties
+            'data': properties,
         }
 
     @log_func
@@ -1609,7 +1620,7 @@ class InfortrendCommon(object):
             volume, dst_pool_id)
 
         model_update = {
-            "provider_location": self._concat_provider_location(model_dict)
+            "provider_location": self._concat_provider_location(model_dict),
         }
 
         LOG.info(_LI('Migrate Volume %(volume_id)s done'), {
@@ -1664,7 +1675,7 @@ class InfortrendCommon(object):
 
         model_dict = {
             'system_id': partition_data['system_id'],
-            'partition_id': dst_part_id
+            'partition_id': dst_part_id,
         }
 
         return model_dict
@@ -1806,7 +1817,8 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.InfortrendDriverException(err=msg)
 
-        LOG.info(_LI('Retype Volume is done'))
+        LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
+            'volume_id': volume['id']})
 
     def _diff_between_types(self, volume, new_type, key):
         old_extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
