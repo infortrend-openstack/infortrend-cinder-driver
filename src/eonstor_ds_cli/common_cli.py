@@ -1816,3 +1816,39 @@ class InfortrendCommon(object):
         new_extraspec = self._get_extraspecs_value(new_extraspecs, key)
 
         return new_extraspec != old_extraspec
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Return model update for migrated volume.
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :return model_update to update DB with any needed changes
+        """
+        src_volume_id = volume.get('id').replace('-', '')
+        dst_volume_id = new_volume.get('id').replace('-', '')
+        dst_volume_existence = False
+        LOG.debug('Update migrated volume: %(dst)s to %(src)s',
+                  {'dst': dst_volume_id,
+                   'src': src_volume_id})
+        if src_volume_id:
+            rc, part_list = self._show_part()
+            for entry in part_list:
+                if entry['Name'] == dst_volume_id:
+                    dst_volume_existence = True
+            if dst_volume_existence:
+                part_id = self._get_part_id(dst_volume_id)
+                self._set_part(part_id, 'name=%s' % src_volume_id)
+                system_id = self._get_system_id(self.ip)
+                model_dict = {
+                    'system_id': system_id,
+                    'partition_id': part_id
+                }
+                model_update = {
+                    "provider_location":
+                        self._concat_provider_location(model_dict)
+                }
+                print(model_update)
+                return model_update
+        LOG.error(_LE('Unable to rename the partition for volume: %s'),
+                  src_volume_id)
+        return None
