@@ -1597,6 +1597,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_update_migrated_volume_no_src_volume_id(self):
         src_volume = {'id': None}
         dst_volume = self.cli_data.test_dst_volume
+        self._driver_setup()
         rt = self.driver.update_migrated_volume(None,
                                                 src_volume,
                                                 dst_volume)
