@@ -1818,12 +1818,8 @@ class InfortrendCommon(object):
         return new_extraspec != old_extraspec
 
     def update_migrated_volume(self, ctxt, volume, new_volume):
-        """Return model update for migrated volume.
-        :param volume: The original volume that was migrated to this backend
-        :param new_volume: The migration volume object that was created on
-                           this backend as part of the migration process
-        :return model_update to update DB with any needed changes
-        """
+        """Return model update for migrated volume."""
+
         src_volume_id = volume['id'].replace('-', '')
         dst_volume_id = new_volume['id'].replace('-', '')
         part_id = self._extract_specific_provider_location(
