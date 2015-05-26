@@ -1543,27 +1543,24 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
     def test_update_migrated_volume(self):
         src_volume = self.cli_data.test_volume
-        dst_volume = self.cli_data.test_dst_volume
+        dst_volume = copy.deepcopy(self.cli_data.test_dst_volume)
+        test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[1])
+            'provider_location': dst_volume['provider_location'],
         }
 
         mock_commands = {
-            'ShowPartition': self.cli_data.get_test_show_partition(),
-            'ShowDevice': self.cli_data.get_test_show_device(),
             'SetPartition': SUCCEED
         }
         self._driver_setup(mock_commands)
 
-        model_update = self.driver.update_migrated_volume(None,
-                                                          src_volume,
-                                                          dst_volume)
+        model_update = self.driver.update_migrated_volume(
+            None, src_volume, dst_volume)
 
         expect_cli_cmd = [
-            mock.call('ShowPartition'),
-            mock.call('SetPartition', self.cli_data.fake_partition_id[1],
+            mock.call('SetPartition', test_dst_part_id,
                       'name=%s' % src_volume['id'].replace('-', ''))
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
@@ -1572,10 +1569,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_update_migrated_volume_rename_fail(self):
         src_volume = self.cli_data.test_volume
         dst_volume = self.cli_data.test_dst_volume
+        test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
 
         mock_commands = {
-            'ShowPartition': self.cli_data.get_test_show_partition(),
-            'ShowDevice': self.cli_data.get_test_show_device(),
             'SetPartition': FAKE_ERROR_RETURN
         }
         self._driver_setup(mock_commands)
@@ -1586,38 +1584,3 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             None,
             src_volume,
             dst_volume)
-
-        expect_cli_cmd = [
-            mock.call('ShowPartition'),
-            mock.call('SetPartition', self.cli_data.fake_partition_id[1],
-                      'name=%s' % src_volume['id'].replace('-', ''))
-        ]
-        self._assert_cli_has_calls(expect_cli_cmd)
-
-    def test_update_migrated_volume_no_src_volume_id(self):
-        src_volume = {'id': None}
-        dst_volume = self.cli_data.test_dst_volume
-        mock_commands = {
-            'ShowPartition': self.cli_data.get_test_show_partition(),
-            'ShowDevice': self.cli_data.get_test_show_device(),
-            'SetPartition': FAKE_ERROR_RETURN
-        }
-        self._driver_setup(mock_commands)
-        rt = self.driver.update_migrated_volume(None,
-                                                src_volume,
-                                                dst_volume)
-        self.assertEqual(None, rt)
-
-    def test_update_migrated_volume_no_dst_volume_id(self):
-        src_volume = self.cli_data.test_volume
-        dst_volume = {'id': "123-456"}
-        mock_commands = {
-            'ShowPartition': self.cli_data.get_test_show_partition(),
-            'ShowDevice': self.cli_data.get_test_show_device(),
-            'SetPartition': FAKE_ERROR_RETURN
-        }
-        self._driver_setup(mock_commands)
-        rt = self.driver.update_migrated_volume(None,
-                                                src_volume,
-                                                dst_volume)
-        self.assertEqual(None, rt)
