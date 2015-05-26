@@ -1583,6 +1583,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.assertRaises(
             exception.InfortrendCliException,
             self.driver.update_migrated_volume,
+            None,
             src_volume,
             dst_volume)
 
