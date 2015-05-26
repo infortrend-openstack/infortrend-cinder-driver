@@ -1594,9 +1594,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-
     def test_update_migrated_volume_no_src_volume_id(self):
-        pass
+        src_volume = {'id': None}
+        dst_volume = self.cli_data.test_dst_volume
+        rt = self.driver.update_migrated_volume(None,
+                                                src_volume,
+                                                dst_volume)
+        self.assertEqual(None, rt)
 
     def test_update_migrated_volume_no_dst_volume_id(self):
         pass
