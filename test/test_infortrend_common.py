@@ -1597,7 +1597,12 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_update_migrated_volume_no_src_volume_id(self):
         src_volume = {'id': None}
         dst_volume = self.cli_data.test_dst_volume
-        self._driver_setup()
+        mock_commands = {
+            'ShowPartition': self.cli_data.get_test_show_partition(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
+            'SetPartition': FAKE_ERROR_RETURN
+        }
+        self._driver_setup(mock_commands)
         rt = self.driver.update_migrated_volume(None,
                                                 src_volume,
                                                 dst_volume)
