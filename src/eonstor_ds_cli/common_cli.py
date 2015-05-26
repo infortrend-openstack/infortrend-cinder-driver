@@ -1824,13 +1824,15 @@ class InfortrendCommon(object):
                            this backend as part of the migration process
         :return model_update to update DB with any needed changes
         """
-        src_volume_id = volume.get('id').replace('-', '')
-        dst_volume_id = new_volume.get('id').replace('-', '')
+        src_volume_id = volume.get('id')
+        dst_volume_id = new_volume.get('id')
         dst_volume_existence = False
         LOG.debug('Update migrated volume: %(dst)s to %(src)s',
                   {'dst': dst_volume_id,
                    'src': src_volume_id})
         if src_volume_id:
+            src_volume_id = src_volume_id.replace('-', '')
+            dst_volume_id = dst_volume_id.replace('-', '')
             rc, part_list = self._show_part()
             for entry in part_list:
                 if entry['Name'] == dst_volume_id:
