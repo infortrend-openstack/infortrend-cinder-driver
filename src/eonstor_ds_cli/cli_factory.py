@@ -27,13 +27,15 @@ from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
+DEFAULT_RETRY_TIME = 5
+
 
 def retry_cli(func):
     def inner(self, *args, **kwargs):
         total_retry_time = self.cli_retry_time
 
         if total_retry_time is None:
-            total_retry_time = 5
+            total_retry_time = DEFAULT_RETRY_TIME
 
         retry_time = 0
         while retry_time < total_retry_time:

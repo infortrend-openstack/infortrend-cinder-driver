@@ -992,7 +992,7 @@ class InfortrendAPIException(VolumeBackendAPIException):
 
 
 class InfortrendDriverException(VolumeDriverException):
-    message = _("Infortrend cinder driver exception: %(err)s")
+    message = _("Infortrend Cinder Driver exception: %(err)s")
 
 
 class InfortrendCliException(CinderException):
