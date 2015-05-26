@@ -1610,7 +1610,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
     def test_update_migrated_volume_no_dst_volume_id(self):
         src_volume = self.cli_data.test_volume
-        dst_volume = {'id': 123-456}
+        dst_volume = {'id': "123-456"}
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
