@@ -1639,6 +1639,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.assertTrue(rc)
         self.assertDictMatch(model_update, test_model_update)
 
+    @mock.patch.object(LOG, 'debug', mock.Mock())
+    @mock.patch.object(LOG, 'info', mock.Mock())
     def test_update_migrated_volume(self):
         src_volume = self.cli_data.test_volume
         dst_volume = copy.deepcopy(self.cli_data.test_dst_volume)
@@ -1650,7 +1652,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
 
         mock_commands = {
-            'SetPartition': SUCCEED
+            'SetPartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -1659,11 +1661,12 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('SetPartition', test_dst_part_id,
-                      'name=%s' % src_volume['id'].replace('-', ''))
+                      'name=%s' % src_volume['id'].replace('-', '')),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertDictMatch(model_update, test_model_update)
 
+    @mock.patch.object(LOG, 'debug', mock.Mock())
     def test_update_migrated_volume_rename_fail(self):
         src_volume = self.cli_data.test_volume
         dst_volume = self.cli_data.test_dst_volume

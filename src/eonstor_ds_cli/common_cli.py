@@ -1891,5 +1891,4 @@ class InfortrendCommon(object):
         model_update = {
             'provider_location': new_volume['provider_location']
         }
-
         return model_update
