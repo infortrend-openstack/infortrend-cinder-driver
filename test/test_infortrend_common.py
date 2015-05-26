@@ -1264,7 +1264,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 new=utils.ZeroIntervalLoopingCall)
     def test_migrate_volume(self):
 
-        test_host = copy.deepcopy(self.cli_data.test_migrate_func_host)
+        test_host = copy.deepcopy(self.cli_data.test_migrate_host)
         fake_pool = copy.deepcopy(self.cli_data.fake_pool)
         test_volume = self.cli_data.test_volume
         test_volume_id = test_volume['id'].replace('-', '')
@@ -1280,7 +1280,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(
-                test_volume['id'].replace('-', ''), fake_pool['pool_id']),
+                test_volume_id, fake_pool['pool_id']),
             'CreateReplica': SUCCEED,
             'ShowLV': self._mock_show_lv_for_migrate,
             'ShowReplica':
@@ -1380,7 +1380,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 new=utils.ZeroIntervalLoopingCall)
     def test_migrate_volume_timeout(self):
 
-        test_host = copy.deepcopy(self.cli_data.test_migrate_func_host)
+        test_host = copy.deepcopy(self.cli_data.test_migrate_host)
         fake_pool = copy.deepcopy(self.cli_data.fake_pool)
         test_volume = self.cli_data.test_volume
         test_volume_id = test_volume['id'].replace('-', '')
@@ -1393,7 +1393,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(
-                test_volume['id'].replace('-', ''), fake_pool['pool_id']),
+                test_volume_id, fake_pool['pool_id']),
             'CreateReplica': SUCCEED,
             'ShowLV': self._mock_show_lv_for_migrate,
             'ShowReplica':
@@ -1542,6 +1542,102 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             self.driver.manage_existing,
             test_volume,
             test_ref_volume)
+
+    @mock.patch.object(LOG, 'info')
+    def test_retype_without_change(self, log_info):
+
+        test_volume = self.cli_data.test_volume
+        test_new_type = self.cli_data.test_new_type
+        test_diff = {'extra_specs': {}}
+        test_host = self.cli_data.test_migrate_host_2
+
+        self.driver = self._get_driver(self.configuration)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertTrue(rc)
+        self.assertEqual(1, log_info.call_count)
+
+    @mock.patch.object(LOG, 'warning')
+    def test_retype_with_change_provision(self, log_warning):
+
+        test_volume = self.cli_data.test_volume
+        test_new_type = self.cli_data.test_new_type
+        test_diff = self.cli_data.test_diff
+        test_host = self.cli_data.test_migrate_host_2
+
+        self.driver = self._get_driver(self.configuration)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertFalse(rc)
+        self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_retype_with_migrate(self):
+
+        fake_pool = copy.deepcopy(self.cli_data.fake_pool)
+        test_host = copy.deepcopy(self.cli_data.test_migrate_host)
+        test_volume = self.cli_data.test_volume
+        test_volume_id = test_volume['id'].replace('-', '')
+        test_new_type = self.cli_data.test_new_type
+        test_diff = self.cli_data.test_diff
+        test_src_part_id = self.cli_data.fake_partition_id[0]
+        test_dst_part_id = self.cli_data.fake_partition_id[2]
+        test_pair_id = self.cli_data.fake_pair_id[0]
+        test_model_update = {
+            'provider_location': 'system_id^%s@partition_id^%s' % (
+                int(self.cli_data.fake_system_id[0], 16),
+                test_dst_part_id),
+        }
+
+        mock_commands = {
+            'ShowSnapshot': SUCCEED,
+            'CreatePartition': SUCCEED,
+            'ShowPartition': self.cli_data.get_test_show_partition(
+                test_volume_id, fake_pool['pool_id']),
+            'CreateReplica': SUCCEED,
+            'ShowLV': self._mock_show_lv_for_migrate,
+            'ShowReplica':
+                self.cli_data.get_test_show_replica_detail_for_migrate(
+                    test_src_part_id, test_dst_part_id, test_volume_id),
+            'DeleteReplica': SUCCEED,
+            'DeleteMap': SUCCEED,
+            'DeletePartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        rc, model_update = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        expect_cli_cmd = [
+            mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
+            mock.call(
+                'CreatePartition',
+                fake_pool['pool_id'],
+                test_volume['id'].replace('-', ''),
+                'size=%s' % (test_volume['size'] * 1024),
+                'init=disable min=%sMB' % (
+                    int(test_volume['size'] * 1024 * 0.2))
+            ),
+            mock.call('ShowPartition'),
+            mock.call(
+                'CreateReplica',
+                'Cinder-Migrate',
+                'part', test_src_part_id,
+                'part', test_dst_part_id,
+                'type=mirror'
+            ),
+            mock.call('ShowReplica', '-l'),
+            mock.call('DeleteReplica', test_pair_id, '-y'),
+            mock.call('DeleteMap', 'part', test_src_part_id, '-y'),
+            mock.call('DeletePartition', test_src_part_id, '-y'),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertTrue(rc)
+        self.assertDictMatch(model_update, test_model_update)
 
     def test_update_migrated_volume(self):
         src_volume = self.cli_data.test_volume

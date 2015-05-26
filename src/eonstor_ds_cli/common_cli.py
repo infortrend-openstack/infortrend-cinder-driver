@@ -531,11 +531,14 @@ class InfortrendCommon(object):
         pool_id = self._get_target_pool_id(volume)
         self._create_partition_with_pool(volume, pool_id)
 
-    def _create_partition_with_pool(self, volume, pool_id):
+    def _create_partition_with_pool(
+            self, volume, pool_id, extraspecs=None):
+
         volume_id = volume['id'].replace('-', '')
         volume_size = gi_to_mi(volume['size'])
 
-        extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
+        if extraspecs is None:
+            extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
 
         provisioning = self._get_extraspecs_value(extraspecs, 'provisioning')
         tiering = self._get_extraspecs_value(extraspecs, 'tiering')
@@ -1609,7 +1612,7 @@ class InfortrendCommon(object):
             'Successfully terminated connection for volume %(volume_id)s'), {
                 'volume_id': volume['id']})
 
-    def migrate_volume(self, volume, host):
+    def migrate_volume(self, volume, host, new_extraspecs=None):
         is_valid, dst_pool_id = (
             self._is_valid_for_storage_assisted_migration(host)
         )
@@ -1617,7 +1620,7 @@ class InfortrendCommon(object):
             return (False, None)
 
         model_dict = self._migrate_volume_with_pool(
-            volume, dst_pool_id)
+            volume, dst_pool_id, new_extraspecs)
 
         model_update = {
             "provider_location": self._concat_provider_location(model_dict),
@@ -1639,7 +1642,7 @@ class InfortrendCommon(object):
 
         return (True, dst_pool_id)
 
-    def _migrate_volume_with_pool(self, volume, dst_pool_id):
+    def _migrate_volume_with_pool(self, volume, dst_pool_id, extraspecs=None):
         volume_id = volume['id'].replace('-', '')
 
         # Get old partition data for delete map
@@ -1652,7 +1655,7 @@ class InfortrendCommon(object):
             src_part_id = self._get_part_id(volume_id)
 
         # Create New Partition
-        self._create_partition_with_pool(volume, dst_pool_id)
+        self._create_partition_with_pool(volume, dst_pool_id, extraspecs)
 
         dst_part_id = self._get_part_id(
             volume_id, pool_id=dst_pool_id)
@@ -1803,31 +1806,66 @@ class InfortrendCommon(object):
 
         return timestamps
 
+    def _check_volume_attachment(self, volume):
+        if not volume['volume_attachment']:
+            return False
+        return True
+
+    def _check_volume_has_snapshot(self, volume):
+        part_id = self._extract_specific_provider_location(
+            volume['provider_location'], 'partition_id')
+
+        rc, snapshot_list = self._show_snapshot('part=%s' % part_id)
+
+        if len(snapshot_list) > 0:
+            return True
+        return False
+
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
 
-        provisoing_diff = self._diff_between_types(
-            volume, new_type, 'provisioning')
-        if provisoing_diff:
-            new_extraspecs = self._get_extraspecs_dict(new_type['id'])
-            new_provisioning = self._get_extraspecs_value(
-                new_extraspecs, 'provisioning')
-            msg = _("The extraspec: %(provisioning)s is not valid.") % {
-                'provisioning': new_provisioning}
-            LOG.error(msg)
-            raise exception.InfortrendDriverException(err=msg)
+        if volume['host'] != host['host']:
+            if self._check_volume_attachment(volume):
+                LOG.warning(_LW(
+                    'Volume %(volume_id)s cannot be retyped '
+                    'during attachment.'), {
+                        'volume_id': volume['id']})
+                return False
 
-        LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
-            'volume_id': volume['id']})
+            if self._check_volume_has_snapshot(volume):
+                LOG.warning(_LW(
+                    'Volume %(volume_id)s cannot be retyped '
+                    'because it has snapshot.'), {
+                        'volume_id': volume['id']})
+                return False
 
-    def _diff_between_types(self, volume, new_type, key):
-        old_extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
-        new_extraspecs = self._get_extraspecs_dict(new_type['id'])
+            new_extraspecs = new_type['extra_specs']
+            rc, model_update = self.migrate_volume(
+                volume, host, new_extraspecs)
 
-        old_extraspec = self._get_extraspecs_value(old_extraspecs, key)
-        new_extraspec = self._get_extraspecs_value(new_extraspecs, key)
+            if rc:
+                LOG.info(_LI(
+                    'Retype Volume %(volume_id)s is done. '
+                    'and migrate to pool %(pool_id)s'), {
+                        'volume_id': volume['id'],
+                        'pool_id': host['capabilities']['pool_id']})
 
-        return new_extraspec != old_extraspec
+            return (rc, model_update)
+        else:
+            if ('infortrend_provisioning' in diff['extra_specs'] and
+                    (diff['extra_specs']['infortrend_provisioning'][0] !=
+                        diff['extra_specs']['infortrend_provisioning'][1])):
+
+                LOG.warning(_LW(
+                    'The provisioning: %(provisioning)s '
+                    'is not valid.'), {
+                        'provisioning':
+                            diff['extra_specs']['infortrend_provisioning'][1]})
+                return False
+
+            LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
+                'volume_id': volume['id']})
+            return True
 
     def update_migrated_volume(self, ctxt, volume, new_volume):
         """Return model update for migrated volume."""
