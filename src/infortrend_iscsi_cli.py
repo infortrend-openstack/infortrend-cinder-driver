@@ -221,3 +221,17 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
             'retype volume id=%(volume_id)s new_type id=%(type_id)s', {
                 'volume_id': volume['id'], 'type_id': new_type['id']})
         return self.common.retype(ctxt, volume, new_type, diff, host)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume):
+        """Return model update for migrated volume.
+
+        :param volume: The original volume that was migrated to this backend
+        :param new_volume: The migration volume object that was created on
+                           this backend as part of the migration process
+        :return model_update to update DB with any needed changes
+        """
+        LOG.debug(
+            'update migrated volume original volume id= %(volume_id)s '
+            'new volume id=%(new_volume_id)s', {
+                'volume_id': volume['id'], 'new_volume_id': new_volume['id']})
+        return self.common.update_migrated_volume(ctxt, volume, new_volume)

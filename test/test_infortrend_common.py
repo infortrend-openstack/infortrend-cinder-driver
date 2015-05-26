@@ -1547,12 +1547,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         src_volume = self.cli_data.test_volume
         dst_volume = copy.deepcopy(self.cli_data.test_dst_volume)
         test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                test_dst_part_id),
+            'provider_location': dst_volume['provider_location'],
         }
-        dst_volume['provider_location'] = test_model_update
 
         mock_commands = {
             'SetPartition': SUCCEED
@@ -1572,6 +1571,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_update_migrated_volume_rename_fail(self):
         src_volume = self.cli_data.test_volume
         dst_volume = self.cli_data.test_dst_volume
+        test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
 
         mock_commands = {
             'SetPartition': FAKE_ERROR_RETURN
