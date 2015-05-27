@@ -27,14 +27,15 @@ from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
+DEFAULT_RETRY_TIME = 5
+
 
 def retry_cli(func):
-
     def inner(self, *args, **kwargs):
         total_retry_time = self.cli_retry_time
 
         if total_retry_time is None:
-            total_retry_time = 5
+            total_retry_time = DEFAULT_RETRY_TIME
 
         retry_time = 0
         while retry_time < total_retry_time:
@@ -43,14 +44,14 @@ def retry_cli(func):
 
             if rc == 0:
                 break
-            else:
-                LOG.error(_LE(
-                    'Retry %(retry)s time: %(method)s Fail '
-                    '%(rc)s: %(reason)s'), {
-                        'retry': retry_time,
-                        'method': self.__class__.__name__,
-                        'rc': rc,
-                        'reason': out})
+
+            LOG.error(_LE(
+                'Retry %(retry)s time: %(method)s Fail '
+                '%(rc)s: %(reason)s'), {
+                    'retry': retry_time,
+                    'method': self.__class__.__name__,
+                    'rc': rc,
+                    'reason': out})
         LOG.debug(
             'Method: %(method)s Return Code: %(rc)s '
             'Output: %(out)s', {
@@ -96,7 +97,6 @@ def table_to_dict(table):
 
 
 def content_lines_to_dict(content_lines):
-
     result = []
     resultEntry = {}
 
@@ -141,15 +141,13 @@ class ExecuteCommand(BaseCommand):
         try:
             result, err = utils.execute(*args, **kwargs)
         except processutils.ProcessExecutionError as pe:
-            rc = -2
+            rc = pe.exit_code
             result = pe.stdout
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
                 'Error on execute command. '
                 'Error code: %(exit_code)d Error msg: %(result)s'), {
                     'exit_code': pe.exit_code, 'result': result})
-        except Exception:
-            rc = -2
         return rc, result
 
 
@@ -173,7 +171,7 @@ class CLIBaseCommand(BaseCommand):
         self.parameters = parameters
         parameters_line = ' '.join(parameters)
 
-        if self.password != '':
+        if self.password:
             parameters_line = 'password=%s %s' % (
                 self.password, parameters_line)
 
@@ -216,22 +214,22 @@ class CLIBaseCommand(BaseCommand):
         :returns: execute result
         """
         command_line = self._generate_command(args)
+        LOG.debug('Execute %(command)s', {'command': command_line})
         rc = 0
         result = None
         try:
             content = self._execute(command_line)
             rc, result = self._parser(content)
         except processutils.ProcessExecutionError as pe:
-            rc = -2
+            rc = -2  # prevent confusing with cli real rc
             result = pe.stdout
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
-                'Error on execute command. '
+                'Error on execute %(command)s '
                 'Error code: %(exit_code)d Error msg: %(result)s'), {
-                    'exit_code': pe.exit_code, 'result': result})
-        except Exception:
-            rc = -2
-
+                    'command': command_line,
+                    'exit_code': pe.exit_code,
+                    'result': result})
         return rc, result
 
     def _execute(self, command_line):
@@ -700,8 +698,7 @@ class ShowLicense(ShowCommand):
 
 class ShowReplica(ShowCommand):
 
-    """Show information of all current replication jobs,
-    or details for specific replication volume pairs.
+    """Show information of all replication jobs or specific job
 
     show replica [id={volume-pair-IDs}] [-l] id={volume-pair-IDs}
     """

@@ -63,21 +63,22 @@ class InfortrendCLITestData(object):
     # cinder entry
     test_provider_location = [(
         'system_id^%s@partition_id^%s') % (
-            int(fake_system_id[0], 16), fake_partition_id[0])
+            int(fake_system_id[0], 16), fake_partition_id[0]),
     ]
 
     test_volume = {
         'id': '5aa119a8-d25b-45a7-8d1b-88e127885635',
         'size': 1,
         'name': 'Part-1',
-        'host': 'infortrend-server1@backend_1',
+        'host': 'infortrend-server1@backend_1#LV-1',
         'name_id': '5aa119a8-d25b-45a7-8d1b-88e127885635',
         'provider_auth': None,
         'project_id': 'project',
         'display_name': None,
         'display_description': 'Part-1',
         'volume_type_id': None,
-        'provider_location': test_provider_location[0]
+        'provider_location': test_provider_location[0],
+        'volume_attachment': [],
     }
 
     test_dst_volume = {
@@ -91,12 +92,13 @@ class InfortrendCLITestData(object):
         'display_name': None,
         'display_description': 'Part-1-Copy',
         'volume_type_id': None,
-        'provider_location': ''
+        'provider_location': '',
+        'volume_attachment': [],
     }
 
     test_ref_volume = {
         'source-id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
-        'size': 1
+        'size': 1,
     }
 
     test_snapshot = {
@@ -109,14 +111,14 @@ class InfortrendCLITestData(object):
         'display_name': None,
         'display_description': 'SI-1',
         'volume_type_id': None,
-        'provider_location': fake_snapshot_id[0]
+        'provider_location': fake_snapshot_id[0],
     }
 
     test_iqn = [(
         'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
             int(fake_system_id[0], 16), 1, 0, 1), (
         'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 1, 0, 1)
+            int(fake_system_id[0], 16), 1, 0, 1),
     ]
 
     test_iscsi_properties = {
@@ -126,8 +128,8 @@ class InfortrendCLITestData(object):
             'target_portal': '%s:3260' % fake_data_port_ip[2],
             'target_iqn': test_iqn[0],
             'target_lun': fake_lun_map[0],
-            'volume_id': test_volume['id']
-        }
+            'volume_id': test_volume['id'],
+        },
     }
 
     test_iscsi_properties_with_mcs = {
@@ -137,13 +139,13 @@ class InfortrendCLITestData(object):
             'target_portal': '%s:3260' % fake_data_port_ip[0],
             'target_iqn': test_iqn[1],
             'target_lun': fake_lun_map[2],
-            'volume_id': test_volume['id']
-        }
+            'volume_id': test_volume['id'],
+        },
     }
 
     test_iqn_empty_map = [(
         'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 0, 0, 1)
+            int(fake_system_id[0], 16), 0, 0, 1),
     ]
 
     test_iscsi_properties_empty_map = {
@@ -153,13 +155,13 @@ class InfortrendCLITestData(object):
             'target_portal': '%s:3260' % fake_data_port_ip[0],
             'target_iqn': test_iqn_empty_map[0],
             'target_lun': fake_lun_map[0],
-            'volume_id': test_volume['id']
-        }
+            'volume_id': test_volume['id'],
+        },
     }
 
     test_initiator_target_map = {
         fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
+        fake_initiator_wwpns[1]: fake_target_wwpns[0:2],
     }
 
     test_fc_properties = {
@@ -169,13 +171,13 @@ class InfortrendCLITestData(object):
             'target_lun': fake_lun_map[0],
             'target_wwn': fake_target_wwpns[0:2],
             'access_mode': 'rw',
-            'initiator_target_map': test_initiator_target_map
-        }
+            'initiator_target_map': test_initiator_target_map,
+        },
     }
 
     test_initiator_target_map_specific_channel = {
         fake_initiator_wwpns[0]: [fake_target_wwpns[1]],
-        fake_initiator_wwpns[1]: [fake_target_wwpns[1]]
+        fake_initiator_wwpns[1]: [fake_target_wwpns[1]],
     }
 
     test_fc_properties_with_specific_channel = {
@@ -185,20 +187,20 @@ class InfortrendCLITestData(object):
             'target_lun': fake_lun_map[0],
             'target_wwn': [fake_target_wwpns[1]],
             'access_mode': 'rw',
-            'initiator_target_map': test_initiator_target_map_specific_channel
-        }
+            'initiator_target_map': test_initiator_target_map_specific_channel,
+        },
     }
 
     test_target_wwpns_map_multipath_r_model = [
         fake_target_wwpns[0],
         fake_target_wwpns[2],
         fake_target_wwpns[1],
-        fake_target_wwpns[3]
+        fake_target_wwpns[3],
     ]
 
     test_initiator_target_map_multipath_r_model = {
         fake_initiator_wwpns[0]: test_target_wwpns_map_multipath_r_model[:],
-        fake_initiator_wwpns[1]: test_target_wwpns_map_multipath_r_model[:]
+        fake_initiator_wwpns[1]: test_target_wwpns_map_multipath_r_model[:],
     }
 
     test_fc_properties_multipath_r_model = {
@@ -208,13 +210,14 @@ class InfortrendCLITestData(object):
             'target_lun': fake_lun_map[0],
             'target_wwn': test_target_wwpns_map_multipath_r_model[:],
             'access_mode': 'rw',
-            'initiator_target_map': test_initiator_target_map_multipath_r_model
-        }
+            'initiator_target_map':
+                test_initiator_target_map_multipath_r_model,
+        },
     }
 
     test_initiator_target_map_zoning = {
         fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0:2]
+        fake_initiator_wwpns[1]: fake_target_wwpns[0:2],
     }
 
     test_fc_properties_zoning = {
@@ -224,13 +227,13 @@ class InfortrendCLITestData(object):
             'target_lun': fake_lun_map[0],
             'target_wwn': fake_target_wwpns[0:2],
             'access_mode': 'rw',
-            'initiator_target_map': test_initiator_target_map_zoning
-        }
+            'initiator_target_map': test_initiator_target_map_zoning,
+        },
     }
 
     test_initiator_target_map_zoning_r_model = {
         fake_initiator_wwpns[0]: fake_target_wwpns[1:3],
-        fake_initiator_wwpns[1]: fake_target_wwpns[1:3]
+        fake_initiator_wwpns[1]: fake_target_wwpns[1:3],
     }
 
     test_fc_properties_zoning_r_model = {
@@ -240,8 +243,8 @@ class InfortrendCLITestData(object):
             'target_lun': fake_lun_map[0],
             'target_wwn': fake_target_wwpns[1:3],
             'access_mode': 'rw',
-            'initiator_target_map': test_initiator_target_map_zoning_r_model
-        }
+            'initiator_target_map': test_initiator_target_map_zoning_r_model,
+        },
     }
 
     test_connector = {
@@ -249,7 +252,7 @@ class InfortrendCLITestData(object):
         'initiator': fake_initiator_iqn[0],
         'wwpns': fake_initiator_wwpns,
         'wwnns': fake_initiator_wwnns,
-        'host': 'infortrend-server1@backend_1'
+        'host': 'infortrend-server1@backend_1',
     }
 
     fake_pool = {
@@ -259,21 +262,21 @@ class InfortrendCLITestData(object):
         'free_capacity_gb': 1000,
         'reserved_percentage': 0,
         'QoS_support': False,
-        'thin_provisioning_support': False
+        'thin_provisioning_support': False,
     }
 
     test_pools = [{
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[0],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
         'max_over_subscription_ratio': 20.0,
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
-            round(857982.0 / 1024) - round(841978.0 / 1024),
+            round((857982.0 - 841978.0) / 1024, 2),
         'infortrend_provisioning': 'full',
     }]
 
@@ -282,12 +285,12 @@ class InfortrendCLITestData(object):
         'vendor_name': 'Infortrend',
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
-        'pools': test_pools
+        'pools': test_pools,
     }
 
     test_host = {
         'host': 'infortrend-server1@backend_1',
-        'capabilities': test_volume_states
+        'capabilities': test_volume_states,
     }
 
     test_migrate_volume_states = {
@@ -297,40 +300,40 @@ class InfortrendCLITestData(object):
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
-        'infortrend_provisioning': 'full'
+        'infortrend_provisioning': 'full',
     }
 
     test_migrate_host = {
-        'host': 'infortrend-server1@backend_1',
-        'capabilities': test_migrate_volume_states
+        'host': 'infortrend-server1@backend_1#LV-2',
+        'capabilities': test_migrate_volume_states,
     }
 
-    test_migrate_func_volume_states = {
+    test_migrate_volume_states_2 = {
         'volume_backend_name': 'infortrend_backend_1',
         'vendor_name': 'Infortrend',
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
-        'total_capacity_gb': round(857982.0 / 1024),
-        'free_capacity_gb': round(841978.0 / 1024),
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
-        'infortrend_provisioning': 'full'
+        'infortrend_provisioning': 'full',
     }
 
-    test_migrate_func_host = {
-        'host': 'infortrend-server1@backend_1',
-        'capabilities': test_migrate_func_volume_states
+    test_migrate_host_2 = {
+        'host': 'infortrend-server1@backend_1#LV-1',
+        'capabilities': test_migrate_volume_states_2,
     }
 
     fake_host = {
         'host': 'infortrend-server1@backend_1',
-        'capabilities': {}
+        'capabilities': {},
     }
 
     fake_volume_id = [test_volume['id'], test_dst_volume['id']]
@@ -338,16 +341,26 @@ class InfortrendCLITestData(object):
     fake_lookup_map = {
         '12345678': {
             'initiator_port_wwn_list': fake_initiator_wwpns[:],
-            'target_port_wwn_list': fake_target_wwpns[0:2]
-        }
+            'target_port_wwn_list': fake_target_wwpns[0:2],
+        },
     }
 
     fake_lookup_map_r_model = {
         '12345678': {
             'initiator_port_wwn_list': fake_initiator_wwpns[:],
-            'target_port_wwn_list': fake_target_wwpns[1:3]
-        }
+            'target_port_wwn_list': fake_target_wwpns[1:3],
+        },
     }
+
+    test_new_type = {
+        'name': 'type0',
+        'qos_specs_id': None,
+        'deleted': False,
+        'extra_specs': {'infortrend_provisioning': 'thin'},
+        'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+    }
+
+    test_diff = {'extra_specs': {'infortrend_provisioning': ('full', 'thin')}}
 
     def get_fake_cli_failed(self):
         return """
@@ -380,14 +393,14 @@ Return: 0x0000
         return (0, [])
 
     def get_test_show_snapshot(self, partition_id=None, snapshot_id=None):
-        if partition_id is not None and snapshot_id is not None:
+        if partition_id and snapshot_id:
             return (0, [{
                 'Map': 'No',
                 'Partition-ID': partition_id,
                 'SI-ID': snapshot_id,
                 'Name': '---',
                 'Activated-time': 'Thu, Jan 09 01:33:11 2020',
-                'Index': '1'
+                'Index': '1',
             }])
         else:
             return (0, [{
@@ -396,14 +409,14 @@ Return: 0x0000
                 'SI-ID': self.fake_snapshot_id[0],
                 'Name': '---',
                 'Activated-time': 'Thu, Jan 09 01:33:11 2020',
-                'Index': '1'
+                'Index': '1',
             }, {
                 'Map': 'No',
                 'Partition-ID': self.fake_partition_id[0],
                 'SI-ID': self.fake_snapshot_id[1],
                 'Name': '---',
                 'Activated-time': 'Thu, Jan 09 01:35:50 2020',
-                'Index': '2'
+                'Index': '2',
             }])
 
     def get_fake_show_snapshot(self):
@@ -438,49 +451,49 @@ Return: 0x0000
             'ID': '1',
             'IPv4': self.fake_data_port_ip[0],
             'Mode': 'Disabled',
-            'IPv6': '---'
+            'IPv6': '---',
         }, {
             'Slot': 'slotB',
             'MAC': '10D02390DEEC',
             'ID': '1',
             'IPv4': self.fake_data_port_ip[1],
             'Mode': 'Disabled',
-            'IPv6': '---'
+            'IPv6': '---',
         }, {
             'Slot': 'slotA',
             'MAC': '10D02340DEEC',
             'ID': '2',
             'IPv4': self.fake_data_port_ip[2],
             'Mode': 'Disabled',
-            'IPv6': '---'
+            'IPv6': '---',
         }, {
             'Slot': 'slotB',
             'MAC': '10D02350DEEC',
             'ID': '2',
             'IPv4': self.fake_data_port_ip[3],
             'Mode': 'Disabled',
-            'IPv6': '---'
+            'IPv6': '---',
         }, {
             'Slot': 'slotA',
             'MAC': '10D02310DEEC',
             'ID': '4',
             'IPv4': self.fake_data_port_ip[4],
             'Mode': 'Disabled',
-            'IPv6': '---'
+            'IPv6': '---',
         }, {
             'Slot': 'slotB',
             'MAC': '10D02320DEEC',
             'ID': '4',
             'IPv4': self.fake_data_port_ip[5],
             'Mode': 'Disabled',
-            'IPv6': '---'
+            'IPv6': '---',
         }, {
             'Slot': '---',
             'MAC': '10D023077124',
             'ID': '32',
             'IPv4': '172.27.1.1',
             'Mode': 'Disabled',
-            'IPv6': '---'
+            'IPv6': '---',
         }])
 
     def get_fake_show_net(self):
@@ -517,7 +530,7 @@ Return: 0x0000
             'Gateway': '---',
             'IPv6-mode': 'Disabled',
             'MAC': '00D023877124',
-            'Prefix-length': '---'
+            'Prefix-length': '---',
         }, {
             'Slot': '---',
             'IPv4-mode': 'DHCP',
@@ -529,7 +542,7 @@ Return: 0x0000
             'Gateway': '172.27.127.254',
             'IPv6-mode': 'Disabled',
             'MAC': '00D023077124',
-            'Prefix-length': '---'
+            'Prefix-length': '---',
         }])
 
     def get_fake_show_net_detail(self):
@@ -573,23 +586,23 @@ Return: 0x0000
             'Name': self.fake_volume_id[0].replace('-', ''),
             'Size': '200',
             'Min-reserve': '200',
-            'LV-ID': self.fake_lv_id[0]
+            'LV-ID': self.fake_lv_id[0],
         }, {
             'ID': self.fake_partition_id[1],
             'Used': '200',
             'Name': self.fake_volume_id[1].replace('-', ''),
             'Size': '200',
             'Min-reserve': '200',
-            'LV-ID': self.fake_lv_id[0]
+            'LV-ID': self.fake_lv_id[0],
         }]
-        if volume_id is not None and pool_id is not None:
+        if volume_id and pool_id:
             result.append({
                 'ID': self.fake_partition_id[2],
                 'Used': '200',
                 'Name': volume_id,
                 'Size': '200',
                 'Min-reserve': '200',
-                'LV-ID': pool_id
+                'LV-ID': pool_id,
             })
         return (0, result)
 
@@ -628,7 +641,7 @@ Return: 0x0000
             'Name': self.fake_volume_id[0].replace('-', ''),
             'Mapped': mapped,
             'Total-filled-block': '100',
-            'Creation-time': 'Wed, Jan 08 20:23:23 2020'
+            'Creation-time': 'Wed, Jan 08 20:23:23 2020',
         }]
         return (0, result)
 
@@ -646,7 +659,7 @@ Return: 0x0000
             'Name': self.fake_volume_id[0].replace('-', ''),
             'Mapped': 'true',
             'Total-filled-block': '100',
-            'Creation-time': 'Wed, Jan 08 20:23:23 2020'
+            'Creation-time': 'Wed, Jan 08 20:23:23 2020',
         }, {
             'LV-ID': self.fake_lv_id[0],
             'Mapping': '---',
@@ -660,9 +673,9 @@ Return: 0x0000
             'Name': self.fake_volume_id[1].replace('-', ''),
             'Mapped': 'false',
             'Total-filled-block': '100',
-            'Creation-time': 'Sat, Jan 11 22:18:40 2020'
+            'Creation-time': 'Sat, Jan 11 22:18:40 2020',
         }]
-        if volume_id is not None and pool_id is not None:
+        if volume_id and pool_id:
             result.extend([{
                 'LV-ID': pool_id,
                 'Mapping': '---',
@@ -676,7 +689,7 @@ Return: 0x0000
                 'Name': volume_id,
                 'Mapped': 'false',
                 'Total-filled-block': '100',
-                'Creation-time': 'Sat, Jan 15 22:18:40 2020'
+                'Creation-time': 'Sat, Jan 15 22:18:40 2020',
             }, {
                 'LV-ID': '987654321',
                 'Mapping': '---',
@@ -690,7 +703,7 @@ Return: 0x0000
                 'Name': volume_id,
                 'Mapped': 'false',
                 'Total-filled-block': '100',
-                'Creation-time': 'Sat, Jan 15 22:18:40 2020'
+                'Creation-time': 'Sat, Jan 15 22:18:40 2020',
             }])
         return (0, result)
 
@@ -767,7 +780,7 @@ Return: 0x0000
             'Sync-commence-time': '01/11/2020 22:20 PM',
             'Split-time': '01/11/2020 22:20 PM',
             'Completed-time': '01/11/2020 22:21 PM',
-            'Description': '---'
+            'Description': '---',
         }]
         return (0, result)
 
@@ -800,7 +813,7 @@ Return: 0x0000
             'Sync-commence-time': '01/11/2020 22:20 PM',
             'Split-time': '01/11/2020 22:20 PM',
             'Completed-time': '01/11/2020 22:21 PM',
-            'Description': '---'
+            'Description': '---',
         }]
         return (0, result)
 
@@ -833,7 +846,7 @@ Return: 0x0000
             'Sync-commence-time': '01/11/2020 22:20 PM',
             'Split-time': '01/11/2020 22:20 PM',
             'Completed-time': '01/11/2020 22:21 PM',
-            'Description': '---'
+            'Description': '---',
         }]
         return (0, result)
 
@@ -866,7 +879,7 @@ Return: 0x0000
             'Sync-commence-time': '01/11/2020 22:20 PM',
             'Split-time': '01/11/2020 22:20 PM',
             'Completed-time': '01/11/2020 22:21 PM',
-            'Description': '---'
+            'Description': '---',
         }, {
             'Pair-ID': self.fake_pair_id[0],
             'Name': 'Cinder-Migrate',
@@ -895,7 +908,7 @@ Return: 0x0000
             'Sync-commence-time': '01/11/2020 22:20 PM',
             'Split-time': '01/11/2020 22:20 PM',
             'Completed-time': '01/11/2020 22:21 PM',
-            'Description': '---'
+            'Description': '---',
         }, {
             'Pair-ID': self.fake_pair_id[1],
             'Name': 'Cinder-Migrate',
@@ -924,7 +937,7 @@ Return: 0x0000
             'Sync-commence-time': '01/11/2020 22:20 PM',
             'Split-time': '01/11/2020 22:20 PM',
             'Completed-time': '01/11/2020 22:21 PM',
-            'Description': '---'
+            'Description': '---',
         }]
         return (0, result)
 
@@ -1044,7 +1057,7 @@ Return: 0x0000
             'ID': self.fake_lv_id[0],
             'Progress': '---',
             'Size': '857982 MB',
-            'Status': 'On-line'
+            'Status': 'On-line',
         }])
 
     def get_fake_show_lv(self):
@@ -1071,7 +1084,7 @@ Return: 0x0000
             'Name': 'LV-1',
             'Size': '857982 MB',
             'LD-amount': '1',
-            'Progress': '---'
+            'Progress': '---',
         }])
 
     def get_fake_show_lv_detail(self):
@@ -1157,7 +1170,7 @@ Return: 0x0000
             'JBOD-ID': 'N/A',
             'Capacity': '1.22 TB',
             'Model': self.fake_model[0],
-            'Service-ID': '8445676'
+            'Service-ID': '8445676',
         }])
 
     def get_fake_show_device(self):
@@ -1185,7 +1198,7 @@ Return: 0x0000
             'Width': '---',
             'Ch': '0',
             'MCS': 'N/A',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '0',
             'defClock': 'Auto',
@@ -1194,7 +1207,7 @@ Return: 0x0000
             'Width': 'iSCSI',
             'Ch': '1',
             'MCS': '0',
-            'curClock': '---'
+            'curClock': '---',
         }])
 
     def get_test_show_channel_with_mcs(self):
@@ -1206,7 +1219,7 @@ Return: 0x0000
             'Width': '---',
             'Ch': '0',
             'MCS': 'N/A',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '0',
             'defClock': 'Auto',
@@ -1215,7 +1228,7 @@ Return: 0x0000
             'Width': 'iSCSI',
             'Ch': '1',
             'MCS': '1',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '0',
             'defClock': 'Auto',
@@ -1224,7 +1237,7 @@ Return: 0x0000
             'Width': 'iSCSI',
             'Ch': '2',
             'MCS': '1',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '---',
             'defClock': '6.0 Gbps',
@@ -1233,7 +1246,7 @@ Return: 0x0000
             'Width': 'SAS',
             'Ch': '3',
             'MCS': 'N/A',
-            'curClock': '6.0 Gbps'
+            'curClock': '6.0 Gbps',
         }, {
             'ID': '0',
             'defClock': 'Auto',
@@ -1242,7 +1255,7 @@ Return: 0x0000
             'Width': 'iSCSI',
             'Ch': '4',
             'MCS': '2',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '112',
             'defClock': 'Auto',
@@ -1251,7 +1264,7 @@ Return: 0x0000
             'Width': '---',
             'Ch': '5',
             'MCS': 'N/A',
-            'curClock': '---'
+            'curClock': '---',
         }])
 
     def get_test_show_channel(self):
@@ -1263,7 +1276,7 @@ Return: 0x0000
             'Width': '---',
             'Ch': '0',
             'MCS': 'N/A',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '0',
             'defClock': 'Auto',
@@ -1272,7 +1285,7 @@ Return: 0x0000
             'Width': 'iSCSI',
             'Ch': '1',
             'MCS': '0',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '0',
             'defClock': 'Auto',
@@ -1281,7 +1294,7 @@ Return: 0x0000
             'Width': 'iSCSI',
             'Ch': '2',
             'MCS': '1',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '---',
             'defClock': '6.0 Gbps',
@@ -1290,7 +1303,7 @@ Return: 0x0000
             'Width': 'SAS',
             'Ch': '3',
             'MCS': 'N/A',
-            'curClock': '6.0 Gbps'
+            'curClock': '6.0 Gbps',
         }, {
             'ID': '0',
             'defClock': 'Auto',
@@ -1299,7 +1312,7 @@ Return: 0x0000
             'Width': 'iSCSI',
             'Ch': '4',
             'MCS': '2',
-            'curClock': '---'
+            'curClock': '---',
         }, {
             'ID': '112',
             'defClock': 'Auto',
@@ -1308,7 +1321,7 @@ Return: 0x0000
             'Width': '---',
             'Ch': '5',
             'MCS': 'N/A',
-            'curClock': '---'
+            'curClock': '---',
         }])
 
     def get_fake_show_channel(self):
@@ -1340,7 +1353,7 @@ Return: 0x0000
             'BID': '113',
             'curClock': '---',
             'Width': '---',
-            'Type': 'FIBRE'
+            'Type': 'FIBRE',
         }, {
             'Mode': 'Host',
             'AID': '0',
@@ -1350,7 +1363,7 @@ Return: 0x0000
             'BID': '1',
             'curClock': '---',
             'Width': 'iSCSI',
-            'Type': 'NETWORK'
+            'Type': 'NETWORK',
         }, {
             'Mode': 'Host',
             'AID': '0',
@@ -1360,7 +1373,7 @@ Return: 0x0000
             'BID': '1',
             'curClock': '---',
             'Width': 'iSCSI',
-            'Type': 'NETWORK'
+            'Type': 'NETWORK',
         }, {
             'Mode': 'Drive',
             'AID': '---',
@@ -1370,7 +1383,7 @@ Return: 0x0000
             'BID': '---',
             'curClock': '6.0 Gbps',
             'Width': 'SAS',
-            'Type': 'SAS'
+            'Type': 'SAS',
         }, {
             'Mode': 'Host',
             'AID': '0',
@@ -1380,7 +1393,7 @@ Return: 0x0000
             'BID': '1',
             'curClock': '---',
             'Width': 'iSCSI',
-            'Type': 'NETWORK'
+            'Type': 'NETWORK',
         }, {
             'Mode': 'Host',
             'AID': '112',
@@ -1390,7 +1403,7 @@ Return: 0x0000
             'BID': '113',
             'curClock': '---',
             'Width': '---',
-            'Type': 'FIBRE'
+            'Type': 'FIBRE',
         }])
 
     def get_fake_show_channel_r_model(self):
@@ -1413,7 +1426,7 @@ Return: 0x0000
         return msg
 
     def get_test_show_map(self, partition_id=None, channel_id=None):
-        if partition_id is not None and channel_id is not None:
+        if partition_id and channel_id:
             return (0, [{
                 'Ch': channel_id,
                 'LUN': '0',
@@ -1421,7 +1434,7 @@ Return: 0x0000
                 'Host-ID': '---',
                 'Target': '0',
                 'Name': 'Part-1',
-                'ID': partition_id
+                'ID': partition_id,
             }, {
                 'Ch': channel_id,
                 'LUN': '1',
@@ -1429,7 +1442,7 @@ Return: 0x0000
                 'Host-ID': '---',
                 'Target': '0',
                 'Name': 'Part-1',
-                'ID': partition_id
+                'ID': partition_id,
             }])
         else:
             return (0, [{
@@ -1439,7 +1452,7 @@ Return: 0x0000
                 'Host-ID': '---',
                 'Target': '0',
                 'Name': 'Part-1',
-                'ID': self.fake_partition_id[0]
+                'ID': self.fake_partition_id[0],
             }, {
                 'Ch': '1',
                 'LUN': '1',
@@ -1447,7 +1460,7 @@ Return: 0x0000
                 'Host-ID': '---',
                 'Target': '0',
                 'Name': 'Part-1',
-                'ID': self.fake_partition_id[0]
+                'ID': self.fake_partition_id[0],
             }, {
                 'Ch': '4',
                 'LUN': '0',
@@ -1455,7 +1468,7 @@ Return: 0x0000
                 'Host-ID': '---',
                 'Target': '0',
                 'Name': 'Part-1',
-                'ID': self.fake_partition_id[0]
+                'ID': self.fake_partition_id[0],
             }])
 
     def get_test_show_map_multimap(self):
@@ -1466,7 +1479,7 @@ Return: 0x0000
             'Host-ID': '---',
             'Target': '0',
             'Name': 'Part-1',
-            'ID': self.fake_partition_id[0]
+            'ID': self.fake_partition_id[0],
         }, {
             'Ch': '1',
             'LUN': '1',
@@ -1474,7 +1487,7 @@ Return: 0x0000
             'Host-ID': '---',
             'Target': '0',
             'Name': 'Part-1',
-            'ID': self.fake_partition_id[0]
+            'ID': self.fake_partition_id[0],
         }, {
             'Ch': '4',
             'LUN': '0',
@@ -1482,7 +1495,7 @@ Return: 0x0000
             'Host-ID': '210000E08B0AADE1',
             'Target': '0',
             'Name': 'Part-1',
-            'ID': self.fake_partition_id[0]
+            'ID': self.fake_partition_id[0],
         }, {
             'Ch': '4',
             'LUN': '0',
@@ -1490,7 +1503,7 @@ Return: 0x0000
             'Host-ID': '210000E08B0AADE2',
             'Target': '0',
             'Name': 'Part-1',
-            'ID': self.fake_partition_id[0]
+            'ID': self.fake_partition_id[0],
         }])
 
     def get_fake_show_map(self):
@@ -1515,51 +1528,51 @@ Return: 0x0000
         return (0, {
             'Local Volume Copy': {
                 'Support': False,
-                'Amount': '8/256'
+                'Amount': '8/256',
             },
             'Synchronous Remote Mirror': {
                 'Support': False,
-                'Amount': '8/256'
+                'Amount': '8/256',
             },
             'Snapshot': {
                 'Support': False,
-                'Amount': '1024/16384'
+                'Amount': '1024/16384',
             },
             'Self-Encryption Drives': {
                 'Support': False,
-                'Amount': '---'
+                'Amount': '---',
             },
             'Compression': {
                 'Support': False,
-                'Amount': '---'
+                'Amount': '---',
             },
             'Local volume Mirror': {
                 'Support': False,
-                'Amount': '8/256'
+                'Amount': '8/256',
             },
             'Storage Tiering': {
                 'Support': False,
-                'Amount': '---'
+                'Amount': '---',
             },
             'Asynchronous Remote Mirror': {
                 'Support': False,
-                'Amount': '8/256'
+                'Amount': '8/256',
             },
             'Scale-out': {
                 'Support': False,
-                'Amount': 'Not Support'
+                'Amount': 'Not Support',
             },
             'Thin Provisioning': {
                 'Support': False,
-                'Amount': '---'
+                'Amount': '---',
             },
             'Max JBOD': {
                 'Support': False,
-                'Amount': '15'
+                'Amount': '15',
             },
             'EonPath': {
                 'Support': False,
-                'Amount': '---'
+                'Amount': '---',
             }
         })
 
@@ -1593,12 +1606,12 @@ Return: 0x0000
             'ID': 'ID:112',
             'WWPN': self.fake_target_wwpns[0],
             'CH': '0',
-            'WWNN': self.fake_target_wwnns[0]
+            'WWNN': self.fake_target_wwnns[0],
         }, {
             'ID': 'ID:112',
             'WWPN': self.fake_target_wwpns[1],
             'CH': '5',
-            'WWNN': self.fake_target_wwnns[0]
+            'WWNN': self.fake_target_wwnns[0],
         }])
 
     def get_test_show_wwn(self):
@@ -1606,22 +1619,22 @@ Return: 0x0000
             'ID': 'AID:112',
             'WWPN': self.fake_target_wwpns[0],
             'CH': '0',
-            'WWNN': self.fake_target_wwnns[0]
+            'WWNN': self.fake_target_wwnns[0],
         }, {
             'ID': 'BID:113',
             'WWPN': self.fake_target_wwpns[2],
             'CH': '0',
-            'WWNN': self.fake_target_wwnns[1]
+            'WWNN': self.fake_target_wwnns[1],
         }, {
             'ID': 'AID:112',
             'WWPN': self.fake_target_wwpns[1],
             'CH': '5',
-            'WWNN': self.fake_target_wwnns[0]
+            'WWNN': self.fake_target_wwnns[0],
         }, {
             'ID': 'BID:113',
             'WWPN': self.fake_target_wwpns[3],
             'CH': '5',
-            'WWNN': self.fake_target_wwnns[1]
+            'WWNN': self.fake_target_wwnns[1],
         }])
 
     def get_fake_show_wwn(self):
@@ -1654,7 +1667,7 @@ Return: 0x0000
             'Target': '---',
             'Target-Password': '---',
             'IP': '0.0.0.0',
-            'Mask': '0.0.0.0'
+            'Mask': '0.0.0.0',
         }])
 
     def get_fake_show_iqn(self):
@@ -1728,7 +1741,7 @@ class InfortrendCLITestCase(test.TestCase):
             'path': '',
             'password': '',
             'ip': '',
-            'cli_retry_time': 1
+            'cli_retry_time': 1,
         }
         cli = cli(cli_conf)
 
@@ -1755,7 +1768,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_succeed)
 
         rc, out = test_command.execute()
-        assert(rc == 0)
+        self.assertEqual(0, rc)
 
     def _test_command_failed(self, command):
 
@@ -1763,7 +1776,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_set(command, fake_cli_failed)
 
         rc, out = test_command.execute()
-        assert(rc == int('0x000c', 16))
+        self.assertEqual(int('0x000c', 16), rc)
 
     def _test_command_failed_retry_succeed(self, log_error, command):
 
@@ -1775,25 +1788,25 @@ class InfortrendCLITestCase(test.TestCase):
         fake_result_list = [
             self.cli_data.get_fake_cli_failed(),
             self.cli_data.get_fake_cli_failed_with_network(),
-            self.cli_data.get_fake_cli_succeed()
+            self.cli_data.get_fake_cli_succeed(),
         ]
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        assert(rc == 0)
+        self.assertEqual(0, rc)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
                 'retry': 1,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000c', 16),
-                'reason': 'No selected device'
+                'reason': 'No selected device',
             }),
             mock.call(LOG_ERROR_STR, {
                 'retry': 2,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000b', 16),
-                'reason': 'No network'
+                'reason': 'No network',
             })
         ]
         log_error.assert_has_calls(expect_log_error)
@@ -1810,43 +1823,44 @@ class InfortrendCLITestCase(test.TestCase):
             self.cli_data.get_fake_cli_failed_with_network(),
             self.cli_data.get_fake_cli_failed_with_network(),
             self.cli_data.get_fake_cli_failed(),
-            self.cli_data.get_fake_cli_failed_with_network()
+            self.cli_data.get_fake_cli_failed_with_network(),
         ]
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        assert(rc == int('0x000b', 16) and out == 'No network')
+        self.assertEqual(int('0x000b', 16), rc)
+        self.assertEqual('No network', out)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
                 'retry': 1,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000c', 16),
-                'reason': 'No selected device'
+                'reason': 'No selected device',
             }),
             mock.call(LOG_ERROR_STR, {
                 'retry': 2,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000b', 16),
-                'reason': 'No network'
+                'reason': 'No network',
             }),
             mock.call(LOG_ERROR_STR, {
                 'retry': 3,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000b', 16),
-                'reason': 'No network'
+                'reason': 'No network',
             }),
             mock.call(LOG_ERROR_STR, {
                 'retry': 4,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000c', 16),
-                'reason': 'No selected device'
+                'reason': 'No selected device',
             }),
             mock.call(LOG_ERROR_STR, {
                 'retry': 5,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000b', 16),
-                'reason': 'No network'
+                'reason': 'No network',
             })
         ]
         log_error.assert_has_calls(expect_log_error)
@@ -1857,7 +1871,7 @@ class InfortrendCLITestCase(test.TestCase):
 
         rc, out = test_command.execute(*params)
 
-        assert(rc == test_data[0])
+        self.assertEqual(test_data[0], rc)
 
         if isinstance(out, list):
             for i in range(len(test_data[1])):

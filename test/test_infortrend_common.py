@@ -14,7 +14,6 @@
 #    under the License.
 
 import copy
-import re
 
 import mock
 
@@ -76,14 +75,12 @@ class InfortrendTestCass(test.TestCase):
     def _mock_show_lv_for_migrate(self, *args, **kwargs):
         if 'tier' in args:
             return self.cli_data.get_test_show_lv_tier_for_migration()
-        else:
-            return self.cli_data.get_test_show_lv()
+        return self.cli_data.get_test_show_lv()
 
     def _mock_show_lv(self, *args, **kwargs):
         if 'tier' in args:
             return self.cli_data.get_test_show_lv_tier()
-        else:
-            return self.cli_data.get_test_show_lv()
+        return self.cli_data.get_test_show_lv()
 
     def _assert_cli_has_calls(self, expect_cli_cmd):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
@@ -120,7 +117,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
         }
         self._driver_setup(mock_commands)
 
@@ -141,7 +138,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -161,7 +158,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn()
+            'ShowWWN': self.cli_data.get_test_show_wwn(),
         }
         self._driver_setup(mock_commands)
 
@@ -180,16 +177,15 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': FAKE_ERROR_RETURN
+            'ShowWWN': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.initialize_connection,
             test_volume,
             test_connector)
-        self.assertTrue(re.match(r'.*Failed to get wwn info.*', ex.msg))
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_initialize_connection_with_zoning(self):
@@ -205,7 +201,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model()
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
         }
         self._driver_setup(mock_commands)
         self.driver.fc_lookup_service = mock.Mock()
@@ -230,7 +226,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             mock.call('CreateMap', 'part', test_partition_id, '0', '112', '0',
                       'wwn=%s' % test_initiator_wwpns[1]),
             mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
-                      'wwn=%s' % test_initiator_wwpns[1])
+                      'wwn=%s' % test_initiator_wwpns[1]),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -253,7 +249,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
-            'ShowWWN': self.cli_data.get_test_show_wwn()
+            'ShowWWN': self.cli_data.get_test_show_wwn(),
         }
         self._driver_setup(mock_commands)
         self.driver.fc_lookup_service = mock.Mock()
@@ -278,7 +274,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
                       'wwn=%s' % test_initiator_wwpns[1]),
             mock.call('CreateMap', 'part', test_partition_id, '0', '113', '0',
-                      'wwn=%s' % test_initiator_wwpns[1])
+                      'wwn=%s' % test_initiator_wwpns[1]),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -306,14 +302,74 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('iSCSI', configuration=conf)
 
+    @mock.patch.object(LOG, 'warning')
+    def test_create_map_warning_return_code(self, log_warning):
+
+        FAKE_RETURN_CODE = (20, '')
+        mock_commands = {
+            'CreateMap': FAKE_RETURN_CODE,
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._create_map()
+        self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(LOG, 'warning')
+    def test_delete_map_warning_return_code(self, log_warning):
+
+        FAKE_RETURN_CODE = (11, '')
+        mock_commands = {
+            'DeleteMap': FAKE_RETURN_CODE,
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._delete_map()
+        self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(LOG, 'warning')
+    def test_create_iqn_warning_return_code(self, log_warning):
+
+        FAKE_RETURN_CODE = (20, '')
+        mock_commands = {
+            'CreateIQN': FAKE_RETURN_CODE,
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._create_iqn()
+        self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(LOG, 'warning')
+    def test_delete_iqn_warning_return_code_has_map(self, log_warning):
+
+        FAKE_RETURN_CODE = (20, '')
+        mock_commands = {
+            'DeleteIQN': FAKE_RETURN_CODE,
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._delete_iqn()
+        self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(LOG, 'warning')
+    def test_delete_iqn_warning_return_code_no_such_name(self, log_warning):
+
+        FAKE_RETURN_CODE = (11, '')
+        mock_commands = {
+            'DeleteIQN': FAKE_RETURN_CODE,
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._delete_iqn()
+        self.assertEqual(1, log_warning.call_count)
+
     def test_normal_channel(self):
 
         test_map_dict = {
             'slot_a': {'1': [], '2': [], '4': []},
-            'slot_b': {}
+            'slot_b': {},
         }
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel()
+            'ShowChannel': self.cli_data.get_test_show_channel(),
         }
         self._driver_setup(mock_commands)
 
@@ -325,10 +381,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_map_dict = {
             'slot_a': {'1': [], '2': [], '4': []},
-            'slot_b': {'1': [], '2': [], '4': []}
+            'slot_b': {'1': [], '2': [], '4': []},
         }
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_r_model()
+            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
         }
         self._driver_setup(mock_commands)
 
@@ -343,10 +399,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_map_dict = {
             'slot_a': {'2': [], '4': []},
-            'slot_b': {}
+            'slot_b': {},
         }
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel()
+            'ShowChannel': self.cli_data.get_test_show_channel(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -361,10 +417,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_mcs_dict = {
             'slot_a': {'1': ['1', '2'], '2': ['4']},
-            'slot_b': {}
+            'slot_b': {},
         }
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_with_mcs()
+            'ShowChannel': self.cli_data.get_test_show_channel_with_mcs(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -379,16 +435,16 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         fake_mcs_dict = {
             'slot_a': {'0': ['1', '2'], '2': ['4']},
-            'slot_b': {}
+            'slot_b': {},
         }
         lun_list = list(range(0, 127))
         fake_map_dict = {
             'slot_a': {'1': lun_list[2:], '2': lun_list[:], '4': lun_list[1:]},
-            'slot_b': {}
+            'slot_b': {},
         }
 
         test_map_chl = {
-            'slot_a': ['1', '2']
+            'slot_a': ['1', '2'],
         }
         test_map_lun = ['2']
         test_mcs_id = '0'
@@ -399,8 +455,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
-        self.assertEqual(map_lun, test_map_lun)
-        self.assertEqual(mcs_id, test_mcs_id)
+        self.assertEqual(test_map_lun, map_lun)
+        self.assertEqual(test_mcs_id, mcs_id)
 
     def test_mapping_info_with_mcs_multi_group(self):
 
@@ -409,7 +465,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         fake_mcs_dict = {
             'slot_a': {'0': ['1', '2'], '1': ['3', '4'], '2': ['5']},
-            'slot_b': {}
+            'slot_b': {},
         }
         lun_list = list(range(0, 127))
         fake_map_dict = {
@@ -418,13 +474,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 '2': lun_list[:],
                 '3': lun_list[:],
                 '4': lun_list[1:],
-                '5': lun_list[:]
+                '5': lun_list[:],
             },
-            'slot_b': {}
+            'slot_b': {},
         }
 
         test_map_chl = {
-            'slot_a': ['3', '4']
+            'slot_a': ['3', '4'],
         }
         test_map_lun = ['1']
         test_mcs_id = '1'
@@ -435,8 +491,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         map_chl, map_lun, mcs_id = self.driver._get_mapping_info_with_mcs()
 
         self.assertDictMatch(map_chl, test_map_chl)
-        self.assertEqual(map_lun, test_map_lun)
-        self.assertEqual(mcs_id, test_mcs_id)
+        self.assertEqual(test_map_lun, map_lun)
+        self.assertEqual(test_mcs_id, mcs_id)
 
     def test_specific_channel_with_multipath(self):
 
@@ -445,10 +501,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_map_dict = {
             'slot_a': {'1': [], '2': []},
-            'slot_b': {}
+            'slot_b': {},
         }
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel()
+            'ShowChannel': self.cli_data.get_test_show_channel(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -464,10 +520,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_map_dict = {
             'slot_a': {'1': [], '2': []},
-            'slot_b': {'1': []}
+            'slot_b': {'1': []},
         }
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel_r_model()
+            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -482,22 +538,21 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_model_update = {
             'provider_location': 'system_id^%s@partition_id^%s' % (
                 int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[0])
+                self.cli_data.fake_partition_id[0]),
         }
 
         mock_commands = {
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
-            'ShowLV': self._mock_show_lv
+            'ShowLV': self._mock_show_lv,
         }
         self._driver_setup(mock_commands)
 
         model_update = self.driver.create_volume(test_volume)
 
         self.assertDictMatch(model_update, test_model_update)
-        log_info.assert_called_once_with(
-            'Create Volume %s done', test_volume['id'].replace('-', ''))
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_volume_with_create_fail(self):
@@ -507,16 +562,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'CreatePartition': FAKE_ERROR_RETURN,
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
-            'ShowLV': self._mock_show_lv
+            'ShowLV': self._mock_show_lv,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.create_volume,
             test_volume)
-        self.assertTrue(re.match(
-            r'.*Failed to create partition.*', ex.msg))
 
     @mock.patch.object(LOG, 'info')
     def test_delete_volume(self, log_info):
@@ -536,7 +589,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'DeleteSnapshot': SUCCEED,
             'ShowMap': self.cli_data.get_test_show_map(),
             'DeleteMap': SUCCEED,
-            'DeletePartition': SUCCEED
+            'DeletePartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -551,12 +604,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('DeleteSnapshot', test_snapshot_id[1], '-y'),
             mock.call('ShowMap', 'part=%s' % test_partition_id),
             mock.call('DeleteMap', 'part', test_partition_id, '-y'),
-            mock.call('DeletePartition', test_partition_id, '-y')
+            mock.call('DeletePartition', test_partition_id, '-y'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-
-        log_info.assert_called_once_with(
-            'Delete Volume %s done', test_volume['id'].replace('-', ''))
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(LOG, 'warning', mock.Mock())
     def test_delete_volume_with_sync_pair(self):
@@ -569,16 +620,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 self.cli_data.get_test_show_partition_detail_for_map(
                     test_partition_id),
             'ShowReplica':
-                self.cli_data.get_test_show_replica_detail_for_sync_pair()
+                self.cli_data.get_test_show_replica_detail_for_sync_pair(),
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendDriverException,
             self.driver.delete_volume,
             test_volume)
-        self.assertTrue(re.match(
-            r'.*because it has pair.*', ex.msg))
 
     def test_delete_volume_with_delete_fail(self):
 
@@ -595,32 +644,28 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'DeleteSnapshot': SUCCEED,
             'ShowMap': self.cli_data.get_test_show_map(),
             'DeleteMap': SUCCEED,
-            'DeletePartition': FAKE_ERROR_RETURN
+            'DeletePartition': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.delete_volume,
             test_volume)
-        self.assertTrue(re.match(
-            r'.*Failed to delete partition.*', ex.msg))
 
     @mock.patch.object(LOG, 'warning')
     def test_delete_volume_with_partiton_not_found(self, log_warning):
 
         test_volume = self.cli_data.test_volume
-        test_volume_id = test_volume['id'].replace('-', '')
 
         mock_commands = {
-            'ShowPartition': self.cli_data.get_test_show_empty_list()
+            'ShowPartition': self.cli_data.get_test_show_empty_list(),
         }
         self._driver_setup(mock_commands)
 
         self.driver.delete_volume(test_volume)
 
-        log_warning.assert_called_once_with(
-            'Volume %s already delete', test_volume_id)
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(LOG, 'info')
     def test_delete_volume_without_provider(self, log_info):
@@ -629,7 +674,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_volume = copy.deepcopy(self.cli_data.test_volume)
         test_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
             int(test_system_id, 16), 'None')
-        test_volume_id = test_volume['id'].replace('-', '')
         test_partition_id = self.cli_data.fake_partition_id[0]
 
         mock_commands = {
@@ -642,14 +686,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'DeleteSnapshot': SUCCEED,
             'ShowMap': self.cli_data.get_test_show_map(),
             'DeleteMap': SUCCEED,
-            'DeletePartition': SUCCEED
+            'DeletePartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
         self.driver.delete_volume(test_volume)
 
-        log_info.assert_called_once_with(
-            'Delete Volume %s done', test_volume_id)
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
@@ -665,7 +708,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_model_update = {
             'provider_location': 'system_id^%s@partition_id^%s' % (
                 int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[1])
+                self.cli_data.fake_partition_id[1]),
         }
         # todo: change provider_location value
         mock_commands = {
@@ -681,7 +724,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     fake_snapshot_id, test_dst_part_id, test_dst_volume_id),
-            'DeleteReplica': SUCCEED
+            'DeleteReplica': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -689,8 +732,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_dst_volume, test_src_volume)
 
         self.assertDictMatch(model_update, test_model_update)
-        log_info.assert_called_once_with(
-            'Create Cloned Volume %s done', test_dst_volume['id'])
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_cloned_volume_with_create_replica_fail(self):
@@ -710,22 +752,22 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
             'CreateReplica': FAKE_ERROR_RETURN,
-            'ShowLV': self._mock_show_lv
+            'ShowLV': self._mock_show_lv,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.create_cloned_volume,
             test_dst_volume,
             test_src_volume)
-        self.assertTrue(re.match(r'.*Failed to create replica.*', ex.msg))
 
+    @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_export(self):
 
         test_volume = self.cli_data.test_volume
         test_model_update = {
-            'provider_location': test_volume['provider_location']
+            'provider_location': test_volume['provider_location'],
         }
         self.driver = self._get_driver(self.configuration)
 
@@ -733,13 +775,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertDictMatch(model_update, test_model_update)
 
+    @mock.patch.object(LOG, 'info', mock.Mock())
     def test_get_volume_stats(self):
 
         test_volume_states = self.cli_data.test_volume_states
 
         mock_commands = {
             'ShowLicense': self.cli_data.get_test_show_license(),
-            'ShowLV': self.cli_data.get_test_show_lv()
+            'ShowLV': self.cli_data.get_test_show_lv(),
         }
         self._driver_setup(mock_commands)
         self.driver.VERSION = '99.99'
@@ -752,14 +795,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'ShowLicense': self.cli_data.get_test_show_license(),
-            'ShowLV': FAKE_ERROR_RETURN
+            'ShowLV': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.get_volume_stats)
-        self.assertTrue(re.match(r'.*Failed to get lv info.*', ex.msg))
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_snapshot(self):
@@ -772,13 +814,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowSnapshot': self.cli_data.get_test_show_snapshot(
                 partition_id=fake_partition_id,
                 snapshot_id=fake_snapshot_id),
-            'ShowPartition': self.cli_data.get_test_show_partition()
+            'ShowPartition': self.cli_data.get_test_show_partition(),
         }
         self._driver_setup(mock_commands)
 
         model_update = self.driver.create_snapshot(self.cli_data.test_snapshot)
 
-        assert(model_update['provider_location'] == fake_snapshot_id)
+        self.assertEqual(fake_snapshot_id, model_update['provider_location'])
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_create_snapshot_without_partition_id(self):
@@ -792,15 +834,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowSnapshot': self.cli_data.get_test_show_snapshot(
                 partition_id=fake_partition_id,
                 snapshot_id=fake_snapshot_id),
-            'ShowPartition': FAKE_ERROR_RETURN
+            'ShowPartition': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.create_snapshot,
             test_snapshot)
-        self.assertTrue(re.match(r'.*Failed to get partition info.*', ex.msg))
 
     def test_create_snapshot_with_create_fail(self):
 
@@ -813,15 +854,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowSnapshot': self.cli_data.get_test_show_snapshot(
                 partition_id=fake_partition_id,
                 snapshot_id=fake_snapshot_id),
-            'ShowPartition': self.cli_data.get_test_show_partition()
+            'ShowPartition': self.cli_data.get_test_show_partition(),
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.create_snapshot,
             test_snapshot)
-        self.assertTrue(re.match(r'.*Failed to create snapshot.*', ex.msg))
 
     def test_create_snapshot_with_show_fail(self):
 
@@ -830,15 +870,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'CreateSnapshot': SUCCEED,
             'ShowSnapshot': FAKE_ERROR_RETURN,
-            'ShowPartition': self.cli_data.get_test_show_partition()
+            'ShowPartition': self.cli_data.get_test_show_partition(),
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.create_snapshot,
             test_snapshot)
-        self.assertTrue(re.match(r'.*Failed to get snapshot info.*', ex.msg))
 
     @mock.patch.object(LOG, 'info')
     def test_delete_snapshot(self, log_info):
@@ -847,27 +886,25 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'ShowReplica': self.cli_data.get_test_show_replica_detail(),
-            'DeleteSnapshot': SUCCEED
+            'DeleteSnapshot': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
         self.driver.delete_snapshot(test_snapshot)
 
-        log_info.assert_called_once_with(
-            'Delete Snapshot %s done', test_snapshot['id'].replace('-', ''))
+        self.assertEqual(1, log_info.call_count)
 
     def test_delete_snapshot_without_provider_location(self):
 
         test_snapshot = self.cli_data.test_snapshot
 
         self.driver = self._get_driver(self.configuration)
-        self.driver._get_snapshot_id = mock.Mock(return_value=None)
+        self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendAPIException,
             self.driver.delete_snapshot,
             test_snapshot)
-        self.assertTrue(re.match(r'.*Failed to get Snapshot ID.*', ex.msg))
 
     def test_delete_snapshot_with_fail(self):
 
@@ -875,15 +912,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'ShowReplica': self.cli_data.get_test_show_replica_detail(),
-            'DeleteSnapshot': FAKE_ERROR_RETURN
+            'DeleteSnapshot': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.delete_snapshot,
             test_snapshot)
-        self.assertTrue(re.match(r'.*Failed to delete snapshot.*', ex.msg))
 
     @mock.patch.object(LOG, 'warning', mock.Mock())
     def test_delete_snapshot_with_sync_pair(self):
@@ -893,15 +929,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_si_sync_pair(),
-            'DeleteSnapshot': FAKE_ERROR_RETURN
+            'DeleteSnapshot': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendDriverException,
             self.driver.delete_snapshot,
             test_snapshot)
-        self.assertTrue(re.match(r'.*because it has pair.*', ex.msg))
 
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
@@ -916,7 +951,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_model_update = {
             'provider_location': 'system_id^%s@partition_id^%s' % (
                 int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[1])
+                self.cli_data.fake_partition_id[1]),
         }
         mock_commands = {
             'CreatePartition': SUCCEED,
@@ -927,7 +962,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_snapshot_id, test_dst_part_id, test_dst_volume_id),
-            'DeleteReplica': SUCCEED
+            'DeleteReplica': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -935,10 +970,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_dst_volume, test_snapshot)
 
         self.assertDictMatch(model_update, test_model_update)
-        log_info.assert_called_once_with(
-            'Create Volume %(volume_id)s form snapshot %(snapshot_id)s done', {
-                'volume_id': test_dst_volume['id'],
-                'snapshot_id': test_snapshot['id']})
+        self.assertEqual(1, log_info.call_count)
 
     def test_create_volume_from_snapshot_without_provider_location(
             self):
@@ -947,14 +979,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_dst_volume = self.cli_data.test_dst_volume
 
         self.driver = self._get_driver(self.configuration)
-        self.driver._get_snapshot_id = mock.Mock(return_value=None)
+        self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendAPIException,
             self.driver.create_volume_from_snapshot,
             test_dst_volume,
             test_snapshot)
-        self.assertTrue(re.match(r'.*Failed to get Snapshot ID.*', ex.msg))
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_initialize_connection(self):
@@ -975,7 +1006,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'CreateMap': SUCCEED,
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqn, test_target_protal)
+                test_target_iqn, test_target_protal),
         }
         self._driver_setup(mock_commands)
 
@@ -986,7 +1017,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('CreateMap', 'part', test_partition_id, '2', '0', '0',
-                      'iqn=%s' % test_connector['initiator'])
+                      'iqn=%s' % test_connector['initiator']),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -1012,7 +1043,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'CreateMap': SUCCEED,
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqn, test_target_protal)
+                test_target_iqn, test_target_protal),
         }
         self._driver_setup(mock_commands)
 
@@ -1024,7 +1055,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         expect_cli_cmd = [
             mock.call('CreateIQN', test_initiator, test_initiator[-16:]),
             mock.call('CreateMap', 'part', test_partition_id, '2', '0', '0',
-                      'iqn=%s' % test_connector['initiator'])
+                      'iqn=%s' % test_connector['initiator']),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -1046,7 +1077,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'CreateMap': SUCCEED,
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqn, test_target_protal)
+                test_target_iqn, test_target_protal),
         }
         self._driver_setup(mock_commands)
 
@@ -1066,16 +1097,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'ShowIQN': self.cli_data.get_test_show_iqn(),
             'CreateMap': FAKE_ERROR_RETURN,
-            'ShowNet': SUCCEED
+            'ShowNet': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.initialize_connection,
             test_volume,
             test_connector)
-        self.assertTrue(re.match(r'.*Failed to create map.*', ex.msg))
 
     def test_initialize_connection_with_get_ip_fail(self):
 
@@ -1087,17 +1117,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'ShowIQN': self.cli_data.get_test_show_iqn(),
             'CreateMap': SUCCEED,
-            'ShowNet': FAKE_ERROR_RETURN
+            'ShowNet': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.initialize_connection,
             test_volume,
             test_connector)
-
-        self.assertTrue(re.match(r'.*Failed to get network info.*', ex.msg))
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_initialize_connection_with_mcs(self):
@@ -1121,7 +1149,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'CreateMap': SUCCEED,
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
-                test_target_iqn, test_target_protal)
+                test_target_iqn, test_target_protal),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -1132,7 +1160,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('CreateMap', 'part', test_partition_id, '1', '0', '2',
-                      'iqn=%s' % test_connector['initiator'])
+                      'iqn=%s' % test_connector['initiator']),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -1145,7 +1173,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_expand_size = test_new_size - test_volume['size']
 
         mock_commands = {
-            'SetPartition': SUCCEED
+            'SetPartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -1153,7 +1181,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('SetPartition', 'expand', test_partition_id,
-                      'size=%sGB' % test_expand_size)
+                      'size=%sGB' % test_expand_size),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -1166,7 +1194,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_expand_size = round((test_new_size - test_volume['size']) * 1024)
 
         mock_commands = {
-            'SetPartition': SUCCEED
+            'SetPartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -1174,7 +1202,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('SetPartition', 'expand', test_partition_id,
-                      'size=%sMB' % test_expand_size)
+                      'size=%sMB' % test_expand_size),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -1184,17 +1212,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_new_size = 10
 
         mock_commands = {
-            'SetPartition': FAKE_ERROR_RETURN
+            'SetPartition': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.extend_volume,
             test_volume,
             test_new_size)
-
-        self.assertTrue(re.match(r'.*Failed to set partition.*', ex.msg))
 
     @mock.patch.object(LOG, 'info', mock.Mock())
     def test_terminate_connection(self):
@@ -1206,7 +1232,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'DeleteMap': SUCCEED,
             'DeleteIQN': SUCCEED,
-            'ShowMap': self.cli_data.get_test_show_map()
+            'ShowMap': self.cli_data.get_test_show_map(),
         }
         self._driver_setup(mock_commands)
 
@@ -1224,23 +1250,21 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_connector = self.cli_data.test_connector
 
         mock_commands = {
-            'DeleteMap': FAKE_ERROR_RETURN
+            'DeleteMap': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.terminate_connection,
             test_volume,
             test_connector)
 
-        self.assertTrue(re.match(r'.*Failed to delete map.*', ex.msg))
-
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_migrate_volume(self):
 
-        test_host = copy.deepcopy(self.cli_data.test_migrate_func_host)
+        test_host = copy.deepcopy(self.cli_data.test_migrate_host)
         fake_pool = copy.deepcopy(self.cli_data.fake_pool)
         test_volume = self.cli_data.test_volume
         test_volume_id = test_volume['id'].replace('-', '')
@@ -1250,13 +1274,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_model_update = {
             'provider_location': 'system_id^%s@partition_id^%s' % (
                 int(self.cli_data.fake_system_id[0], 16),
-                test_dst_part_id)
+                test_dst_part_id),
         }
 
         mock_commands = {
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(
-                test_volume['id'].replace('-', ''), fake_pool['pool_id']),
+                test_volume_id, fake_pool['pool_id']),
             'CreateReplica': SUCCEED,
             'ShowLV': self._mock_show_lv_for_migrate,
             'ShowReplica':
@@ -1264,7 +1288,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                     test_src_part_id, test_dst_part_id, test_volume_id),
             'DeleteReplica': SUCCEED,
             'DeleteMap': SUCCEED,
-            'DeletePartition': SUCCEED
+            'DeletePartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -1285,7 +1309,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('ShowReplica', '-l'),
             mock.call('DeleteReplica', test_pair_id, '-y'),
             mock.call('DeleteMap', 'part', test_src_part_id, '-y'),
-            mock.call('DeletePartition', test_src_part_id, '-y')
+            mock.call('DeletePartition', test_src_part_id, '-y'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertTrue(rc)
@@ -1298,7 +1322,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_volume = self.cli_data.test_volume
 
         mock_commands = {
-            'ShowLV': self._mock_show_lv_for_migrate
+            'ShowLV': self._mock_show_lv_for_migrate,
         }
         self._driver_setup(mock_commands)
 
@@ -1306,8 +1330,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         self.assertFalse(rc)
         self.assertTrue(model_update is None)
-        log_warning.assert_called_once_with(
-            'Failed to get target pool id')
+        self.assertEqual(1, log_warning.call_count)
 
     def test_migrate_volume_with_get_part_id_fail(self):
 
@@ -1320,18 +1343,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'DeleteMap': SUCCEED,
             'CreateReplica': SUCCEED,
             'CreateMap': SUCCEED,
-            'ShowLV': self._mock_show_lv_for_migrate
+            'ShowLV': self._mock_show_lv_for_migrate,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendDriverException,
             self.driver.migrate_volume,
             test_volume,
             test_host)
-
-        self.assertTrue(re.match(
-            r'.*Fail to get new part id in new pool.*', ex.msg))
 
     def test_migrate_volume_with_create_replica_fail(self):
 
@@ -1346,24 +1366,21 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'DeleteMap': SUCCEED,
             'CreateReplica': FAKE_ERROR_RETURN,
             'CreateMap': SUCCEED,
-            'ShowLV': self._mock_show_lv_for_migrate
+            'ShowLV': self._mock_show_lv_for_migrate,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.migrate_volume,
             test_volume,
             test_host)
 
-        self.assertTrue(re.match(
-            r'.*Failed to create replica.*', ex.msg))
-
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     def test_migrate_volume_timeout(self):
 
-        test_host = copy.deepcopy(self.cli_data.test_migrate_func_host)
+        test_host = copy.deepcopy(self.cli_data.test_migrate_host)
         fake_pool = copy.deepcopy(self.cli_data.fake_pool)
         test_volume = self.cli_data.test_volume
         test_volume_id = test_volume['id'].replace('-', '')
@@ -1376,24 +1393,21 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(
-                test_volume['id'].replace('-', ''), fake_pool['pool_id']),
+                test_volume_id, fake_pool['pool_id']),
             'CreateReplica': SUCCEED,
             'ShowLV': self._mock_show_lv_for_migrate,
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_src_part_id, test_dst_part_id, test_volume_id,
-                    'Copy')
+                    'Copy'),
         }
         self._driver_setup(mock_commands, configuration)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendDriverException,
             self.driver.migrate_volume,
             test_volume,
             test_host)
-
-        self.assertTrue(re.match(
-            r'.*Wait replica complete timeout.*', ex.msg))
 
     def test_manage_existing_get_size(self):
 
@@ -1405,7 +1419,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 test_ref_volume['source-id'].replace('-', ''), test_pool),
-            'ShowMap': SUCCEED
+            'ShowMap': SUCCEED,
         }
 
         self._driver_setup(mock_commands)
@@ -1414,10 +1428,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_volume, test_ref_volume)
 
         expect_cli_cmd = [
-            mock.call('ShowMap', 'part=%s' % test_partition_id)
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertEqual(size, 0)
+        self.assertEqual(1, size)
 
     def test_manage_existing_get_size_in_use(self):
 
@@ -1428,18 +1442,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 test_ref_volume['source-id'].replace('-', ''), test_pool),
-            'ShowMap': self.cli_data.get_test_show_map()
+            'ShowMap': self.cli_data.get_test_show_map(),
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendAPIException,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)
-
-        self.assertTrue(re.match(
-            r'.*The specified volume is mapped to a host.*', ex.msg))
 
     def test_manage_existing_get_size_no_source_id(self):
 
@@ -1447,14 +1458,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_ref_volume = self.cli_data.test_dst_volume
         self.driver = self._get_driver(self.configuration)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendAPIException,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)
-
-        self.assertTrue(re.match(
-            r'.*Reference must contain source-id element.*', ex.msg))
 
     def test_manage_existing_get_size_show_part_fail(self):
 
@@ -1463,18 +1471,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'ShowPartition': FAKE_ERROR_RETURN,
-            'ShowMap': SUCCEED
+            'ShowMap': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)
-
-        self.assertTrue(re.match(
-            r'.*Failed to get partition info.*', ex.msg))
 
     def test_manage_existing_get_size_show_map_fail(self):
 
@@ -1483,18 +1488,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(),
-            'ShowMap': FAKE_ERROR_RETURN
+            'ShowMap': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)
-
-        self.assertTrue(re.match(
-            r'.*Failed to get map info.*', ex.msg))
 
     @mock.patch.object(LOG, 'info')
     def test_manage_existing(self, log_info):
@@ -1507,7 +1509,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 test_ref_volume['source-id'].replace('-', ''), test_pool),
-            'SetPartition': SUCCEED
+            'SetPartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -1516,11 +1518,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('SetPartition', test_partition_id,
-                      'name=%s' % test_volume['id'].replace('-', ''))
+                      'name=%s' % test_volume['id'].replace('-', '')),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        log_info.assert_called_once_with(
-            'Rename Volume %s done', test_volume['id'])
+        self.assertEqual(1, log_info.call_count)
 
     def test_manage_existing_rename_fail(self):
 
@@ -1531,16 +1532,156 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 test_ref_volume['source-id'].replace('-', ''), test_pool),
-            'SetPartition': FAKE_ERROR_RETURN
+            'SetPartition': FAKE_ERROR_RETURN,
         }
 
         self._driver_setup(mock_commands)
 
-        ex = self.assertRaises(
+        self.assertRaises(
             exception.InfortrendCliException,
             self.driver.manage_existing,
             test_volume,
             test_ref_volume)
 
-        self.assertTrue(re.match(
-            r'.*Failed to set partition.*', ex.msg))
+    @mock.patch.object(LOG, 'info')
+    def test_retype_without_change(self, log_info):
+
+        test_volume = self.cli_data.test_volume
+        test_new_type = self.cli_data.test_new_type
+        test_diff = {'extra_specs': {}}
+        test_host = self.cli_data.test_migrate_host_2
+
+        self.driver = self._get_driver(self.configuration)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertTrue(rc)
+        self.assertEqual(1, log_info.call_count)
+
+    @mock.patch.object(LOG, 'warning')
+    def test_retype_with_change_provision(self, log_warning):
+
+        test_volume = self.cli_data.test_volume
+        test_new_type = self.cli_data.test_new_type
+        test_diff = self.cli_data.test_diff
+        test_host = self.cli_data.test_migrate_host_2
+
+        self.driver = self._get_driver(self.configuration)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertFalse(rc)
+        self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_retype_with_migrate(self):
+
+        fake_pool = copy.deepcopy(self.cli_data.fake_pool)
+        test_host = copy.deepcopy(self.cli_data.test_migrate_host)
+        test_volume = self.cli_data.test_volume
+        test_volume_id = test_volume['id'].replace('-', '')
+        test_new_type = self.cli_data.test_new_type
+        test_diff = self.cli_data.test_diff
+        test_src_part_id = self.cli_data.fake_partition_id[0]
+        test_dst_part_id = self.cli_data.fake_partition_id[2]
+        test_pair_id = self.cli_data.fake_pair_id[0]
+        test_model_update = {
+            'provider_location': 'system_id^%s@partition_id^%s' % (
+                int(self.cli_data.fake_system_id[0], 16),
+                test_dst_part_id),
+        }
+
+        mock_commands = {
+            'ShowSnapshot': SUCCEED,
+            'CreatePartition': SUCCEED,
+            'ShowPartition': self.cli_data.get_test_show_partition(
+                test_volume_id, fake_pool['pool_id']),
+            'CreateReplica': SUCCEED,
+            'ShowLV': self._mock_show_lv_for_migrate,
+            'ShowReplica':
+                self.cli_data.get_test_show_replica_detail_for_migrate(
+                    test_src_part_id, test_dst_part_id, test_volume_id),
+            'DeleteReplica': SUCCEED,
+            'DeleteMap': SUCCEED,
+            'DeletePartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        rc, model_update = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        expect_cli_cmd = [
+            mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
+            mock.call(
+                'CreatePartition',
+                fake_pool['pool_id'],
+                test_volume['id'].replace('-', ''),
+                'size=%s' % (test_volume['size'] * 1024),
+                'init=disable min=%sMB' % (
+                    int(test_volume['size'] * 1024 * 0.2))
+            ),
+            mock.call('ShowPartition'),
+            mock.call(
+                'CreateReplica',
+                'Cinder-Migrate',
+                'part', test_src_part_id,
+                'part', test_dst_part_id,
+                'type=mirror'
+            ),
+            mock.call('ShowReplica', '-l'),
+            mock.call('DeleteReplica', test_pair_id, '-y'),
+            mock.call('DeleteMap', 'part', test_src_part_id, '-y'),
+            mock.call('DeletePartition', test_src_part_id, '-y'),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertTrue(rc)
+        self.assertDictMatch(model_update, test_model_update)
+
+    @mock.patch.object(LOG, 'debug', mock.Mock())
+    @mock.patch.object(LOG, 'info', mock.Mock())
+    def test_update_migrated_volume(self):
+        src_volume = self.cli_data.test_volume
+        dst_volume = copy.deepcopy(self.cli_data.test_dst_volume)
+        test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
+        test_model_update = {
+            'provider_location': dst_volume['provider_location'],
+        }
+
+        mock_commands = {
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        model_update = self.driver.update_migrated_volume(
+            None, src_volume, dst_volume)
+
+        expect_cli_cmd = [
+            mock.call('SetPartition', test_dst_part_id,
+                      'name=%s' % src_volume['id'].replace('-', '')),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertDictMatch(model_update, test_model_update)
+
+    @mock.patch.object(LOG, 'debug', mock.Mock())
+    def test_update_migrated_volume_rename_fail(self):
+        src_volume = self.cli_data.test_volume
+        dst_volume = self.cli_data.test_dst_volume
+        test_dst_part_id = self.cli_data.fake_partition_id[1]
+        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
+            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
+
+        mock_commands = {
+            'SetPartition': FAKE_ERROR_RETURN
+        }
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(
+            exception.InfortrendCliException,
+            self.driver.update_migrated_volume,
+            None,
+            src_volume,
+            dst_volume)
