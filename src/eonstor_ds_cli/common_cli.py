@@ -700,7 +700,7 @@ class InfortrendCommon(object):
         for entry in device_info:
             if system_ip == entry['Connected-IP']:
                 return str(int(entry['ID'], 16))
-        return None
+        return
 
     @log_func
     def _get_lun_id(self, ch_id, controller='slot_a'):
@@ -1171,7 +1171,7 @@ class InfortrendCommon(object):
             LOG.warning(_LW(
                 'Failed to get Raid Snapshot ID and '
                 'did not store in snapshot'))
-            return None
+            return
         return snapshot['provider_location']
 
     def _delete_pair_with_snapshot(self, snapshot_id, replica_list):
@@ -1198,7 +1198,7 @@ class InfortrendCommon(object):
             else:
                 if entry['Name'] == volume_id and entry['LV-ID'] == pool_id:
                     return entry['ID']
-        return None
+        return
 
     def create_volume_from_snapshot(self, volume, snapshot):
         raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
@@ -1472,7 +1472,7 @@ class InfortrendCommon(object):
         for entry in net_list:
             if entry['ID'] == channel_id and entry['Slot'] == slot_name:
                 return entry['IPv4']
-        return None
+        return
 
     def _get_wwpn_by_channel(
             self, channel_id, wwn_list, controller='slot_a'):
@@ -1485,7 +1485,7 @@ class InfortrendCommon(object):
         for entry in wwn_list:
             if entry['CH'] == channel_id and entry['ID'] == slot_name:
                 return entry['WWPN']
-        return None
+        return
 
     def _get_wwpn_list(self):
         rc, wwn_list = self._show_wwn()
