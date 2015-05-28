@@ -700,7 +700,7 @@ class InfortrendCommon(object):
         for entry in device_info:
             if system_ip == entry['Connected-IP']:
                 return str(int(entry['ID'], 16))
-        return None
+        return
 
     @log_func
     def _get_lun_id(self, ch_id, controller='slot_a'):
@@ -986,7 +986,7 @@ class InfortrendCommon(object):
         snapshot_list = do_create_snapshot()
 
         model_update = self._create_volume_from_snapshot_id(
-            volume, snapshot_list[-1]['SI-ID'], 'Cloned')
+            src_part_id, volume, [snapshot_list[-1]['SI-ID']], 'Cloned')
 
         LOG.info(_LI('Create Cloned Volume %(volume_id)s done'), {
             'volume_id': volume['id']})
@@ -1171,7 +1171,7 @@ class InfortrendCommon(object):
             LOG.warning(_LW(
                 'Failed to get Raid Snapshot ID and '
                 'did not store in snapshot'))
-            return None
+            return
         return snapshot['provider_location']
 
     def _delete_pair_with_snapshot(self, snapshot_id, replica_list):
@@ -1198,7 +1198,7 @@ class InfortrendCommon(object):
             else:
                 if entry['Name'] == volume_id and entry['LV-ID'] == pool_id:
                     return entry['ID']
-        return None
+        return
 
     def create_volume_from_snapshot(self, volume, snapshot):
         raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
@@ -1210,8 +1210,20 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.InfortrendAPIException(err=msg)
 
+        src_part_id, raid_snapshot_list = (
+            self._get_specific_parition_info_by_snapshot(
+                raid_snapshot_id)
+        )
+
+        if src_part_id is None:
+            msg = _('Failed to get original volume '
+                    'from snapshot: %(snapshot_id)s') % {
+                        'snapshot_id': snapshot['id']}
+            LOG.error(msg)
+            raise exception.InfortrendDriverException(err=msg)
+
         model_update = self._create_volume_from_snapshot_id(
-            volume, raid_snapshot_id, 'Snapshot')
+            src_part_id, volume, raid_snapshot_list, 'Snapshot')
 
         LOG.info(_LI(
             'Create Volume %(volume_id)s from '
@@ -1221,11 +1233,27 @@ class InfortrendCommon(object):
 
         return model_update
 
-    def _create_volume_from_snapshot_id(self, volume, raid_snapshot_id, type):
-        # create the target volume for volume copy
-        dst_volume_id = volume['id'].replace('-', '')
+    def _get_specific_parition_info_by_snapshot(self, raid_snapshot_id):
+        part_id = None
+        rollback_snap_list = []
 
-        self._create_partition_by_default(volume)
+        rc, snapshot_list = self._show_snapshot()
+
+        for entry in snapshot_list:
+            if entry['SI-ID'] == raid_snapshot_id:
+                part_id = entry['Partition-ID']
+
+            if entry['Partition-ID'] == part_id:
+                rollback_snap_list.append(entry['SI-ID'])
+
+        return part_id, rollback_snap_list
+
+    def _create_volume_from_snapshot_id(
+            self, src_part_id, dst_volume, raid_snapshot_list, type):
+        # create the target volume for volume copy
+        dst_volume_id = dst_volume['id'].replace('-', '')
+
+        self._create_partition_by_default(dst_volume)
 
         dst_part_id = self._get_part_id(dst_volume_id)
         # prepare return value
@@ -1238,11 +1266,17 @@ class InfortrendCommon(object):
         model_info = self._concat_provider_location(model_dict)
         model_update = {"provider_location": model_info}
 
-        # clone the volume from the snapshot
+        # clone the volume from the current volume
         self._create_replica(
-            'Cinder-%s' % type, 'si', raid_snapshot_id, 'part', dst_part_id)
-
+            'Cinder-%s' % type, 'part', src_part_id, 'part', dst_part_id)
         self._wait_replica_complete(dst_part_id)
+
+        # rollback into the specific snapshot
+        for raid_snapshot_id in reversed(raid_snapshot_list):
+            self._create_replica(
+                'Cinder-%s' % type, 'si', raid_snapshot_id, 'part',
+                dst_part_id)
+            self._wait_replica_complete(dst_part_id)
 
         return model_update
 
@@ -1472,7 +1506,7 @@ class InfortrendCommon(object):
         for entry in net_list:
             if entry['ID'] == channel_id and entry['Slot'] == slot_name:
                 return entry['IPv4']
-        return None
+        return
 
     def _get_wwpn_by_channel(
             self, channel_id, wwn_list, controller='slot_a'):
@@ -1485,7 +1519,7 @@ class InfortrendCommon(object):
         for entry in wwn_list:
             if entry['CH'] == channel_id and entry['ID'] == slot_name:
                 return entry['WWPN']
-        return None
+        return
 
     def _get_wwpn_list(self):
         rc, wwn_list = self._show_wwn()
@@ -1889,6 +1923,6 @@ class InfortrendCommon(object):
             'new_volume': new_volume['id']})
 
         model_update = {
-            'provider_location': new_volume['provider_location']
+            'provider_location': new_volume['provider_location'],
         }
         return model_update
