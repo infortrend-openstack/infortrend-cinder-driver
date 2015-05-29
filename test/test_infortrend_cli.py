@@ -1302,6 +1302,57 @@ Return: 0x0000
             'curClock': '---',
         }])
 
+    def get_test_show_channel_without_mcs(self):
+        return (0, [{
+            'ID': '112',
+            'defClock': 'Auto',
+            'Type': 'FIBRE',
+            'Mode': 'Host',
+            'Width': '---',
+            'Ch': '0',
+            'curClock': '---',
+        }, {
+            'ID': '0',
+            'defClock': 'Auto',
+            'Type': 'NETWORK',
+            'Mode': 'Host',
+            'Width': 'iSCSI',
+            'Ch': '1',
+            'curClock': '---',
+        }, {
+            'ID': '0',
+            'defClock': 'Auto',
+            'Type': 'NETWORK',
+            'Mode': 'Host',
+            'Width': 'iSCSI',
+            'Ch': '2',
+            'curClock': '---',
+        }, {
+            'ID': '---',
+            'defClock': '6.0 Gbps',
+            'Type': 'SAS',
+            'Mode': 'Drive',
+            'Width': 'SAS',
+            'Ch': '3',
+            'curClock': '6.0 Gbps',
+        }, {
+            'ID': '0',
+            'defClock': 'Auto',
+            'Type': 'NETWORK',
+            'Mode': 'Host',
+            'Width': 'iSCSI',
+            'Ch': '4',
+            'curClock': '---',
+        }, {
+            'ID': '112',
+            'defClock': 'Auto',
+            'Type': 'FIBRE',
+            'Mode': 'Host',
+            'Width': '---',
+            'Ch': '5',
+            'curClock': '---',
+        }])
+
     def get_test_show_channel(self):
         return (0, [{
             'ID': '112',
