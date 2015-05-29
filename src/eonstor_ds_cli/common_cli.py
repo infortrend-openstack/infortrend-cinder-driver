@@ -217,10 +217,12 @@ class InfortrendCommon(object):
             'slot_b': {},
         }
         self.map_dict_init = False
-        self.mcs_dict = {
-            'slot_a': {},
-            'slot_b': {},
-        }
+
+        if self.protocol == 'iSCSI':
+            self.mcs_dict = {
+                'slot_a': {},
+                'slot_b': {},
+            }
 
         self._init_pool_list()
         self._init_channel_list()
@@ -366,10 +368,10 @@ class InfortrendCommon(object):
             else:
                 self._model_type = 'G'
 
-            self._set_iscsi_channel_id(channel_info, 'slot_a', multipath)
+            self._set_channel_id(channel_info, 'slot_a', multipath)
 
             if multipath and self._model_type == 'R':
-                self._set_iscsi_channel_id(channel_info, 'slot_b', multipath)
+                self._set_channel_id(channel_info, 'slot_b', multipath)
 
             self.map_dict_init = True
 
@@ -414,7 +416,7 @@ class InfortrendCommon(object):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
     @log_func
-    def _set_iscsi_channel_id(
+    def _set_channel_id(
             self, channel_info, controller='slot_a', multipath=False):
 
         if self.protocol == 'iSCSI':
@@ -424,12 +426,12 @@ class InfortrendCommon(object):
 
         for entry in channel_info:
             if entry['Type'] == check_channel_type:
-
                 if entry['Ch'] in self.channel_list[controller]:
                     self.map_dict[controller][entry['Ch']] = []
 
-                    self._update_mcs_dict(
-                        entry['Ch'], entry['MCS'], controller)
+                    if self.protocol == 'iSCSI':
+                        self._update_mcs_dict(
+                            entry['Ch'], entry['MCS'], controller)
 
     def _update_mcs_dict(self, channel_id, mcs_id, controller):
         """Record the iSCSI MCS topology
