@@ -113,7 +113,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         test_connector = self.cli_data.test_connector
 
         mock_commands = {
-            'ShowChannel': self.cli_data.get_test_show_channel(),
+            'ShowChannel': self.cli_data.get_test_show_channel_without_mcs(),
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
