@@ -248,6 +248,13 @@ class InfortrendCLITestData(object):
         },
     }
 
+    test_fc_terminate_conn_info = {
+        'driver_volume_type': 'fibre_channel',
+        'data': {
+            'initiator_target_map': test_initiator_target_map_zoning,
+        },
+    }
+
     test_connector = {
         'ip': fake_host_ip[0],
         'initiator': fake_initiator_iqn[0],

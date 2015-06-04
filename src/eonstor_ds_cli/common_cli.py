@@ -30,7 +30,7 @@ from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
-from cinder.zonemanager import utils as zm_utils
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -206,7 +206,7 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.InfortrendDriverException(data=msg)
 
-        self.fc_lookup_service = zm_utils.create_lookup_service()
+        self.fc_lookup_service = fczm_utils.create_lookup_service()
 
         self._volume_stats = None
         self._model_type = 'R'
@@ -1632,6 +1632,7 @@ class InfortrendCommon(object):
     def terminate_connection(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
         multipath = connector.get('multipath', False)
+        conn_info = None
 
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
@@ -1644,9 +1645,21 @@ class InfortrendCommon(object):
             self._delete_iqn(self._truncate_host_name(connector['initiator']))
         self._update_map_info(multipath)
 
+        if self.protocol == 'FC' and self.fc_lookup_service:
+            conn_info = {'driver_volume_type': 'fibre_channel',
+                         'data': {}}
+            wwpn_list, wwpn_channel_info = self._get_wwpn_list()
+
+            initiator_target_map, target_wwpns = (
+                self._build_initiator_target_map(connector, wwpn_list)
+            )
+            conn_info['data']['initiator_target_map'] = initiator_target_map
+
         LOG.info(_LI(
             'Successfully terminated connection for volume %(volume_id)s'), {
                 'volume_id': volume['id']})
+
+        return conn_info
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
         is_valid, dst_pool_id = (
