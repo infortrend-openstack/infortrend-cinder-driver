@@ -41,7 +41,7 @@ infortrend_esds_opts = [
                'It is separated with comma.'),
     cfg.StrOpt('infortrend_cli_path',
                default='/opt/bin/Infortrend/raidcmd_ESDS10.jar',
-               help='The Infortrend CLI absolute path'
+               help='The Infortrend CLI absolute path. '
                'By default, it is at '
                '/opt/bin/Infortrend/raidcmd_ESDS10.jar'),
     cfg.IntOpt('infortrend_cli_max_retries',
@@ -56,23 +56,23 @@ infortrend_esds_opts = [
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot A '
-               'for openstack usage. It is separated with comma.'
+               'for openstack usage. It is separated with comma. '
                'By default, it is the channel 0~7'),
     cfg.StrOpt('infortrend_slots_b_channels_id',
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot B '
-               'for openstack usage. It is separated with comma.'
+               'for openstack usage. It is separated with comma. '
                'By default, it is the channel 0~7'),
 ]
 
 infortrend_esds_extra_opts = [
     cfg.StrOpt('infortrend_provisioning',
                default='full',
-               help='Let the volume use specific provisioning.'
+               help='Let the volume use specific provisioning. '
                'By default, it is the full provisioning'),
     cfg.StrOpt('infortrend_tiering',
                default='0',
-               help='Let the volume use specific tiering level.'
+               help='Let the volume use specific tiering level. '
                'By default, it is the level 0.'),
 ]
 
