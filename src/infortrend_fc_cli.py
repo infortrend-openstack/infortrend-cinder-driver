@@ -21,7 +21,7 @@ from oslo_log import log as logging
 
 from cinder.volume import driver
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
-from cinder.zonemanager import utils as zm_utils
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         super(InfortrendCLIFCDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(
             'FC', configuration=self.configuration)
+        self.VERSION = self.common.VERSION
 
     def check_for_setup_error(self):
         LOG.debug('check_for_setup_error start')
@@ -136,7 +137,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Removes an export for a volume."""
         pass
 
-    @zm_utils.AddFCZone
+    @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection information.
 
@@ -162,12 +163,12 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'initiator': connector['initiator']})
         return self.common.initialize_connection(volume, connector)
 
-    @zm_utils.RemoveFCZone
+    @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {
             'volume_id': volume['id']})
-        self.common.terminate_connection(volume, connector)
+        return self.common.terminate_connection(volume, connector)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
