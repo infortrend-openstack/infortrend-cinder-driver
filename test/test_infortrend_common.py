@@ -687,7 +687,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.assertRaises(
-            exception.InfortrendDriverException,
+            exception.VolumeDriverException,
             self.driver.delete_volume,
             test_volume)
 
@@ -966,7 +966,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
         self.assertRaises(
-            exception.InfortrendAPIException,
+            exception.VolumeBackendAPIException,
             self.driver.delete_snapshot,
             test_snapshot)
 
@@ -998,7 +998,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.assertRaises(
-            exception.InfortrendDriverException,
+            exception.VolumeDriverException,
             self.driver.delete_snapshot,
             test_snapshot)
 
@@ -1093,7 +1093,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
         self.assertRaises(
-            exception.InfortrendAPIException,
+            exception.VolumeBackendAPIException,
             self.driver.create_volume_from_snapshot,
             test_dst_volume,
             test_snapshot)
@@ -1460,7 +1460,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.assertRaises(
-            exception.InfortrendDriverException,
+            exception.VolumeDriverException,
             self.driver.migrate_volume,
             test_volume,
             test_host)
@@ -1516,7 +1516,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands, configuration)
 
         self.assertRaises(
-            exception.InfortrendDriverException,
+            exception.VolumeDriverException,
             self.driver.migrate_volume,
             test_volume,
             test_host)
@@ -1559,7 +1559,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._driver_setup(mock_commands)
 
         self.assertRaises(
-            exception.InfortrendAPIException,
+            exception.VolumeBackendAPIException,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)
@@ -1571,7 +1571,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver = self._get_driver(self.configuration)
 
         self.assertRaises(
-            exception.InfortrendAPIException,
+            exception.VolumeBackendAPIException,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)

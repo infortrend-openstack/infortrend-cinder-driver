@@ -96,7 +96,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         """
-        LOG.debug('migrate_volume volime id=%(volume_id)s host=%(host)s', {
+        LOG.debug('migrate_volume volume id=%(volume_id)s host=%(host)s', {
             'volume_id': volume['id'], 'host': host['host']})
         return self.common.migrate_volume(volume, host)
 
