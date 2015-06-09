@@ -338,7 +338,7 @@ class DeleteMap(CLIBaseCommand):
 
 class CreateSnapshot(CLIBaseCommand):
 
-    """Create partion's Snapshot
+    """Create partition's Snapshot
 
     create si [part] [partition-ID]
     """
@@ -350,7 +350,7 @@ class CreateSnapshot(CLIBaseCommand):
 
 class DeleteSnapshot(CLIBaseCommand):
 
-    """Delete partion's Snapshot
+    """Delete partition's Snapshot
 
     delete si [snapshot-image-ID] [-y]
     """
