@@ -373,7 +373,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver._create_map()
+        self.driver._execute('CreateMap')
         self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(common_cli.LOG, 'warning')
@@ -385,7 +385,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver._delete_map()
+        self.driver._execute('DeleteMap')
         self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(common_cli.LOG, 'warning')
@@ -397,7 +397,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver._create_iqn()
+        self.driver._execute('CreateIQN')
         self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(common_cli.LOG, 'warning')
@@ -409,7 +409,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver._delete_iqn()
+        self.driver._execute('DeleteIQN')
         self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(common_cli.LOG, 'warning')
@@ -421,7 +421,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver._delete_iqn()
+        self.driver._execute('DeleteIQN')
         self.assertEqual(1, log_warning.call_count)
 
     def test_normal_channel(self):
