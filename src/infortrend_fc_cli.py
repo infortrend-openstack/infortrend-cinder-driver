@@ -199,6 +199,15 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'source_id': existing_ref['source-id']})
         return self.common.manage_existing(volume, existing_ref)
 
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        :param volume: Cinder volume to unmanage
+        """
+        self.common.unmanage(volume)
+
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
 

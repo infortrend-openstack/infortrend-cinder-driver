@@ -1817,6 +1817,19 @@ class InfortrendCommon(object):
         LOG.info(_LI('Rename Volume %(volume_id)s done'), {
             'volume_id': volume['id']})
 
+    def unmanage(self, volume):
+        volume_id = volume['id'].replace('-', '')
+        part_id = self._extract_specific_provider_location(
+            volume['provider_location'], 'partition_id')
+
+        if part_id is None:
+            part_id = self._get_part_id(volume_id)
+
+        self._set_part(part_id, 'name=cinder-unmanaged-%s' % volume_id[:-17])
+
+        LOG.info(_LI('Unmanage volume %(volume_id)s done.'), {
+            'volume_id': volume_id})
+
     def _get_specific_volume_dict(self, volume_id):
         ref_dict = {}
         rc, part_list = self._show_part()

@@ -1625,8 +1625,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver.manage_existing(
-            test_volume, test_ref_volume)
+        self.driver.manage_existing(test_volume, test_ref_volume)
 
         expect_cli_cmd = [
             mock.call('SetPartition', test_partition_id,
@@ -1646,7 +1645,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 test_ref_volume['source-id'].replace('-', ''), test_pool),
             'SetPartition': FAKE_ERROR_RETURN,
         }
-
         self._driver_setup(mock_commands)
 
         self.assertRaises(
@@ -1654,6 +1652,29 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             self.driver.manage_existing,
             test_volume,
             test_ref_volume)
+
+    @mock.patch.object(common_cli.LOG, 'info')
+    def test_unmanage(self, log_info):
+
+        test_volume = self.cli_data.test_volume
+        test_volume_id = test_volume['id'].replace('-', '')
+        test_partition_id = self.cli_data.fake_partition_id[0]
+
+        mock_commands = {
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver.unmanage(test_volume)
+
+        expect_cli_cmd = [
+            mock.call(
+                'SetPartition',
+                test_partition_id,
+                'name=cinder-unmanaged-%s' % test_volume_id[:-17]),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(common_cli.LOG, 'info')
     def test_retype_without_change(self, log_info):
