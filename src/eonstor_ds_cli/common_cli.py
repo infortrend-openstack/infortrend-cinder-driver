@@ -900,7 +900,7 @@ class InfortrendCommon(object):
         snapshot_list = do_create_snapshot()
 
         model_update = self._create_volume_from_snapshot_id(
-            volume, snapshot_list[-1]['SI-ID'], 'Cloned')
+            volume, snapshot_list[-1]['SI-ID'], 'Cloned', src_part_id)
 
         LOG.info(_LI('Create Cloned Volume %(volume_id)s done'), {
             'volume_id': volume['id']})
@@ -1125,8 +1125,10 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
+        src_part_id = self._check_snapshot_filled_block(raid_snapshot_id)
+
         model_update = self._create_volume_from_snapshot_id(
-            volume, raid_snapshot_id, 'Snapshot')
+            volume, raid_snapshot_id, 'Snapshot', src_part_id)
 
         LOG.info(_LI(
             'Create Volume %(volume_id)s from '
@@ -1136,8 +1138,16 @@ class InfortrendCommon(object):
 
         return model_update
 
+    def _check_snapshot_filled_block(self, raid_snapshot_id):
+        rc, snapshot_list = self._execute(
+            'ShowSnapshot', 'si=%s' % raid_snapshot_id, '-l')
+
+        if snapshot_list and snapshot_list[0]['Total-filled-block'] == '0':
+            return snapshot_list[0]['Partition-ID']
+        return
+
     def _create_volume_from_snapshot_id(
-            self, dst_volume, raid_snapshot_id, type):
+            self, dst_volume, raid_snapshot_id, type, src_part_id=None):
         # create the target volume for volume copy
         dst_volume_id = dst_volume['id'].replace('-', '')
 
@@ -1153,6 +1163,14 @@ class InfortrendCommon(object):
 
         model_info = self._concat_provider_location(model_dict)
         model_update = {"provider_location": model_info}
+
+        if src_part_id:
+            # clone the volume from the origin partition
+            commands = (
+                'Cinder-%s' % type, 'part', src_part_id, 'part', dst_part_id
+            )
+            self._execute('CreateReplica', *commands)
+            self._wait_replica_complete(dst_part_id)
 
         # clone the volume from the snapshot
         commands = (
