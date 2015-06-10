@@ -283,7 +283,7 @@ class InfortrendCLITestData(object):
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
-            round((857982.0 - 841978.0) / 1024, 2),
+            round((857982.0 * 20.0) / 1024, 2),
         'infortrend_provisioning': 'full',
     }]
 
