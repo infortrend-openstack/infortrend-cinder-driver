@@ -21,7 +21,7 @@ from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
 
 class InfortrendCLITestData(object):
 
-    """CLI Test Data"""
+    """CLI Test Data."""
 
     # Infortrend entry
     fake_lv_id = ['5DE94FF775D81C30', '1234567890']

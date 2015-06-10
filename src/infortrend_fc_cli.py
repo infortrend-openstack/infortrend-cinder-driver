@@ -28,7 +28,7 @@ LOG = logging.getLogger(__name__)
 
 class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
-    """Infortrend Fibre Channel Driver for Eonstor DS using CLI
+    """Infortrend Fibre Channel Driver for Eonstor DS using CLI.
 
     Version history:
         1.0.0 - Initial driver
@@ -165,7 +165,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector"""
+        """Disallow connection from connector."""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {
             'volume_id': volume['id']})
         return self.common.terminate_connection(volume, connector)
@@ -206,6 +206,8 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
         :param volume: Cinder volume to unmanage
         """
+        LOG.debug('unmanage volume id=%(volume_id)s', {
+            'volume_id': volume['id']})
         self.common.unmanage(volume)
 
     def manage_existing_get_size(self, volume, existing_ref):

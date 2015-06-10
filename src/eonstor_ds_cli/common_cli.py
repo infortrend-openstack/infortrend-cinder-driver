@@ -340,7 +340,7 @@ class InfortrendCommon(object):
                             entry['Ch'], entry['MCS'], controller)
 
     def _update_mcs_dict(self, channel_id, mcs_id, controller):
-        """Record the iSCSI MCS topology
+        """Record the iSCSI MCS topology.
 
         # R model with mcs, but it not working with iscsi multipath
         mcs_dict = {
@@ -639,7 +639,7 @@ class InfortrendCommon(object):
             return self._get_mapping_info_with_normal()
 
     def _get_mapping_info_with_mcs(self):
-        """Get the minimun mapping channel id and multi lun id mapping info
+        """Get the minimun mapping channel id and multi lun id mapping info.
 
         # R model with mcs
         map_chl = {
@@ -683,7 +683,7 @@ class InfortrendCommon(object):
         return lun_num
 
     def _get_mcs_channel_lun_map(self, channel_list):
-        """Find the common lun id in mcs channel"""
+        """Find the common lun id in mcs channel."""
 
         map_lun = []
         for lun_id in range(self.constants['MAX_LUN_MAP_PER_CHL']):
@@ -698,7 +698,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _get_mapping_info_with_normal(self):
-        """Get the minimun mapping channel id and lun id mapping info
+        """Get the minimun mapping channel id and lun id mapping info.
 
         # G model and R model
         map_chl = {
@@ -934,9 +934,9 @@ class InfortrendCommon(object):
         return {'provider_location': model_update}
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status
+        """Get volume status.
 
-        If refresh is True, update the status first
+        If refresh is True, update the status first.
         """
         if self._volume_stats is None or refresh:
             self._update_volume_stats()
@@ -1045,7 +1045,7 @@ class InfortrendCommon(object):
         return model_update
 
     def delete_snapshot(self, snapshot):
-        """Delete the snapshot"""
+        """Delete the snapshot."""
 
         snapshot_id = snapshot['id'].replace('-', '')
         volume_id = snapshot['volume_id'].replace('-', '')
@@ -1386,7 +1386,7 @@ class InfortrendCommon(object):
             return iqn
 
     def _extract_lun_map(self, mapping):
-        """Extract lun map
+        """Extract lun map.
 
         format: 'CH:1/ID:0/LUN:0, CH:1/ID:0/LUN:1, CH:2/ID:0/LUN:0'
         """
@@ -1785,7 +1785,7 @@ class InfortrendCommon(object):
         return ref_dict
 
     def _get_part_timestamps(self, time_string):
-        """Transform 'Sat, Jan 11 22:18:40 2020' into timestamps with sec"""
+        """Transform 'Sat, Jan 11 22:18:40 2020' into timestamps with sec."""
 
         first, value = time_string.split(',')
         timestamps = time.mktime(

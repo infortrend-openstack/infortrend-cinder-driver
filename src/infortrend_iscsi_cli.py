@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
-    """Infortrend iSCSI Driver for Eonstor DS using CLI
+    """Infortrend iSCSI Driver for Eonstor DS using CLI.
 
     Version history:
         1.0.0 - Initial driver
@@ -161,7 +161,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         return self.common.initialize_connection(volume, connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector"""
+        """Disallow connection from connector."""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {
             'volume_id': volume['id']})
         self.common.terminate_connection(volume, connector)
@@ -202,6 +202,8 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
         :param volume: Cinder volume to unmanage
         """
+        LOG.debug('unmanage volume id=%(volume_id)s', {
+            'volume_id': volume['id']})
         self.common.unmanage(volume)
 
     def manage_existing_get_size(self, volume, existing_ref):
