@@ -46,7 +46,7 @@ infortrend_esds_opts = [
                '/opt/bin/Infortrend/raidcmd_ESDS10.jar'),
     cfg.IntOpt('infortrend_cli_max_retries',
                default=5,
-               help='Maximum retry time for cli. Default is 5'),
+               help='Maximum retry time for cli. Default is 5.'),
     cfg.IntOpt('infortrend_cli_timeout',
                default=30,
                help='Default timeout for CLI copy operations in minutes. '
@@ -56,24 +56,26 @@ infortrend_esds_opts = [
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot A '
-               'for openstack usage. It is separated with comma. '
-               'By default, it is the channel 0~7'),
+               'for OpenStack usage. It is separated with comma. '
+               'By default, it is the channel 0~7.'),
     cfg.StrOpt('infortrend_slots_b_channels_id',
                default='0,1,2,3,4,5,6,7',
                help='Infortrend raid channel ID list on Slot B '
-               'for openstack usage. It is separated with comma. '
-               'By default, it is the channel 0~7'),
+               'for OpenStack usage. It is separated with comma. '
+               'By default, it is the channel 0~7.'),
 ]
 
 infortrend_esds_extra_opts = [
     cfg.StrOpt('infortrend_provisioning',
                default='full',
                help='Let the volume use specific provisioning. '
-               'By default, it is the full provisioning'),
+               'By default, it is the full provisioning. '
+               'The supported options are full or thin.'),
     cfg.StrOpt('infortrend_tiering',
                default='0',
                help='Let the volume use specific tiering level. '
-               'By default, it is the level 0.'),
+               'By default, it is the level 0. '
+               'The supported levels are 0,2,3,4.'),
 ]
 
 CONF = cfg.CONF
@@ -342,7 +344,7 @@ class InfortrendCommon(object):
     def _update_mcs_dict(self, channel_id, mcs_id, controller):
         """Record the iSCSI MCS topology.
 
-        # R model with mcs, but it not working with iscsi multipath
+        # R model with mcs, but it not working with iSCSI multipath
         mcs_dict = {
             'slot_a': {
                 '0': ['0', '1'],
@@ -980,15 +982,15 @@ class InfortrendCommon(object):
             if pool['Name'] in self.pool_list:
                 total_space = float(pool['Size'].split(' ', 1)[0])
                 available_space = float(pool['Available'].split(' ', 1)[0])
-                provisioning_space = total_space - available_space
 
                 total_capacity_gb = round(mi_to_gi(total_space), 2)
                 free_capacity_gb = round(mi_to_gi(available_space), 2)
+                provisioning_factor = self.configuration.safe_get(
+                    'max_over_subscription_ratio')
+                provisioning_space = total_space * provisioning_factor
                 provisioned_capacity_gb = round(
                     mi_to_gi(provisioning_space), 2)
 
-                provisioning_factor = self.configuration.safe_get(
-                    'max_over_subscription_ratio')
                 new_pool = {
                     'pool_name': pool['Name'],
                     'pool_id': pool['ID'],
