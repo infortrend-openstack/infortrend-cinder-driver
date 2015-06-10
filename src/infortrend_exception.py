@@ -33,3 +33,7 @@ class InfortrendDriverException(exception.VolumeDriverException):
 class InfortrendCliException(exception.CinderException):
     message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
                 "(Return Code: %(rc)s) (Output: %(out)s)")
+
+VolumeBackendAPIException = exception.VolumeBackendAPIException
+
+VolumeDriverException = exception.VolumeDriverException
