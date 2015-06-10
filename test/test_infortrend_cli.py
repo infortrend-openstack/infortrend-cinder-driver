@@ -32,8 +32,7 @@ class InfortrendCLITestData(object):
 
     fake_pair_id = ['55D790F8350B036B', '095A184B0ED2DB10']
 
-    fake_snapshot_id = ['2C7A8D211F3B1E36', '60135EE53C14D5EB',
-                        '1234567890123456']
+    fake_snapshot_id = ['2C7A8D211F3B1E36', '60135EE53C14D5EB']
 
     fake_data_port_ip = ['172.27.0.1', '172.27.0.2',
                          '172.27.0.3', '172.27.0.4',
@@ -399,40 +398,6 @@ Return: 0x0000
 
     def get_test_show_empty_list(self):
         return (0, [])
-
-    def get_test_show_one_snapshot(self):
-        return (0, [{
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[0],
-            'SI-ID': self.fake_snapshot_id[0],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:33:11 2020',
-            'Index': '1',
-        }])
-
-    def get_test_show_multi_snapshot(self):
-        return (0, [{
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[0],
-            'SI-ID': self.fake_snapshot_id[0],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:33:11 2020',
-            'Index': '1',
-        }, {
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[0],
-            'SI-ID': self.fake_snapshot_id[1],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:35:50 2020',
-            'Index': '2',
-        }, {
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[1],
-            'SI-ID': self.fake_snapshot_id[2],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:36:50 2020',
-            'Index': '3',
-        }])
 
     def get_test_show_snapshot(self, partition_id=None, snapshot_id=None):
         if partition_id and snapshot_id:

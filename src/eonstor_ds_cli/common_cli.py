@@ -900,7 +900,7 @@ class InfortrendCommon(object):
         snapshot_list = do_create_snapshot()
 
         model_update = self._create_volume_from_snapshot_id(
-            src_part_id, volume, [snapshot_list[-1]['SI-ID']], 'Cloned')
+            volume, snapshot_list[-1]['SI-ID'], 'Cloned')
 
         LOG.info(_LI('Create Cloned Volume %(volume_id)s done'), {
             'volume_id': volume['id']})
@@ -1125,20 +1125,8 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        src_part_id, raid_snapshot_list = (
-            self._get_specific_parition_info_by_snapshot(
-                raid_snapshot_id)
-        )
-
-        if src_part_id is None:
-            msg = _('Failed to get original volume '
-                    'from snapshot: %(snapshot_id)s') % {
-                        'snapshot_id': snapshot['id']}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
         model_update = self._create_volume_from_snapshot_id(
-            src_part_id, volume, raid_snapshot_list, 'Snapshot')
+            volume, raid_snapshot_id, 'Snapshot')
 
         LOG.info(_LI(
             'Create Volume %(volume_id)s from '
@@ -1148,23 +1136,8 @@ class InfortrendCommon(object):
 
         return model_update
 
-    def _get_specific_parition_info_by_snapshot(self, raid_snapshot_id):
-        part_id = None
-        rollback_snap_list = []
-
-        rc, snapshot_list = self._execute('ShowSnapshot')
-
-        for entry in snapshot_list:
-            if entry['SI-ID'] == raid_snapshot_id:
-                part_id = entry['Partition-ID']
-
-            if entry['Partition-ID'] == part_id:
-                rollback_snap_list.append(entry['SI-ID'])
-
-        return part_id, rollback_snap_list
-
     def _create_volume_from_snapshot_id(
-            self, src_part_id, dst_volume, raid_snapshot_list, type):
+            self, dst_volume, raid_snapshot_id, type):
         # create the target volume for volume copy
         dst_volume_id = dst_volume['id'].replace('-', '')
 
@@ -1181,20 +1154,12 @@ class InfortrendCommon(object):
         model_info = self._concat_provider_location(model_dict)
         model_update = {"provider_location": model_info}
 
-        # clone the volume from the current volume
+        # clone the volume from the snapshot
         commands = (
-            'Cinder-%s' % type, 'part', src_part_id, 'part', dst_part_id
+            'Cinder-%s' % type, 'si', raid_snapshot_id, 'part', dst_part_id
         )
         self._execute('CreateReplica', *commands)
         self._wait_replica_complete(dst_part_id)
-
-        # rollback into the specific snapshot
-        for raid_snapshot_id in reversed(raid_snapshot_list):
-            commands = (
-                'Cinder-%s' % type, 'si', raid_snapshot_id, 'part', dst_part_id
-            )
-            self._execute('CreateReplica', *commands)
-            self._wait_replica_complete(dst_part_id)
 
         return model_update
 
