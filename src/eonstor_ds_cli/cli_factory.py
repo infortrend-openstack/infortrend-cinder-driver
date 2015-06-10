@@ -46,7 +46,7 @@ def retry_cli(func):
                 break
 
             LOG.error(_LE(
-                'Retry %(retry)s time: %(method)s Fail '
+                'Retry %(retry)s times: %(method)s Failed '
                 '%(rc)s: %(reason)s'), {
                     'retry': retry_time,
                     'method': self.__class__.__name__,
@@ -496,7 +496,6 @@ class ShowCommand(CLIBaseCommand):
         return detect_type
 
     def detect_table_start_index(self, content):
-
         for i in range(3, len(content)):
             key = content[i].strip().split('  ')
             if self.start_key in key[0].strip():
@@ -505,7 +504,6 @@ class ShowCommand(CLIBaseCommand):
         return -1
 
     def detect_detail_start_index(self, content):
-
         for i in range(3, len(content)):
             split_entry = content[i].strip().split(' ')
             if len(split_entry) >= 2 and ':' in split_entry[0]:
@@ -539,7 +537,6 @@ class ShowLV(ShowCommand):
         self.start_key = "ID"
 
     def detect_table_start_index(self, content):
-
         if "tier" in self.parameters:
             self.start_key = "LV-Name"
 
@@ -728,15 +725,16 @@ class ShowIQN(ShowCommand):
     show iqn
     """
 
+    LIST_START_LINE = "List of initiator IQN(s):"
+
     def __init__(self, *args, **kwargs):
         super(ShowIQN, self).__init__(*args, **kwargs)
         self.command = "show iqn"
         self.default_type = "list"
 
     def detect_detail_start_index(self, content):
-
         for i in range(3, len(content)):
-            if content[i].strip() == "List of initiator IQN(s):":
+            if content[i].strip() == self.LIST_START_LINE:
                 return i + 2
 
         return -1
