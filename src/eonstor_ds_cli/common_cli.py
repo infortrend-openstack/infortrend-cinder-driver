@@ -982,15 +982,15 @@ class InfortrendCommon(object):
             if pool['Name'] in self.pool_list:
                 total_space = float(pool['Size'].split(' ', 1)[0])
                 available_space = float(pool['Available'].split(' ', 1)[0])
-                provisioning_space = total_space - available_space
 
                 total_capacity_gb = round(mi_to_gi(total_space), 2)
                 free_capacity_gb = round(mi_to_gi(available_space), 2)
+                provisioning_factor = self.configuration.safe_get(
+                    'max_over_subscription_ratio')
+                provisioning_space = total_space * provisioning_factor
                 provisioned_capacity_gb = round(
                     mi_to_gi(provisioning_space), 2)
 
-                provisioning_factor = self.configuration.safe_get(
-                    'max_over_subscription_ratio')
                 new_pool = {
                     'pool_name': pool['Name'],
                     'pool_id': pool['ID'],
