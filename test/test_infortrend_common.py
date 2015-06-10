@@ -1011,7 +1011,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_snapshot_id = self.cli_data.fake_snapshot_id[0]
         test_dst_volume = self.cli_data.test_dst_volume
         test_dst_volume_id = test_dst_volume['id'].replace('-', '')
-        test_src_part_id = self.cli_data.fake_partition_id[0]
         test_dst_part_id = self.cli_data.fake_partition_id[1]
         test_model_update = {
             'provider_location': 'system_id^%s@partition_id^%s' % (
@@ -1019,18 +1018,16 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 self.cli_data.fake_partition_id[1]),
         }
         mock_commands = {
-            'ShowSnapshot': self.cli_data.get_test_show_one_snapshot(),
+            'ShowSnapshot':
+                self.cli_data.get_test_show_snapshot_detail_filled_block(),
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
             'CreateReplica': SUCCEED,
             'ShowLV': self._mock_show_lv,
-            'ShowReplica': [
-                self.cli_data.get_test_show_replica_detail_for_migrate(
-                    test_src_part_id, test_dst_part_id, test_dst_volume_id),
+            'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_snapshot_id, test_dst_part_id, test_dst_volume_id),
-            ],
             'DeleteReplica': SUCCEED,
         }
         self._driver_setup(mock_commands)
@@ -1044,22 +1041,21 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     @mock.patch('cinder.openstack.common.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     @mock.patch.object(common_cli.LOG, 'info')
-    def test_create_volume_from_snapshot_cross_muti_snapshot(self, log_info):
+    def test_create_volume_from_snapshot_without_filled_block(self, log_info):
 
         test_snapshot = self.cli_data.test_snapshot
         test_snapshot_id = self.cli_data.fake_snapshot_id[0]
-        test_snapshot_id_2 = self.cli_data.fake_snapshot_id[1]
         test_dst_volume = self.cli_data.test_dst_volume
         test_dst_volume_id = test_dst_volume['id'].replace('-', '')
-        test_src_part_id = self.cli_data.fake_partition_id[0]
         test_dst_part_id = self.cli_data.fake_partition_id[1]
+        test_src_part_id = self.cli_data.fake_partition_id[0]
         test_model_update = {
             'provider_location': 'system_id^%s@partition_id^%s' % (
                 int(self.cli_data.fake_system_id[0], 16),
                 self.cli_data.fake_partition_id[1]),
         }
         mock_commands = {
-            'ShowSnapshot': self.cli_data.get_test_show_multi_snapshot(),
+            'ShowSnapshot': self.cli_data.get_test_show_snapshot_detail(),
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
@@ -1068,8 +1064,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowReplica': [
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_src_part_id, test_dst_part_id, test_dst_volume_id),
-                self.cli_data.get_test_show_replica_detail_for_migrate(
-                    test_snapshot_id_2, test_dst_part_id, test_dst_volume_id),
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_snapshot_id, test_dst_part_id, test_dst_volume_id),
             ],

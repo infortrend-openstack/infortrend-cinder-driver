@@ -21,7 +21,7 @@ from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
 
 class InfortrendCLITestData(object):
 
-    """CLI Test Data"""
+    """CLI Test Data."""
 
     # Infortrend entry
     fake_lv_id = ['5DE94FF775D81C30', '1234567890']
@@ -32,8 +32,7 @@ class InfortrendCLITestData(object):
 
     fake_pair_id = ['55D790F8350B036B', '095A184B0ED2DB10']
 
-    fake_snapshot_id = ['2C7A8D211F3B1E36', '60135EE53C14D5EB',
-                        '1234567890123456']
+    fake_snapshot_id = ['2C7A8D211F3B1E36', '60135EE53C14D5EB']
 
     fake_data_port_ip = ['172.27.0.1', '172.27.0.2',
                          '172.27.0.3', '172.27.0.4',
@@ -400,40 +399,6 @@ Return: 0x0000
     def get_test_show_empty_list(self):
         return (0, [])
 
-    def get_test_show_one_snapshot(self):
-        return (0, [{
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[0],
-            'SI-ID': self.fake_snapshot_id[0],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:33:11 2020',
-            'Index': '1',
-        }])
-
-    def get_test_show_multi_snapshot(self):
-        return (0, [{
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[0],
-            'SI-ID': self.fake_snapshot_id[0],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:33:11 2020',
-            'Index': '1',
-        }, {
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[0],
-            'SI-ID': self.fake_snapshot_id[1],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:35:50 2020',
-            'Index': '2',
-        }, {
-            'Map': 'No',
-            'Partition-ID': self.fake_partition_id[1],
-            'SI-ID': self.fake_snapshot_id[2],
-            'Name': '---',
-            'Activated-time': 'Thu, Jan 09 01:36:50 2020',
-            'Index': '3',
-        }])
-
     def get_test_show_snapshot(self, partition_id=None, snapshot_id=None):
         if partition_id and snapshot_id:
             return (0, [{
@@ -485,6 +450,69 @@ Return: 0x0000
                       self.fake_partition_id[0],
                       self.fake_snapshot_id[1],
                       self.fake_partition_id[0])
+
+    def get_test_show_snapshot_detail_filled_block(self):
+        return (0, [{
+            'Mapped': 'Yes',
+            'Created-time': 'Wed, Jun 10 10:57:16 2015',
+            'ID': self.fake_snapshot_id[0],
+            'Last-modification-time': 'Wed, Jun 10 10:57:16 2015',
+            'Description': '---',
+            'Total-filled-block': '1',
+            'LV-ID': self.fake_lv_id[0],
+            'Activation-schedule-time': 'Not Actived',
+            'Mapping': 'CH:0/ID:0/LUN:1',
+            'Index': '1',
+            'Used': '0',
+            'Name': '---',
+            'Valid-filled-block': '0',
+            'Partition-ID': self.fake_partition_id[0],
+        }])
+
+    def get_test_show_snapshot_detail(self):
+        return (0, [{
+            'Mapped': 'Yes',
+            'Created-time': 'Wed, Jun 10 10:57:16 2015',
+            'ID': self.fake_snapshot_id[0],
+            'Last-modification-time': 'Wed, Jun 10 10:57:16 2015',
+            'Description': '---',
+            'Total-filled-block': '0',
+            'LV-ID': self.fake_lv_id[0],
+            'Activation-schedule-time': 'Not Actived',
+            'Mapping': 'CH:0/ID:0/LUN:1',
+            'Index': '1',
+            'Used': '0',
+            'Name': '---',
+            'Valid-filled-block': '0',
+            'Partition-ID': self.fake_partition_id[0],
+        }])
+
+    def get_fake_show_snapshot_detail(self):
+        msg = """
+CLI: Successful: Device(UID:25090, Name:, Model:DS 1016RE) selected.
+Return: 0x0000
+
+ ID: %s
+ Index: 1
+ Name: ---
+ Partition-ID: %s
+ LV-ID: %s
+ Created-time: Wed, Jun 10 10:57:16 2015
+ Last-modification-time: Wed, Jun 10 10:57:16 2015
+ Activation-schedule-time: Not Actived
+ Used: 0
+ Valid-filled-block: 0
+ Total-filled-block: 0
+ Description: ---
+ Mapped: Yes
+ Mapping: CH:0/ID:0/LUN:1
+
+CLI: Successful: 1 snapshot image(s) shown
+Return: 0x0000
+"""
+        return msg % (self.fake_snapshot_id[0],
+                      self.fake_partition_id[0],
+                      self.fake_lv_id[0])
 
     def get_test_show_net(self):
         return (0, [{
@@ -1999,6 +2027,13 @@ class InfortrendCLITestCase(test.TestCase):
             self.cli_data.get_fake_show_snapshot(),
             self.cli_data.get_test_show_snapshot(),
             cli.ShowSnapshot)
+
+    @mock.patch.object(cli.LOG, 'debug', mock.Mock())
+    def test_show_snapshot_detail(self):
+        self._test_show_command(
+            self.cli_data.get_fake_show_snapshot_detail(),
+            self.cli_data.get_test_show_snapshot_detail(),
+            cli.ShowSnapshot, '-l')
 
     @mock.patch.object(cli.LOG, 'debug', mock.Mock())
     def test_show_net(self):

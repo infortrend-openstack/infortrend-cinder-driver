@@ -116,7 +116,7 @@ def content_lines_to_dict(content_lines):
 @six.add_metaclass(abc.ABCMeta)
 class BaseCommand(object):
 
-    """The BaseCommand abstract class"""
+    """The BaseCommand abstract class."""
 
     def __init__(self):
         super(BaseCommand, self).__init__()
@@ -128,7 +128,7 @@ class BaseCommand(object):
 
 class ExecuteCommand(BaseCommand):
 
-    """The Common ExecuteCommand"""
+    """The Common ExecuteCommand."""
 
     def __init__(self, cli_conf):
         super(ExecuteCommand, self).__init__()
@@ -167,7 +167,7 @@ class CLIBaseCommand(BaseCommand):
         self.command_line = ""
 
     def _generate_command(self, parameters):
-        """Generate execute Command. use java, execute, command, parameters"""
+        """Generate execute Command. use java, execute, command, parameters."""
         self.parameters = parameters
         parameters_line = ' '.join(parameters)
 
@@ -187,7 +187,7 @@ class CLIBaseCommand(BaseCommand):
     def _parser(self, content=None):
         """The parser to parse command result.
 
-        :param content: The parse Content.
+        :param content: The parse Content
         :returns: parse result
         """
         content = content.replace("\r", "")
@@ -208,7 +208,7 @@ class CLIBaseCommand(BaseCommand):
 
     @retry_cli
     def execute(self, *args, **kwargs):
-        """The execute command function need to add parameters
+        """The execute command function need to add parameters.
 
         :args args: Command's parameters
         :returns: execute result
@@ -236,11 +236,11 @@ class CLIBaseCommand(BaseCommand):
         return util_execute(command_line)
 
     def set_ip(self, ip):
-        """Set the Raid's ip"""
+        """Set the Raid's ip."""
         self.ip = ip
 
     def _parse_return(self, content_lines):
-        """Get the end of command line result"""
+        """Get the end of command line result."""
         rc = 0
         return_value = content_lines[-1].strip().split(' ', 1)[1]
         return_cli_result = content_lines[-2].strip().split(' ', 1)[1]
@@ -252,7 +252,7 @@ class CLIBaseCommand(BaseCommand):
 
 class CreateLD(CLIBaseCommand):
 
-    """The Create LD Command"""
+    """The Create LD Command."""
 
     def __init__(self, *args, **kwargs):
         super(CreateLD, self).__init__(*args, **kwargs)
@@ -261,7 +261,7 @@ class CreateLD(CLIBaseCommand):
 
 class CreateLV(CLIBaseCommand):
 
-    """The Create LV Command"""
+    """The Create LV Command."""
 
     def __init__(self, *args, **kwargs):
         super(CreateLV, self).__init__(*args, **kwargs)
@@ -270,7 +270,7 @@ class CreateLV(CLIBaseCommand):
 
 class CreatePartition(CLIBaseCommand):
 
-    """Create Partition
+    """Create Partition.
 
     create part [LV-ID] [name] [size={partition-size}]
                 [min={minimal-reserve-size}] [init={switch}]
@@ -284,7 +284,7 @@ class CreatePartition(CLIBaseCommand):
 
 class DeletePartition(CLIBaseCommand):
 
-    """Delete Partition
+    """Delete Partition.
 
     delete part [partition-ID] [-y]
     """
@@ -296,7 +296,7 @@ class DeletePartition(CLIBaseCommand):
 
 class SetPartition(CLIBaseCommand):
 
-    """Set Partition
+    """Set Partition.
 
     set part [partition-ID] [name={partition-name}]
              [min={minimal-reserve-size}]
@@ -312,7 +312,7 @@ class SetPartition(CLIBaseCommand):
 
 class CreateMap(CLIBaseCommand):
 
-    """Map the Partition on the channel
+    """Map the Partition on the channel.
 
     create map [part] [partition-ID] [Channel-ID]
                [Target-ID] [LUN-ID] [assign={assign-to}]
@@ -325,7 +325,7 @@ class CreateMap(CLIBaseCommand):
 
 class DeleteMap(CLIBaseCommand):
 
-    """Unmap the Partition on the channel
+    """Unmap the Partition on the channel.
 
     delete map [part] [partition-ID] [Channel-ID]
                [Target-ID] [LUN-ID] [-y]
@@ -338,7 +338,7 @@ class DeleteMap(CLIBaseCommand):
 
 class CreateSnapshot(CLIBaseCommand):
 
-    """Create partition's Snapshot
+    """Create partition's Snapshot.
 
     create si [part] [partition-ID]
     """
@@ -350,7 +350,7 @@ class CreateSnapshot(CLIBaseCommand):
 
 class DeleteSnapshot(CLIBaseCommand):
 
-    """Delete partition's Snapshot
+    """Delete partition's Snapshot.
 
     delete si [snapshot-image-ID] [-y]
     """
@@ -362,7 +362,7 @@ class DeleteSnapshot(CLIBaseCommand):
 
 class CreateReplica(CLIBaseCommand):
 
-    """Create partition or snapshot's replica
+    """Create partition or snapshot's replica.
 
     create replica [name] [part | si] [source-volume-ID]
                    [part] [target-volume-ID] [type={replication-mode}]
@@ -390,7 +390,7 @@ class DeleteReplica(CLIBaseCommand):
 
 class CreateIQN(CLIBaseCommand):
 
-    """Create host iqn for CHAP or lun filter
+    """Create host iqn for CHAP or lun filter.
 
     create iqn [IQN] [IQN-alias-name] [user={username}] [password={secret}]
                [target={name}] [target-password={secret}] [ip={ip-address}]
@@ -404,7 +404,7 @@ class CreateIQN(CLIBaseCommand):
 
 class DeleteIQN(CLIBaseCommand):
 
-    """Delete host iqn by name
+    """Delete host iqn by name.
 
     delete iqn [name]
     """
@@ -416,7 +416,7 @@ class DeleteIQN(CLIBaseCommand):
 
 class ShowCommand(CLIBaseCommand):
 
-    """Basic Show Command"""
+    """Basic Show Command."""
 
     def __init__(self, *args, **kwargs):
         super(ShowCommand, self).__init__(*args, **kwargs)
@@ -425,7 +425,7 @@ class ShowCommand(CLIBaseCommand):
         self.start_key = ""
 
     def _parser(self, content=None):
-        """Parse Table or Detail format into dict
+        """Parse Table or Detail format into dict.
 
         # Table format
 
@@ -516,7 +516,7 @@ class ShowCommand(CLIBaseCommand):
 
 class ShowLD(ShowCommand):
 
-    """Show LD
+    """Show LD.
 
     show ld [index-list]
     """
@@ -528,7 +528,7 @@ class ShowLD(ShowCommand):
 
 class ShowLV(ShowCommand):
 
-    """Show LV
+    """Show LV.
 
     show lv [lv={LV-IDs}] [-l]
     """
@@ -553,7 +553,7 @@ class ShowLV(ShowCommand):
 
 class ShowPartition(ShowCommand):
 
-    """Show Partition
+    """Show Partition.
 
     show part [part={partition-IDs} | lv={LV-IDs}] [-l]
     """
@@ -566,7 +566,7 @@ class ShowPartition(ShowCommand):
 
 class ShowSnapshot(ShowCommand):
 
-    """Show Snapshot
+    """Show Snapshot.
 
     show si [si={snapshot-image-IDs} | part={partition-IDs} | lv={LV-IDs}] [-l]
     """
@@ -579,7 +579,7 @@ class ShowSnapshot(ShowCommand):
 
 class ShowDevice(ShowCommand):
 
-    """Show Device
+    """Show Device.
 
     show device
     """
@@ -592,7 +592,7 @@ class ShowDevice(ShowCommand):
 
 class ShowChannel(ShowCommand):
 
-    """Show Channel
+    """Show Channel.
 
     show channel
     """
@@ -605,7 +605,7 @@ class ShowChannel(ShowCommand):
 
 class ShowDisk(ShowCommand):
 
-    """The Show Disk Command
+    """The Show Disk Command.
 
     show disk [disk-index-list | channel={ch}]
     """
@@ -617,7 +617,7 @@ class ShowDisk(ShowCommand):
 
 class ShowMap(ShowCommand):
 
-    """Show Map
+    """Show Map.
 
     show map [part={partition-IDs} | channel={channel-IDs}] [-l]
     """
@@ -630,7 +630,7 @@ class ShowMap(ShowCommand):
 
 class ShowNet(ShowCommand):
 
-    """Show IP network
+    """Show IP network.
 
     show net [id={channel-IDs}] [-l]
     """
@@ -643,7 +643,7 @@ class ShowNet(ShowCommand):
 
 class ShowLicense(ShowCommand):
 
-    """Show License
+    """Show License.
 
     show license
     """
@@ -654,7 +654,7 @@ class ShowLicense(ShowCommand):
         self.start_key = "License"
 
     def _parser(self, content=None):
-        """Parse License format
+        """Parse License format.
 
         # License format
 
@@ -698,7 +698,7 @@ class ShowLicense(ShowCommand):
 
 class ShowReplica(ShowCommand):
 
-    """Show information of all replication jobs or specific job
+    """Show information of all replication jobs or specific job.
 
     show replica [id={volume-pair-IDs}] [-l] id={volume-pair-IDs}
     """
@@ -710,7 +710,7 @@ class ShowReplica(ShowCommand):
 
 class ShowWWN(ShowCommand):
 
-    """Show Fibre network
+    """Show Fibre network.
 
     show wwn
     """
@@ -723,7 +723,7 @@ class ShowWWN(ShowCommand):
 
 class ShowIQN(ShowCommand):
 
-    """Show iSCSI initiator IQN which set by create iqn
+    """Show iSCSI initiator IQN which set by create iqn.
 
     show iqn
     """

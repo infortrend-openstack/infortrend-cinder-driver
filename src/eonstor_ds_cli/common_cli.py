@@ -340,7 +340,7 @@ class InfortrendCommon(object):
                             entry['Ch'], entry['MCS'], controller)
 
     def _update_mcs_dict(self, channel_id, mcs_id, controller):
-        """Record the iSCSI MCS topology
+        """Record the iSCSI MCS topology.
 
         # R model with mcs, but it not working with iscsi multipath
         mcs_dict = {
@@ -639,7 +639,7 @@ class InfortrendCommon(object):
             return self._get_mapping_info_with_normal()
 
     def _get_mapping_info_with_mcs(self):
-        """Get the minimun mapping channel id and multi lun id mapping info
+        """Get the minimun mapping channel id and multi lun id mapping info.
 
         # R model with mcs
         map_chl = {
@@ -683,7 +683,7 @@ class InfortrendCommon(object):
         return lun_num
 
     def _get_mcs_channel_lun_map(self, channel_list):
-        """Find the common lun id in mcs channel"""
+        """Find the common lun id in mcs channel."""
 
         map_lun = []
         for lun_id in range(self.constants['MAX_LUN_MAP_PER_CHL']):
@@ -698,7 +698,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _get_mapping_info_with_normal(self):
-        """Get the minimun mapping channel id and lun id mapping info
+        """Get the minimun mapping channel id and lun id mapping info.
 
         # G model and R model
         map_chl = {
@@ -900,7 +900,7 @@ class InfortrendCommon(object):
         snapshot_list = do_create_snapshot()
 
         model_update = self._create_volume_from_snapshot_id(
-            src_part_id, volume, [snapshot_list[-1]['SI-ID']], 'Cloned')
+            volume, snapshot_list[-1]['SI-ID'], 'Cloned', src_part_id)
 
         LOG.info(_LI('Create Cloned Volume %(volume_id)s done'), {
             'volume_id': volume['id']})
@@ -934,9 +934,9 @@ class InfortrendCommon(object):
         return {'provider_location': model_update}
 
     def get_volume_stats(self, refresh=False):
-        """Get volume status
+        """Get volume status.
 
-        If refresh is True, update the status first
+        If refresh is True, update the status first.
         """
         if self._volume_stats is None or refresh:
             self._update_volume_stats()
@@ -1045,7 +1045,7 @@ class InfortrendCommon(object):
         return model_update
 
     def delete_snapshot(self, snapshot):
-        """Delete the snapshot"""
+        """Delete the snapshot."""
 
         snapshot_id = snapshot['id'].replace('-', '')
         volume_id = snapshot['volume_id'].replace('-', '')
@@ -1125,20 +1125,10 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        src_part_id, raid_snapshot_list = (
-            self._get_specific_parition_info_by_snapshot(
-                raid_snapshot_id)
-        )
-
-        if src_part_id is None:
-            msg = _('Failed to get original volume '
-                    'from snapshot: %(snapshot_id)s') % {
-                        'snapshot_id': snapshot['id']}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+        src_part_id = self._check_snapshot_filled_block(raid_snapshot_id)
 
         model_update = self._create_volume_from_snapshot_id(
-            src_part_id, volume, raid_snapshot_list, 'Snapshot')
+            volume, raid_snapshot_id, 'Snapshot', src_part_id)
 
         LOG.info(_LI(
             'Create Volume %(volume_id)s from '
@@ -1148,23 +1138,16 @@ class InfortrendCommon(object):
 
         return model_update
 
-    def _get_specific_parition_info_by_snapshot(self, raid_snapshot_id):
-        part_id = None
-        rollback_snap_list = []
+    def _check_snapshot_filled_block(self, raid_snapshot_id):
+        rc, snapshot_list = self._execute(
+            'ShowSnapshot', 'si=%s' % raid_snapshot_id, '-l')
 
-        rc, snapshot_list = self._execute('ShowSnapshot')
-
-        for entry in snapshot_list:
-            if entry['SI-ID'] == raid_snapshot_id:
-                part_id = entry['Partition-ID']
-
-            if entry['Partition-ID'] == part_id:
-                rollback_snap_list.append(entry['SI-ID'])
-
-        return part_id, rollback_snap_list
+        if snapshot_list and snapshot_list[0]['Total-filled-block'] == '0':
+            return snapshot_list[0]['Partition-ID']
+        return
 
     def _create_volume_from_snapshot_id(
-            self, src_part_id, dst_volume, raid_snapshot_list, type):
+            self, dst_volume, raid_snapshot_id, type, src_part_id=None):
         # create the target volume for volume copy
         dst_volume_id = dst_volume['id'].replace('-', '')
 
@@ -1181,20 +1164,20 @@ class InfortrendCommon(object):
         model_info = self._concat_provider_location(model_dict)
         model_update = {"provider_location": model_info}
 
-        # clone the volume from the current volume
-        commands = (
-            'Cinder-%s' % type, 'part', src_part_id, 'part', dst_part_id
-        )
-        self._execute('CreateReplica', *commands)
-        self._wait_replica_complete(dst_part_id)
-
-        # rollback into the specific snapshot
-        for raid_snapshot_id in reversed(raid_snapshot_list):
+        if src_part_id:
+            # clone the volume from the origin partition
             commands = (
-                'Cinder-%s' % type, 'si', raid_snapshot_id, 'part', dst_part_id
+                'Cinder-%s' % type, 'part', src_part_id, 'part', dst_part_id
             )
             self._execute('CreateReplica', *commands)
             self._wait_replica_complete(dst_part_id)
+
+        # clone the volume from the snapshot
+        commands = (
+            'Cinder-%s' % type, 'si', raid_snapshot_id, 'part', dst_part_id
+        )
+        self._execute('CreateReplica', *commands)
+        self._wait_replica_complete(dst_part_id)
 
         return model_update
 
@@ -1386,7 +1369,7 @@ class InfortrendCommon(object):
             return iqn
 
     def _extract_lun_map(self, mapping):
-        """Extract lun map
+        """Extract lun map.
 
         format: 'CH:1/ID:0/LUN:0, CH:1/ID:0/LUN:1, CH:2/ID:0/LUN:0'
         """
@@ -1785,7 +1768,7 @@ class InfortrendCommon(object):
         return ref_dict
 
     def _get_part_timestamps(self, time_string):
-        """Transform 'Sat, Jan 11 22:18:40 2020' into timestamps with sec"""
+        """Transform 'Sat, Jan 11 22:18:40 2020' into timestamps with sec."""
 
         first, value = time_string.split(',')
         timestamps = time.mktime(
