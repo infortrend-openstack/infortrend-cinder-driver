@@ -1904,7 +1904,7 @@ class InfortrendCLITestCase(test.TestCase):
         log_error.reset_mock()
 
         LOG_ERROR_STR = \
-            'Retry %(retry)s time: %(method)s Fail %(rc)s: %(reason)s'
+            'Retry %(retry)s times: %(method)s Failed %(rc)s: %(reason)s'
 
         fake_result_list = [
             self.cli_data.get_fake_cli_failed(),
@@ -1937,7 +1937,7 @@ class InfortrendCLITestCase(test.TestCase):
         log_error.reset_mock()
 
         LOG_ERROR_STR = \
-            'Retry %(retry)s time: %(method)s Fail %(rc)s: %(reason)s'
+            'Retry %(retry)s times: %(method)s Failed %(rc)s: %(reason)s'
 
         fake_result_list = [
             self.cli_data.get_fake_cli_failed(),
