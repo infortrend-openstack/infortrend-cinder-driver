@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
-    """Infortrend iSCSI Driver for Eonstor DS using CLI
+    """Infortrend iSCSI Driver for Eonstor DS using CLI.
 
     Version history:
         1.0.0 - Initial driver
@@ -36,6 +36,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         super(InfortrendCLIISCSIDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(
             'iSCSI', configuration=self.configuration)
+        self.VERSION = self.common.VERSION
 
     def check_for_setup_error(self):
         LOG.debug('check_for_setup_error start')
@@ -93,7 +94,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities.
         """
-        LOG.debug('migrate_volume volime id=%(volume_id)s host=%(host)s', {
+        LOG.debug('migrate_volume volume id=%(volume_id)s host=%(host)s', {
             'volume_id': volume['id'], 'host': host['host']})
         return self.common.migrate_volume(volume, host)
 
@@ -160,7 +161,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         return self.common.initialize_connection(volume, connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
-        """Disallow connection from connector"""
+        """Disallow connection from connector."""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {
             'volume_id': volume['id']})
         self.common.terminate_connection(volume, connector)
@@ -193,6 +194,17 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
                 'volume_id': volume['id'],
                 'source_id': existing_ref['source-id']})
         return self.common.manage_existing(volume, existing_ref)
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        :param volume: Cinder volume to unmanage
+        """
+        LOG.debug('unmanage volume id=%(volume_id)s', {
+            'volume_id': volume['id']})
+        self.common.unmanage(volume)
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
