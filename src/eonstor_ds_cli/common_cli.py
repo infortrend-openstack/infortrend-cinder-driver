@@ -990,6 +990,7 @@ class InfortrendCommon(object):
             provisioning = 'full'
             provisioning_support = False
 
+        rc, part_list = self._execute('ShowPartition', '-l')
         rc, pools_info = self._execute('ShowLV')
         pools = []
 
@@ -1002,9 +1003,10 @@ class InfortrendCommon(object):
                 free_capacity_gb = round(mi_to_gi(available_space), 2)
                 provisioning_factor = self.configuration.safe_get(
                     'max_over_subscription_ratio')
-                provisioning_space = total_space * provisioning_factor
+                provisioned_space = self._get_provisioned_space(
+                    pool['ID'], part_list)
                 provisioned_capacity_gb = round(
-                    mi_to_gi(provisioning_space), 2)
+                    mi_to_gi(provisioned_space), 2)
 
                 new_pool = {
                     'pool_name': pool['Name'],
@@ -1021,6 +1023,13 @@ class InfortrendCommon(object):
                 }
                 pools.append(new_pool)
         return pools
+
+    def _get_provisioned_space(self, pool_id, part_list):
+        provisioning_space = 0
+        for entry in part_list:
+            if entry['LV-ID'] == pool_id:
+                provisioning_space += entry['Size']
+        return provisioning_space
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
