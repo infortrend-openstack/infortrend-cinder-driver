@@ -1013,7 +1013,7 @@ class InfortrendCommon(object):
         provisioning_space = 0
         for entry in part_list:
             if entry['LV-ID'] == pool_id:
-                provisioning_space += entry['Size']
+                provisioning_space += int(entry['Size'])
         return provisioning_space
 
     def create_snapshot(self, snapshot):
