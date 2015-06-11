@@ -891,21 +891,36 @@ class InfortrendCommon(object):
         if src_part_id is None:
             src_part_id = self._get_part_id(volume_id)
 
-        @lockutils.synchronized(
-            'snapshot-' + src_part_id, 'infortrend-', True)
-        def do_create_snapshot():
-            self._execute('CreateSnapshot', 'part', src_part_id)
-            rc, tmp_snapshot_list = self._execute(
-                'ShowSnapshot', 'part=%s' % src_part_id)
-            return tmp_snapshot_list
-
-        snapshot_list = do_create_snapshot()
-
-        model_update = self._create_volume_from_snapshot_id(
-            volume, snapshot_list[-1]['SI-ID'], 'Cloned', src_part_id)
+        model_update = self._create_volume_from_volume(volume, src_part_id)
 
         LOG.info(_LI('Create Cloned Volume %(volume_id)s done'), {
             'volume_id': volume['id']})
+        return model_update
+
+    def _create_volume_from_volume(self, dst_volume, src_part_id):
+        # create the target volume for volume copy
+        dst_volume_id = dst_volume['id'].replace('-', '')
+
+        self._create_partition_by_default(dst_volume)
+
+        dst_part_id = self._get_part_id(dst_volume_id)
+        # prepare return value
+        system_id = self._get_system_id(self.ip)
+        model_dict = {
+            'system_id': system_id,
+            'partition_id': dst_part_id,
+        }
+
+        model_info = self._concat_provider_location(model_dict)
+        model_update = {"provider_location": model_info}
+
+        # clone the volume from the origin partition
+        commands = (
+            'Cinder-Cloned', 'part', src_part_id, 'part', dst_part_id
+        )
+        self._execute('CreateReplica', *commands)
+        self._wait_replica_complete(dst_part_id)
+
         return model_update
 
     def _extract_specific_provider_location(self, provider_location, key):
@@ -1130,7 +1145,7 @@ class InfortrendCommon(object):
         src_part_id = self._check_snapshot_filled_block(raid_snapshot_id)
 
         model_update = self._create_volume_from_snapshot_id(
-            volume, raid_snapshot_id, 'Snapshot', src_part_id)
+            volume, raid_snapshot_id, src_part_id)
 
         LOG.info(_LI(
             'Create Volume %(volume_id)s from '
@@ -1149,7 +1164,7 @@ class InfortrendCommon(object):
         return
 
     def _create_volume_from_snapshot_id(
-            self, dst_volume, raid_snapshot_id, type, src_part_id=None):
+            self, dst_volume, raid_snapshot_id, src_part_id):
         # create the target volume for volume copy
         dst_volume_id = dst_volume['id'].replace('-', '')
 
@@ -1169,14 +1184,14 @@ class InfortrendCommon(object):
         if src_part_id:
             # clone the volume from the origin partition
             commands = (
-                'Cinder-%s' % type, 'part', src_part_id, 'part', dst_part_id
+                'Cinder-Snapshot', 'part', src_part_id, 'part', dst_part_id
             )
             self._execute('CreateReplica', *commands)
             self._wait_replica_complete(dst_part_id)
 
         # clone the volume from the snapshot
         commands = (
-            'Cinder-%s' % type, 'si', raid_snapshot_id, 'part', dst_part_id
+            'Cinder-Snapshot', 'si', raid_snapshot_id, 'part', dst_part_id
         )
         self._execute('CreateReplica', *commands)
         self._wait_replica_complete(dst_part_id)
