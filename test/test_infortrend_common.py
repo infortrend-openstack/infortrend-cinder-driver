@@ -762,7 +762,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_create_cloned_volume(self, log_info):
 
         fake_partition_id = self.cli_data.fake_partition_id[0]
-        fake_snapshot_id = self.cli_data.fake_snapshot_id[0]
         test_dst_volume = self.cli_data.test_dst_volume
         test_dst_volume_id = test_dst_volume['id'].replace('-', '')
         test_src_volume = self.cli_data.test_volume
@@ -774,21 +773,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
 
         mock_commands = {
-            'CreateSnapshot': SUCCEED,
-            'ShowSnapshot': self.cli_data.get_test_show_snapshot(
-                partition_id=fake_partition_id,
-                snapshot_id=fake_snapshot_id),
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
             'CreateReplica': SUCCEED,
             'ShowLV': self._mock_show_lv,
-            'ShowReplica': [
+            'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     fake_partition_id, test_dst_part_id, test_dst_volume_id),
-                self.cli_data.get_test_show_replica_detail_for_migrate(
-                    fake_snapshot_id, test_dst_part_id, test_dst_volume_id),
-            ],
             'DeleteReplica': SUCCEED,
         }
         self._driver_setup(mock_commands)
@@ -802,16 +794,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_create_cloned_volume_with_create_replica_fail(self):
 
-        fake_partition_id = self.cli_data.fake_partition_id[0]
-        fake_snapshot_id = self.cli_data.fake_snapshot_id[0]
         test_dst_volume = self.cli_data.test_dst_volume
         test_src_volume = self.cli_data.test_volume
 
         mock_commands = {
-            'CreateSnapshot': SUCCEED,
-            'ShowSnapshot': self.cli_data.get_test_show_snapshot(
-                partition_id=fake_partition_id,
-                snapshot_id=fake_snapshot_id),
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
@@ -847,6 +833,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'ShowLicense': self.cli_data.get_test_show_license(),
             'ShowLV': self.cli_data.get_test_show_lv(),
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(),
         }
         self._driver_setup(mock_commands)
         self.driver.VERSION = '99.99'

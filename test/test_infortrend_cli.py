@@ -283,7 +283,7 @@ class InfortrendCLITestData(object):
         'thin_provisioning_support': False,
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
-            round((857982.0 * 20.0) / 1024, 2),
+            round((400) / 1024, 2),
         'infortrend_provisioning': 'full',
     }]
 
@@ -1903,8 +1903,9 @@ class InfortrendCLITestCase(test.TestCase):
 
         log_error.reset_mock()
 
-        LOG_ERROR_STR = \
+        LOG_ERROR_STR = (
             'Retry %(retry)s times: %(method)s Failed %(rc)s: %(reason)s'
+        )
 
         fake_result_list = [
             self.cli_data.get_fake_cli_failed(),
@@ -1936,8 +1937,9 @@ class InfortrendCLITestCase(test.TestCase):
 
         log_error.reset_mock()
 
-        LOG_ERROR_STR = \
+        LOG_ERROR_STR = (
             'Retry %(retry)s times: %(method)s Failed %(rc)s: %(reason)s'
+        )
 
         fake_result_list = [
             self.cli_data.get_fake_cli_failed(),
