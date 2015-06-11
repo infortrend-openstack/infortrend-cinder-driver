@@ -1005,8 +1005,7 @@ class InfortrendCommon(object):
                     'max_over_subscription_ratio')
                 provisioned_space = self._get_provisioned_space(
                     pool['ID'], part_list)
-                provisioned_capacity_gb = round(
-                    mi_to_gi(provisioned_space), 2)
+                provisioned_capacity_gb = round(mi_to_gi(provisioned_space), 2)
 
                 new_pool = {
                     'pool_name': pool['Name'],
@@ -1028,7 +1027,7 @@ class InfortrendCommon(object):
         provisioning_space = 0
         for entry in part_list:
             if entry['LV-ID'] == pool_id:
-                provisioning_space += entry['Size']
+                provisioning_space += int(entry['Size'])
         return provisioning_space
 
     def create_snapshot(self, snapshot):
