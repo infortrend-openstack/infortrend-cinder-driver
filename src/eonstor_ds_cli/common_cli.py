@@ -1257,8 +1257,8 @@ class InfortrendCommon(object):
 
         for initiator_wwpn in initiator_target_map:
             for target_wwpn in initiator_target_map[initiator_wwpn]:
-                channel_id = wwpn_channel_info[target_wwpn]['channel']
-                controller = wwpn_channel_info[target_wwpn]['slot']
+                channel_id = wwpn_channel_info[target_wwpn.upper()]['channel']
+                controller = wwpn_channel_info[target_wwpn.upper()]['slot']
                 self._create_map_with_lun_filter(
                     part_id, channel_id, map_lun, initiator_wwpn,
                     controller=controller)

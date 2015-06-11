@@ -216,8 +216,10 @@ class InfortrendCLITestData(object):
     }
 
     test_initiator_target_map_zoning = {
-        fake_initiator_wwpns[0]: fake_target_wwpns[0:2],
-        fake_initiator_wwpns[1]: fake_target_wwpns[0:2],
+        fake_initiator_wwpns[0].lower():
+            [x.lower() for x in fake_target_wwpns[0:2]],
+        fake_initiator_wwpns[1].lower():
+            [x.lower() for x in fake_target_wwpns[0:2]],
     }
 
     test_fc_properties_zoning = {
@@ -225,15 +227,17 @@ class InfortrendCLITestData(object):
         'data': {
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
-            'target_wwn': fake_target_wwpns[0:2],
+            'target_wwn': [x.lower() for x in fake_target_wwpns[0:2]],
             'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning,
         },
     }
 
     test_initiator_target_map_zoning_r_model = {
-        fake_initiator_wwpns[0]: fake_target_wwpns[1:3],
-        fake_initiator_wwpns[1]: fake_target_wwpns[1:3],
+        fake_initiator_wwpns[0].lower():
+            [x.lower() for x in fake_target_wwpns[1:3]],
+        fake_initiator_wwpns[1].lower():
+            [x.lower() for x in fake_target_wwpns[1:3]],
     }
 
     test_fc_properties_zoning_r_model = {
@@ -241,7 +245,7 @@ class InfortrendCLITestData(object):
         'data': {
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
-            'target_wwn': fake_target_wwpns[1:3],
+            'target_wwn': [x.lower() for x in fake_target_wwpns[1:3]],
             'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning_r_model,
         },
@@ -347,15 +351,19 @@ class InfortrendCLITestData(object):
 
     fake_lookup_map = {
         '12345678': {
-            'initiator_port_wwn_list': fake_initiator_wwpns[:],
-            'target_port_wwn_list': fake_target_wwpns[0:2],
+            'initiator_port_wwn_list':
+                [x.lower() for x in fake_initiator_wwpns],
+            'target_port_wwn_list':
+                [x.lower() for x in fake_target_wwpns[0:2]],
         },
     }
 
     fake_lookup_map_r_model = {
         '12345678': {
-            'initiator_port_wwn_list': fake_initiator_wwpns[:],
-            'target_port_wwn_list': fake_target_wwpns[1:3],
+            'initiator_port_wwn_list':
+                [x.lower() for x in fake_initiator_wwpns[:]],
+            'target_port_wwn_list':
+                [x.lower() for x in fake_target_wwpns[1:3]],
         },
     }
 
