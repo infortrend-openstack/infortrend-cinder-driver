@@ -1396,6 +1396,63 @@ Return: 0x0000
             'curClock': '---',
         }])
 
+    def get_test_show_channel_with_diff_target_id(self):
+        return (0, [{
+            'ID': '32',
+            'defClock': 'Auto',
+            'Type': 'FIBRE',
+            'Mode': 'Host',
+            'Width': '---',
+            'Ch': '0',
+            'MCS': 'N/A',
+            'curClock': '---',
+        }, {
+            'ID': '0',
+            'defClock': 'Auto',
+            'Type': 'NETWORK',
+            'Mode': 'Host',
+            'Width': 'iSCSI',
+            'Ch': '1',
+            'MCS': '0',
+            'curClock': '---',
+        }, {
+            'ID': '0',
+            'defClock': 'Auto',
+            'Type': 'NETWORK',
+            'Mode': 'Host',
+            'Width': 'iSCSI',
+            'Ch': '2',
+            'MCS': '1',
+            'curClock': '---',
+        }, {
+            'ID': '---',
+            'defClock': '6.0 Gbps',
+            'Type': 'SAS',
+            'Mode': 'Drive',
+            'Width': 'SAS',
+            'Ch': '3',
+            'MCS': 'N/A',
+            'curClock': '6.0 Gbps',
+        }, {
+            'ID': '0',
+            'defClock': 'Auto',
+            'Type': 'NETWORK',
+            'Mode': 'Host',
+            'Width': 'iSCSI',
+            'Ch': '4',
+            'MCS': '2',
+            'curClock': '---',
+        }, {
+            'ID': '48',
+            'defClock': 'Auto',
+            'Type': 'FIBRE',
+            'Mode': 'Host',
+            'Width': '---',
+            'Ch': '5',
+            'MCS': 'N/A',
+            'curClock': '---',
+        }])
+
     def get_test_show_channel(self):
         return (0, [{
             'ID': '112',
@@ -1553,6 +1610,17 @@ CLI: Successful: : 9 channel(s) shown
 Return: 0x0000
 """
         return msg
+
+    def get_show_map_with_lun_map_on_zoning(self):
+        return (0, [{
+            'Ch': '0',
+            'LUN': '0',
+            'Media': 'PART',
+            'Host-ID': self.fake_initiator_wwpns[0],
+            'Target': '112',
+            'Name': 'Part-1',
+            'ID': self.fake_partition_id[0],
+        }])
 
     def get_test_show_map(self, partition_id=None, channel_id=None):
         if partition_id and channel_id:
