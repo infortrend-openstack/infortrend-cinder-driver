@@ -201,6 +201,11 @@ class InfortrendCommon(object):
         }
         self.map_dict_init = False
 
+        self.target_dict = {
+            'slot_a': {},
+            'slot_b': {},
+        }
+
         if self.protocol == 'iSCSI':
             self.mcs_dict = {
                 'slot_a': {},
@@ -310,18 +315,16 @@ class InfortrendCommon(object):
             self.map_dict[slot_key][key] = list(
                 range(self.constants['MAX_LUN_MAP_PER_CHL']))
 
-        target_id = 0 if slot_key == 'slot_a' else 1
-        if self.protocol == 'FC':
-            target_id += 112
-
         if len(map_info) > 0 and isinstance(map_info, list):
             for entry in map_info:
                 ch = entry['Ch']
                 lun = entry['LUN']
-                if (ch in self.map_dict[slot_key].keys() and
-                        entry['Target'] == str(target_id) and
-                        int(lun) in self.map_dict[slot_key][ch]):
+                if ch not in self.map_dict[slot_key].keys():
+                    continue
 
+                target_id = self.target_dict[slot_key][ch]
+                if (entry['Target'] == target_id and
+                        int(lun) in self.map_dict[slot_key][ch]):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
     def _check_initiator_has_lun_map(self, initiator_wwns, map_info):
@@ -348,6 +351,40 @@ class InfortrendCommon(object):
                     if self.protocol == 'iSCSI':
                         self._update_mcs_dict(
                             entry['Ch'], entry['MCS'], controller)
+
+                    self._update_target_dict(entry, controller)
+
+    @log_func
+    def _update_target_dict(self, channel, controller):
+        """Record the target id for mapping.
+
+        # R model
+        target_dict = {
+            'slot_a': {
+                '0': '0',
+                '1': '0',
+            },
+            'slot_b': {
+                '0': '1',
+                '1': '1',
+            },
+        }
+
+        # G model
+        target_dict = {
+            'slot_a': {
+                '2': '32',
+                '3': '112',
+            }
+        }
+        """
+        if self._model_type == 'G':
+            self.target_dict[controller][channel['Ch']] = channel['ID']
+        else:
+            if controller == 'slot_a':
+                self.target_dict[controller][channel['Ch']] = channel['AID']
+            else:
+                self.target_dict[controller][channel['Ch']] = channel['BID']
 
     def _update_mcs_dict(self, channel_id, mcs_id, controller):
         """Record the iSCSI MCS topology.
@@ -518,11 +555,12 @@ class InfortrendCommon(object):
     def _create_map_with_lun_filter(
             self, part_id, channel_id, lun_id, host, controller='slot_a'):
 
-        target_id, host_filter = self._create_target_id_and_host_filter(
+        host_filter = self._create_target_id_and_host_filter(
             controller, host)
+        target_id = self.target_dict[controller][channel_id]
 
         commands = (
-            'part', part_id, channel_id, str(target_id), lun_id, host_filter
+            'part', part_id, channel_id, target_id, lun_id, host_filter
         )
         self._execute('CreateMap', *commands)
 
@@ -530,13 +568,15 @@ class InfortrendCommon(object):
     def _create_map_with_mcs(
             self, part_id, channel_list, lun_id, host, controller='slot_a'):
 
-        target_id, host_filter = self._create_target_id_and_host_filter(
-            controller, host)
-
         map_channel_id = None
         for channel_id in channel_list:
+
+            host_filter = self._create_target_id_and_host_filter(
+                controller, host)
+            target_id = self.target_dict[controller][channel_id]
+
             commands = (
-                'part', part_id, channel_id, str(target_id), lun_id,
+                'part', part_id, channel_id, target_id, lun_id,
                 host_filter
             )
             rc, out = self._execute('CreateMap', *commands)
@@ -552,15 +592,12 @@ class InfortrendCommon(object):
         return map_channel_id
 
     def _create_target_id_and_host_filter(self, controller, host):
-        target_id = 0 if controller == 'slot_a' else 1
-
         if self.protocol == 'iSCSI':
             host_filter = 'iqn=%s' % host
         else:
             host_filter = 'wwn=%s' % host
-            target_id += 112
 
-        return target_id, host_filter
+        return host_filter
 
     def _get_extraspecs_dict(self, volume_type_id):
         extraspecs = {}
@@ -1353,7 +1390,7 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
         partition_data = self._combine_channel_lun_target_id(
-            partition_data, mcs_id, lun_id)
+            partition_data, mcs_id, lun_id, channel_id)
 
         property_value = [{
             'lun_id': partition_data['lun_id'],
@@ -1370,15 +1407,14 @@ class InfortrendCommon(object):
 
     @log_func
     def _combine_channel_lun_target_id(
-            self, partition_data, mcs_id, lun_id, controller='slot_a'):
+            self, partition_data, mcs_id, lun_id, channel_id):
 
-        target_id = 0 if controller == 'slot_a' else 1
-        slot_id = 1 if controller == 'slot_a' else 2
+        target_id = self.target_dict['slot_a'][channel_id]
 
         partition_data['mcs_id'] = mcs_id
         partition_data['lun_id'] = lun_id
         partition_data['target_id'] = target_id
-        partition_data['slot_id'] = slot_id
+        partition_data['slot_id'] = 1
 
         return partition_data
 
@@ -1401,29 +1437,6 @@ class InfortrendCommon(object):
         else:
             return iqn
 
-    def _extract_lun_map(self, mapping):
-        """Extract lun map.
-
-        format: 'CH:1/ID:0/LUN:0, CH:1/ID:0/LUN:1, CH:2/ID:0/LUN:0'
-        """
-        mapping_list = mapping.split(', ')
-        lun_map = []
-
-        for map_entry in mapping_list:
-            map_entry_dict = {}
-            entry_info_list = map_entry.split('/')
-
-            for entry_info in entry_info_list:
-                temp_entry_info = entry_info.split(':', 1)
-                map_entry_dict[temp_entry_info[0]] = temp_entry_info[1]
-
-            lun_map.append({
-                'channel_id': map_entry_dict['CH'],
-                'target_id': map_entry_dict['ID'],
-                'lun_id': map_entry_dict['LUN'],
-            })
-        return lun_map
-
     @log_func
     def _generate_iqn(self, partition_data):
         return self.iqn % (
@@ -1441,19 +1454,6 @@ class InfortrendCommon(object):
         for entry in net_list:
             if entry['ID'] == channel_id and entry['Slot'] == slot_name:
                 return entry['IPv4']
-        return
-
-    def _get_wwpn_by_channel(
-            self, channel_id, wwn_list, controller='slot_a'):
-
-        if self._model_type == 'R':
-            slot_name = 'AID:112' if controller == 'slot_a' else 'BID:113'
-        else:
-            slot_name = 'ID:112'
-
-        for entry in wwn_list:
-            if entry['CH'] == channel_id and entry['ID'] == slot_name:
-                return entry['WWPN']
         return
 
     def _get_wwpn_list(self):

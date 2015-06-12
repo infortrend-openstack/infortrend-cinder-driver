@@ -106,6 +106,46 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('FC', configuration=conf)
 
+    def test_normal_channel(self):
+
+        test_map_dict = {
+            'slot_a': {'0': [], '5': []},
+            'slot_b': {},
+        }
+        test_target_dict = {
+            'slot_a': {'0': '112', '5': '112'},
+            'slot_b': {},
+        }
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel(),
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._init_map_info(True)
+
+        self.assertDictMatch(self.driver.map_dict, test_map_dict)
+        self.assertDictMatch(self.driver.target_dict, test_target_dict)
+
+    def test_normal_channel_with_r_model(self):
+
+        test_map_dict = {
+            'slot_a': {'0': [], '5': []},
+            'slot_b': {'0': [], '5': []},
+        }
+        test_target_dict = {
+            'slot_a': {'0': '112', '5': '112'},
+            'slot_b': {'0': '113', '5': '113'},
+        }
+        mock_commands = {
+            'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver._init_map_info(True)
+
+        self.assertDictMatch(self.driver.map_dict, test_map_dict)
+        self.assertDictMatch(self.driver.target_dict, test_target_dict)
+
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_initialize_connection(self):
 
@@ -143,6 +183,40 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
+
+        self.assertDictMatch(
+            properties, self.cli_data.test_fc_properties_with_specific_channel)
+
+    @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
+    def test_initialize_connection_with_diff_target_id(self):
+
+        test_volume = self.cli_data.test_volume
+        test_connector = self.cli_data.test_connector
+        test_initiator_wwpns = test_connector['wwpns']
+        test_partition_id = self.cli_data.fake_partition_id[0]
+        configuration = copy.copy(self.configuration)
+        configuration.infortrend_slots_a_channels_id = '5'
+
+        mock_commands = {
+            'ShowChannel':
+                self.cli_data.get_test_show_channel_with_diff_target_id(),
+            'ShowMap': self.cli_data.get_test_show_map(),
+            'CreateMap': SUCCEED,
+            'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
+        }
+        self._driver_setup(mock_commands, configuration)
+
+        properties = self.driver.initialize_connection(
+            test_volume, test_connector)
+
+        expect_cli_cmd = [
+            mock.call('ShowChannel'),
+            mock.call('ShowMap'),
+            mock.call('ShowWWN'),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '48', '0',
+                      'wwn=%s' % test_initiator_wwpns[0]),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
 
         self.assertDictMatch(
             properties, self.cli_data.test_fc_properties_with_specific_channel)
@@ -359,6 +433,10 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'slot_a': {'0': [], '5': []},
             'slot_b': {},
         }
+        self.driver.target_dict = {
+            'slot_a': {'0': '112', '5': '112'},
+            'slot_b': {},
+        }
         self.driver.fc_lookup_service = mock.Mock()
 
         conn_info = self.driver.terminate_connection(
@@ -459,6 +537,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'slot_a': {'1': [], '2': [], '4': []},
             'slot_b': {},
         }
+        test_target_dict = {
+            'slot_a': {'1': '0', '2': '0', '4': '0'},
+            'slot_b': {},
+        }
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel(),
         }
@@ -467,12 +549,17 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._init_map_info()
 
         self.assertDictMatch(self.driver.map_dict, test_map_dict)
+        self.assertDictMatch(self.driver.target_dict, test_target_dict)
 
     def test_normal_channel_with_multipath(self):
 
         test_map_dict = {
             'slot_a': {'1': [], '2': [], '4': []},
             'slot_b': {'1': [], '2': [], '4': []},
+        }
+        test_target_dict = {
+            'slot_a': {'1': '0', '2': '0', '4': '0'},
+            'slot_b': {'1': '1', '2': '1', '4': '1'},
         }
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
@@ -482,6 +569,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._init_map_info(multipath=True)
 
         self.assertDictMatch(self.driver.map_dict, test_map_dict)
+        self.assertDictMatch(self.driver.target_dict, test_target_dict)
 
     def test_specific_channel(self):
 
@@ -492,6 +580,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'slot_a': {'2': [], '4': []},
             'slot_b': {},
         }
+        test_target_dict = {
+            'slot_a': {'2': '0', '4': '0'},
+            'slot_b': {},
+        }
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel(),
         }
@@ -500,6 +592,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._init_map_info()
 
         self.assertDictMatch(self.driver.map_dict, test_map_dict)
+        self.assertDictMatch(self.driver.target_dict, test_target_dict)
 
     def test_update_mcs_dict(self):
 
@@ -594,6 +687,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'slot_a': {'1': [], '2': []},
             'slot_b': {},
         }
+        test_target_dict = {
+            'slot_a': {'1': '0', '2': '0'},
+            'slot_b': {},
+        }
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel(),
         }
@@ -602,6 +699,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._init_map_info(multipath=True)
 
         self.assertDictMatch(self.driver.map_dict, test_map_dict)
+        self.assertDictMatch(self.driver.target_dict, test_target_dict)
 
     def test_specific_channel_with_multipath_r_model(self):
 
@@ -613,6 +711,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'slot_a': {'1': [], '2': []},
             'slot_b': {'1': []},
         }
+        test_target_dict = {
+            'slot_a': {'1': '0', '2': '0'},
+            'slot_b': {'1': '1'},
+        }
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
         }
@@ -621,6 +723,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver._init_map_info(multipath=True)
 
         self.assertDictMatch(self.driver.map_dict, test_map_dict)
+        self.assertDictMatch(self.driver.target_dict, test_target_dict)
 
     @mock.patch.object(common_cli.LOG, 'info')
     def test_create_volume(self, log_info):
