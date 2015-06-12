@@ -1554,6 +1554,17 @@ Return: 0x0000
 """
         return msg
 
+    def get_show_map_with_lun_map_on_zoning(self):
+        return (0, [{
+            'Ch': '0',
+            'LUN': '0',
+            'Media': 'PART',
+            'Host-ID': self.fake_initiator_wwpns[0],
+            'Target': '112',
+            'Name': 'Part-1',
+            'ID': self.fake_partition_id[0],
+        }])
+
     def get_test_show_map(self, partition_id=None, channel_id=None):
         if partition_id and channel_id:
             return (0, [{

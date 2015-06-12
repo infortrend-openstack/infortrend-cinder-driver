@@ -302,6 +302,7 @@ class InfortrendCommon(object):
 
         if multipath and self._model_type == 'R':
             self._update_map_info_by_slot(map_info, 'slot_b')
+        return map_info
 
     @log_func
     def _update_map_info_by_slot(self, map_info, slot_key):
@@ -322,6 +323,13 @@ class InfortrendCommon(object):
                         int(lun) in self.map_dict[slot_key][ch]):
 
                     self.map_dict[slot_key][ch].remove(int(lun))
+
+    def _check_initiator_has_lun_map(self, initiator_wwns, map_info):
+        for initiator in initiator_wwns:
+            for entry in map_info:
+                if initiator.lower() == entry['Host-ID'].lower():
+                    return True
+        return False
 
     @log_func
     def _set_channel_id(
@@ -1573,9 +1581,13 @@ class InfortrendCommon(object):
         if self.protocol == 'iSCSI':
             self._execute(
                 'DeleteIQN', self._truncate_host_name(connector['initiator']))
-        self._update_map_info(multipath)
+        map_info = self._update_map_info(multipath)
 
-        if self.protocol == 'FC' and self.fc_lookup_service:
+        lun_map_exist = self._check_initiator_has_lun_map(
+            connector['wwpns'], map_info)
+
+        if (self.protocol == 'FC' and
+                self.fc_lookup_service and not lun_map_exist):
             conn_info = {'driver_volume_type': 'fibre_channel',
                          'data': {}}
             wwpn_list, wwpn_channel_info = self._get_wwpn_list()

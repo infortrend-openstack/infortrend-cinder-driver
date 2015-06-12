@@ -343,6 +343,35 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.assertDictMatch(
             conn_info, self.cli_data.test_fc_terminate_conn_info)
 
+    @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
+    def test_terminate_connection_with_zoning_and_lun_map_exist(self):
+
+        test_volume = self.cli_data.test_volume
+        test_partition_id = self.cli_data.fake_partition_id[0]
+        test_connector = self.cli_data.test_connector
+
+        mock_commands = {
+            'DeleteMap': SUCCEED,
+            'ShowMap': self.cli_data.get_show_map_with_lun_map_on_zoning(),
+        }
+        self._driver_setup(mock_commands)
+        self.driver.map_dict = {
+            'slot_a': {'0': [], '5': []},
+            'slot_b': {},
+        }
+        self.driver.fc_lookup_service = mock.Mock()
+
+        conn_info = self.driver.terminate_connection(
+            test_volume, test_connector)
+
+        expect_cli_cmd = [
+            mock.call('DeleteMap', 'part', test_partition_id, '-y'),
+            mock.call('ShowMap'),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+
+        self.assertEqual(None, conn_info)
+
 
 class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
