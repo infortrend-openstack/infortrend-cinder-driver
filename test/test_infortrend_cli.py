@@ -258,9 +258,13 @@ class InfortrendCLITestData(object):
         },
     }
 
-    test_connector = {
+    test_connector_iscsi = {
         'ip': fake_host_ip[0],
         'initiator': fake_initiator_iqn[0],
+        'host': 'infortrend-server1@backend_1',
+    }
+
+    test_connector_fc = {
         'wwpns': fake_initiator_wwpns,
         'wwnns': fake_initiator_wwnns,
         'host': 'infortrend-server1@backend_1',
