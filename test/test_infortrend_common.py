@@ -1884,7 +1884,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     @mock.patch.object(common_cli.LOG, 'info')
     def test_retype_tiering_succeed(self, log_info):
         test_volume = self.cli_data.test_volume
-        test_new_type = self.cli_data.test_new_type
+        test_new_type = self.cli_data.test_new_type_tier
         test_diff_tier = self.cli_data.test_diff_tier
         test_host = self.cli_data.test_migrate_host_2
 
