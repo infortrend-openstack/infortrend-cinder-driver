@@ -1841,7 +1841,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowPartition': self.cli_data.get_test_show_partition(
                 test_volume_id, fake_pool['pool_id']),
             'CreateReplica': SUCCEED,
-            'ShowLV': self._mock_show_lv_for_migrate,
+            'ShowLV': self._mock_show_lv,
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_src_part_id, test_dst_part_id, test_volume_id),
