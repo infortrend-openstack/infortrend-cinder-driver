@@ -1838,6 +1838,27 @@ class InfortrendCommon(object):
                             diff['extra_specs']['infortrend:provisioning'][1]})
                 return False
 
+            if ('infortrend:tiering' in diff['extra_specs'] and
+                    (diff['extra_specs']['infortrend:tiering'][0] !=
+                        diff['extra_specs']['infortrend:tiering'][1])):
+                volume_id = volume['id'].replace('-', '')
+                part_id = self._extract_specific_provider_location(
+                    volume['provider_location'], 'partition_id')
+
+                if part_id is None:
+                    part_id = self._get_part_id(volume_id)
+
+                pool_id = self._get_target_pool_id(volume)
+                tiering = diff['extra_specs']['infortrend:tiering'][1]
+                tier_levels_list = tiering.split(',')
+                tier_levels_list = list(map(str, tier_levels_list))
+                self._check_tiering_existing(tier_levels_list, pool_id)
+
+                expand_command = 'tier=%s' % tiering
+
+                self._execute('SetPartition', 'tier-resided',
+                              part_id, expand_command)
+
             LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
                 'volume_id': volume['id']})
             return True
