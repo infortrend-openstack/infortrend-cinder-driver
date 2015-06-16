@@ -1916,7 +1916,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.retype(
             None, test_volume, test_new_type, test_diff_tier, test_host)
 
-        self.assertEqual(1, log_error.call_count)
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.retype,
+            None, test_volume, test_new_type,
+            test_diff_tier, test_host)
 
     @mock.patch.object(common_cli.LOG, 'debug', mock.Mock())
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
