@@ -1913,9 +1913,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver.retype(
-            None, test_volume, test_new_type, test_diff_tier, test_host)
-
         self.assertRaises(
             exception.VolumeDriverException,
             self.driver.retype,
