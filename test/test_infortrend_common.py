@@ -1861,7 +1861,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 fake_pool['pool_id'],
                 test_volume['id'].replace('-', ''),
                 'size=%s' % (test_volume['size'] * 1024),
-                'init=disable min=0MB'),
+                'init=disable min=%sMB' % (
+                    int(test_volume['size'] * 1024 * 0.2))
+            ),
             mock.call('ShowPartition'),
             mock.call(
                 'CreateReplica',
@@ -1874,6 +1876,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('DeleteReplica', test_pair_id, '-y'),
             mock.call('DeleteMap', 'part', test_src_part_id, '-y'),
             mock.call('DeletePartition', test_src_part_id, '-y'),
+            mock.call('ShowLV', 'tier'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertTrue(rc)
