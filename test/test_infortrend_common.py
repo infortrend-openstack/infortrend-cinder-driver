@@ -1856,6 +1856,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
+            mock.call('ShowLV', 'tier'),
             mock.call(
                 'CreatePartition',
                 fake_pool['pool_id'],
@@ -1876,7 +1877,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('DeleteReplica', test_pair_id, '-y'),
             mock.call('DeleteMap', 'part', test_src_part_id, '-y'),
             mock.call('DeletePartition', test_src_part_id, '-y'),
-            mock.call('ShowLV', 'tier'),
+
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertTrue(rc)
