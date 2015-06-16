@@ -292,6 +292,7 @@ class InfortrendCLITestData(object):
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
             round((400) / 1024, 2),
+        'infortrend_tiering':'2'
     }]
 
     test_volume_states = {

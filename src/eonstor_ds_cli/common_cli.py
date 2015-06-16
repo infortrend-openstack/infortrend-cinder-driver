@@ -421,7 +421,6 @@ class InfortrendCommon(object):
 
     def check_for_setup_error(self):
         self._check_pools_setup()
-        self._check_tiers_setup()
 
     def create_volume(self, volume):
         """Create a Infortrend partition."""
@@ -1008,7 +1007,7 @@ class InfortrendCommon(object):
             if pool['Name'] in self.pool_list:
                 infortrend_tiering = 0
                 for entry in lv_info:
-                    if entry['LV-Name'] == pool['Name']:
+                    if entry['LV-ID'] == pool['ID']:
                         infortrend_tiering += 1
 
                 total_space = float(pool['Size'].split(' ', 1)[0])
@@ -1033,7 +1032,7 @@ class InfortrendCommon(object):
                     'max_over_subscription_ratio': provisioning_factor,
                     'thin_provisioning_support': provisioning_support,
                     'thick_provisioning_support': True,
-                    'infortrend_tiering': infortrend_tiering
+                    'infortrend_tiering': str(infortrend_tiering)
                 }
                 pools.append(new_pool)
         return pools
