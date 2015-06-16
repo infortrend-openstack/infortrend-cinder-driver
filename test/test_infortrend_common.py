@@ -1881,6 +1881,28 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.assertTrue(rc)
         self.assertDictMatch(model_update, test_model_update)
 
+    @mock.patch.object(common_cli.LOG, 'info')
+    def test_retype_tiering_succeed(self, log_info):
+        test_volume = self.cli_data.test_volume
+        test_new_type = self.cli_data.test_new_type
+        test_diff_tier = self.cli_data.test_diff_tier
+        test_host = self.cli_data.test_migrate_host_2
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv,
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff_tier, test_host)
+
+        self.assertTrue(rc)
+        self.assertEqual(1, log_info.call_count)
+
+    def test_retype_tiering_fail_by_wrong_tier(self):
+        pass
+
     @mock.patch.object(common_cli.LOG, 'debug', mock.Mock())
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_update_migrated_volume(self):

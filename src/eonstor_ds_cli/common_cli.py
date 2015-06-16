@@ -1856,8 +1856,14 @@ class InfortrendCommon(object):
 
                 expand_command = 'tier=%s' % tiering
 
-                self._execute('SetPartition', 'tier-resided',
-                              part_id, expand_command)
+                rc, out = self._execute('SetPartition', 'tier-resided',
+                                        part_id, expand_command)
+
+                if rc != 0:
+                    LOG.error(_LE(
+                        'Can not retype tiering level = %(tiering)s'), {
+                            'tiering': tiering})
+                    return False
 
             LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
                 'volume_id': volume['id']})
