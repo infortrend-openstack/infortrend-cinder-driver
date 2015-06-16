@@ -66,11 +66,6 @@ infortrend_esds_opts = [
 ]
 
 infortrend_esds_extra_opts = [
-    cfg.StrOpt('infortrend_provisioning',
-               default='full',
-               help='Let the volume use specific provisioning. '
-               'By default, it is the full provisioning. '
-               'The supported options are full or thin.'),
     cfg.StrOpt('infortrend_tiering',
                default='0',
                help='Let the volume use specific tiering level. '
@@ -611,10 +606,10 @@ class InfortrendCommon(object):
         value = None
         if key == 'provisioning':
             if (extraspecs and
-                    'infortrend_provisioning' in extraspecs.keys()):
-                value = extraspecs['infortrend_provisioning'].lower()
+                    'infortrend:provisioning' in extraspecs.keys()):
+                value = extraspecs['infortrend:provisioning'].lower()
             else:
-                value = self.configuration.infortrend_provisioning.lower()
+                value = 'full'
         elif key == 'tiering':
             value = self.configuration.infortrend_tiering
         return value
@@ -1029,10 +1024,8 @@ class InfortrendCommon(object):
         enable_specs_dict = self._get_enable_specs_on_array()
 
         if 'Thin Provisioning' in enable_specs_dict.keys():
-            provisioning = 'thin'
             provisioning_support = True
         else:
-            provisioning = 'full'
             provisioning_support = False
 
         rc, part_list = self._execute('ShowPartition', '-l')
@@ -1063,7 +1056,6 @@ class InfortrendCommon(object):
                     'max_over_subscription_ratio': provisioning_factor,
                     'thin_provisioning_support': provisioning_support,
                     'thick_provisioning_support': True,
-                    'infortrend_provisioning': provisioning,
                 }
                 pools.append(new_pool)
         return pools
@@ -1858,15 +1850,15 @@ class InfortrendCommon(object):
 
             return (rc, model_update)
         else:
-            if ('infortrend_provisioning' in diff['extra_specs'] and
-                    (diff['extra_specs']['infortrend_provisioning'][0] !=
-                        diff['extra_specs']['infortrend_provisioning'][1])):
+            if ('infortrend:provisioning' in diff['extra_specs'] and
+                    (diff['extra_specs']['infortrend:provisioning'][0] !=
+                        diff['extra_specs']['infortrend:provisioning'][1])):
 
                 LOG.warning(_LW(
                     'The provisioning: %(provisioning)s '
                     'is not valid.'), {
                         'provisioning':
-                            diff['extra_specs']['infortrend_provisioning'][1]})
+                            diff['extra_specs']['infortrend:provisioning'][1]})
                 return False
 
             LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
