@@ -581,7 +581,7 @@ class InfortrendCommon(object):
                     'infortrend:tiering' in extraspecs.keys()):
                 value = extraspecs['infortrend:tiering'].lower()
             else:
-                value = -1
+                value = '-1'
         return value
 
     def _select_most_free_capacity_pool_id(self, lv_info):
