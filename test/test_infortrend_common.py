@@ -96,7 +96,6 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.configuration.volume_backend_name = 'infortrend_backend_1'
         self.configuration.san_ip = self.cli_data.fake_manage_port_ip[0]
         self.configuration.san_password = '111111'
-        self.configuration.infortrend_tiering = '0'
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '0,5'
         self.configuration.infortrend_slots_b_channels_id = '0,5'
@@ -461,7 +460,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.configuration.volume_backend_name = 'infortrend_backend_1'
         self.configuration.san_ip = self.cli_data.fake_manage_port_ip[0]
         self.configuration.san_password = '111111'
-        self.configuration.infortrend_tiering = '0'
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '1,2,4'
         self.configuration.infortrend_slots_b_channels_id = '1,2,4'
