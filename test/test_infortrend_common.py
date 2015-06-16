@@ -1903,8 +1903,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     @mock.patch.object(common_cli.LOG, 'error')
     def test_retype_tiering_fail_by_wrong_tier(self, log_error):
         test_volume = self.cli_data.test_volume
-        test_new_type = self.cli_data.test_new_type_tier
-        test_diff_tier = self.cli_data.test_diff_tier
+        test_new_type = self.cli_data.test_new_type_tier_wrong
+        test_diff_tier = self.cli_data.test_diff_tier_wrong
         test_host = self.cli_data.test_migrate_host_2
 
         mock_commands = {

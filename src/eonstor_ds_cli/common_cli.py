@@ -457,25 +457,41 @@ class InfortrendCommon(object):
             extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
 
         provisioning = self._get_extraspecs_value(extraspecs, 'provisioning')
-        tiering = self._get_extraspecs_value(extraspecs, 'tiering')
+        self._check_extraspec_value(
+                    provisioning, self.provisioning_values)
+        top_tier = self._get_top_tier(pool_id)
 
         extraspecs_dict = {}
         cmd = ''
-        if provisioning == 'thin':
-            provisioning = int(volume_size * 0.2)
-            extraspecs_dict['provisioning'] = provisioning
-            extraspecs_dict['init'] = 'disable'
+        if top_tier == '-1':
+            if provisioning == 'thin':
+                provisioning = int(volume_size * 0.2)
+                extraspecs_dict['provisioning'] = provisioning
+                extraspecs_dict['init'] = 'disable'
         else:
-            self._check_extraspec_value(
-                provisioning, self.provisioning_values)
-
-        if tiering != '-1':
-            tier_levels_list = tiering.split(',')
-            tier_levels_list = list(map(str, tier_levels_list))
-            self._check_tiering_existing(tier_levels_list, pool_id)
-            extraspecs_dict['provisioning'] = 0
-            extraspecs_dict['init'] = 'disable'
-            extraspecs_dict['tiering'] = tiering
+            tiering = self._get_extraspecs_value(extraspecs, 'tiering')
+            if provisioning == 'full':
+                if tiering != '-1':
+                    tier_levels_list = tiering.split(',')
+                    tier_levels_list = list(map(str, tier_levels_list))
+                    self._check_tiering_existing(tier_levels_list, pool_id)
+                    if len(tier_levels_list) > 1:
+                        msg = _('Must specify only one tier instead of '
+                                '%(tier_levels_list)s tier(s)') % {
+                                'tier_levels_list': tier_levels_list}
+                        LOG.error(msg)
+                        raise exception.VolumeDriverException(message=msg)
+                    extraspecs_dict['tiering'] = tiering
+                else:
+                    extraspecs_dict['tiering'] = top_tier
+            else:
+                extraspecs_dict['provisioning'] = 0
+                extraspecs_dict['init'] = 'disable'
+                if tiering != '-1':
+                    tier_levels_list = tiering.split(',')
+                    tier_levels_list = list(map(str, tier_levels_list))
+                    self._check_tiering_existing(tier_levels_list, pool_id)
+                    extraspecs_dict['tiering'] = tiering
 
         if extraspecs_dict:
             cmd = self._create_part_parameters_str(extraspecs_dict)
@@ -510,6 +526,14 @@ class InfortrendCommon(object):
                 'tier_levels': tier_levels}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
+
+    def _get_top_tier(self, pool_id):
+        rc, lv_info = self._execute('ShowLV', 'tier')
+
+        for entry in lv_info:
+            if entry['LV-ID'] == pool_id:
+                return entry['Tier']
+        return '-1'
 
     @log_func
     def _create_map_with_lun_filter(
