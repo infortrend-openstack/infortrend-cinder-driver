@@ -1520,7 +1520,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                       fake_pool['pool_id'],
                       test_volume['id'].replace('-', ''),
                       'size=%s' % (test_volume['size'] * 1024),
-                      ''),
+                      'tier=0'),
             mock.call('ShowPartition'),
             mock.call('CreateReplica',
                       'Cinder-Migrate',
@@ -1861,9 +1861,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                 fake_pool['pool_id'],
                 test_volume['id'].replace('-', ''),
                 'size=%s' % (test_volume['size'] * 1024),
-                'init=disable min=%sMB' % (
-                    int(test_volume['size'] * 1024 * 0.2))
-            ),
+                'init=disable min=0MB'),
             mock.call('ShowPartition'),
             mock.call(
                 'CreateReplica',
