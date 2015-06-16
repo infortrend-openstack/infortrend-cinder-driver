@@ -150,7 +150,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def test_initialize_connection(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
 
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_without_mcs(),
@@ -169,7 +169,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def test_initialize_connection_specific_channel(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
         configuration = copy.copy(self.configuration)
         configuration.infortrend_slots_a_channels_id = '5'
 
@@ -191,7 +191,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def test_initialize_connection_with_diff_target_id(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
         test_initiator_wwpns = test_connector['wwpns']
         test_partition_id = self.cli_data.fake_partition_id[0]
         configuration = copy.copy(self.configuration)
@@ -225,7 +225,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def test_initialize_connection_multipath_with_r_model(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
+        test_connector = copy.deepcopy(self.cli_data.test_connector_fc)
 
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
@@ -244,7 +244,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def test_initialize_connection_with_get_wwn_fail(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
 
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel(),
@@ -264,7 +264,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def test_initialize_connection_with_zoning(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
         test_initiator_wwpns = test_connector['wwpns']
         test_partition_id = self.cli_data.fake_partition_id[0]
         test_all_target_wwpns = self.cli_data.fake_target_wwpns[0:2]
@@ -311,7 +311,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
     def test_initialize_connection_with_zoning_r_model(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
         test_initiator_wwpns = test_connector['wwpns']
         test_partition_id = self.cli_data.fake_partition_id[0]
         test_all_target_wwpns = self.cli_data.fake_target_wwpns[:]
@@ -361,7 +361,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
 
         mock_commands = {
             'DeleteMap': SUCCEED,
@@ -382,7 +382,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
         test_all_target_wwpns = self.cli_data.fake_target_wwpns[0:2]
         test_lookup_map = self.cli_data.fake_lookup_map
 
@@ -422,7 +422,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_fc
 
         mock_commands = {
             'DeleteMap': SUCCEED,
@@ -1216,7 +1216,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
+        test_connector = copy.deepcopy(self.cli_data.test_connector_iscsi)
         test_iscsi_properties = self.cli_data.test_iscsi_properties
         test_target_protal = [test_iscsi_properties['data']['target_portal']]
         test_target_iqn = [test_iscsi_properties['data']['target_iqn']]
@@ -1251,7 +1251,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
         test_initiator = copy.deepcopy(self.cli_data.fake_initiator_iqn[1])
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
+        test_connector = copy.deepcopy(self.cli_data.test_connector_iscsi)
         test_iscsi_properties = self.cli_data.test_iscsi_properties
         test_target_protal = [test_iscsi_properties['data']['target_portal']]
         test_target_iqn = [test_iscsi_properties['data']['target_iqn']]
@@ -1287,7 +1287,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_initialize_connection_with_empty_map(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
+        test_connector = copy.deepcopy(self.cli_data.test_connector_iscsi)
         test_iscsi_properties = self.cli_data.test_iscsi_properties_empty_map
         test_target_protal = [test_iscsi_properties['data']['target_portal']]
         test_target_iqn = [test_iscsi_properties['data']['target_iqn']]
@@ -1314,7 +1314,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_initialize_connection_with_create_map_fail(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_iscsi
 
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
@@ -1334,7 +1334,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_initialize_connection_with_get_ip_fail(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_iscsi
 
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel(),
@@ -1359,7 +1359,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_connector = copy.deepcopy(self.cli_data.test_connector)
+        test_connector = copy.deepcopy(self.cli_data.test_connector_iscsi)
         test_iscsi_properties = self.cli_data.test_iscsi_properties_with_mcs
         test_target_protal = [test_iscsi_properties['data']['target_portal']]
         test_target_iqn = [test_iscsi_properties['data']['target_iqn']]
@@ -1451,7 +1451,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_iscsi
 
         mock_commands = {
             'DeleteMap': SUCCEED,
@@ -1472,7 +1472,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_terminate_connection_fail(self):
 
         test_volume = self.cli_data.test_volume
-        test_connector = self.cli_data.test_connector
+        test_connector = self.cli_data.test_connector_iscsi
 
         mock_commands = {
             'DeleteMap': FAKE_ERROR_RETURN,

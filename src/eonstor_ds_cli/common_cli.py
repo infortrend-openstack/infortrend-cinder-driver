@@ -1583,19 +1583,18 @@ class InfortrendCommon(object):
                 'DeleteIQN', self._truncate_host_name(connector['initiator']))
         map_info = self._update_map_info(multipath)
 
-        lun_map_exist = self._check_initiator_has_lun_map(
-            connector['wwpns'], map_info)
+        if self.protocol == 'FC' and self.fc_lookup_service:
+            lun_map_exist = self._check_initiator_has_lun_map(
+                connector['wwpns'], map_info)
 
-        if (self.protocol == 'FC' and
-                self.fc_lookup_service and not lun_map_exist):
-            conn_info = {'driver_volume_type': 'fibre_channel',
-                         'data': {}}
-            wwpn_list, wwpn_channel_info = self._get_wwpn_list()
-
-            initiator_target_map, target_wwpns = (
-                self._build_initiator_target_map(connector, wwpn_list)
-            )
-            conn_info['data']['initiator_target_map'] = initiator_target_map
+            if not lun_map_exist:
+                conn_info = {'driver_volume_type': 'fibre_channel',
+                             'data': {}}
+                wwpn_list, wwpn_channel_info = self._get_wwpn_list()
+                init_target_map, target_wwpns = (
+                    self._build_initiator_target_map(connector, wwpn_list)
+                )
+                conn_info['data']['initiator_target_map'] = init_target_map
 
         LOG.info(_LI(
             'Successfully terminated connection for volume %(volume_id)s'), {
