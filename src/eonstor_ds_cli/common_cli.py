@@ -66,11 +66,6 @@ infortrend_esds_opts = [
 ]
 
 infortrend_esds_extra_opts = [
-    cfg.StrOpt('infortrend_tiering',
-               default='0',
-               help='Let the volume use specific tiering level. '
-               'By default, it is the level 0. '
-               'The supported levels are 0,2,3,4.'),
 ]
 
 CONF = cfg.CONF
@@ -160,8 +155,6 @@ class InfortrendCommon(object):
     }
 
     provisioning_values = ['thin', 'full']
-
-    tiering_values = ['0', '2', '3', '4']
 
     def __init__(self, protocol, configuration=None):
 
@@ -409,32 +402,6 @@ class InfortrendCommon(object):
             self.mcs_dict[controller][mcs_id] = []
         self.mcs_dict[controller][mcs_id].append(channel_id)
 
-    def _check_tiers_setup(self):
-        tiering = self.configuration.infortrend_tiering
-        if tiering != '0':
-            self._check_extraspec_value(
-                tiering, self.tiering_values)
-            tier_levels_list = list(range(int(tiering)))
-            tier_levels_list = list(map(str, tier_levels_list))
-
-            rc, lv_info = self._execute('ShowLV', 'tier')
-
-            for pool in self.pool_list:
-                support_tier_levels = tier_levels_list[:]
-                for entry in lv_info:
-                    if (entry['LV-Name'] == pool and
-                            entry['Tier'] in support_tier_levels):
-                        support_tier_levels.remove(entry['Tier'])
-                    if len(support_tier_levels) == 0:
-                        break
-                if len(support_tier_levels) != 0:
-                    msg = _('Please create %(tier_levels)s '
-                            'tier in pool %(pool)s in advance!') % {
-                                'tier_levels': support_tier_levels,
-                                'pool': pool}
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
-
     def _check_pools_setup(self):
         pool_list = self.pool_list[:]
 
@@ -503,14 +470,13 @@ class InfortrendCommon(object):
             self._check_extraspec_value(
                 provisioning, self.provisioning_values)
 
-        if tiering != '0':
-            self._check_extraspec_value(
-                tiering, self.tiering_values)
-            tier_levels_list = list(range(int(tiering)))
+        if tiering != '-1':
+            tier_levels_list = tiering.split(',')
             tier_levels_list = list(map(str, tier_levels_list))
             self._check_tiering_existing(tier_levels_list, pool_id)
             extraspecs_dict['provisioning'] = 0
             extraspecs_dict['init'] = 'disable'
+            extraspecs_dict['tiering'] = tiering
 
         if extraspecs_dict:
             cmd = self._create_part_parameters_str(extraspecs_dict)
@@ -611,7 +577,11 @@ class InfortrendCommon(object):
             else:
                 value = 'full'
         elif key == 'tiering':
-            value = self.configuration.infortrend_tiering
+            if (extraspecs and
+                    'infortrend:tiering' in extraspecs.keys()):
+                value = extraspecs['infortrend:tiering'].lower()
+            else:
+                value = -1
         return value
 
     def _select_most_free_capacity_pool_id(self, lv_info):
@@ -1030,10 +1000,17 @@ class InfortrendCommon(object):
 
         rc, part_list = self._execute('ShowPartition', '-l')
         rc, pools_info = self._execute('ShowLV')
+        rc, lv_info = self._execute('ShowLV', 'tier')
+
         pools = []
 
         for pool in pools_info:
             if pool['Name'] in self.pool_list:
+                infortrend_tiering = 0
+                for entry in lv_info:
+                    if entry['LV-Name'] == pool['Name']:
+                        infortrend_tiering += 1
+
                 total_space = float(pool['Size'].split(' ', 1)[0])
                 available_space = float(pool['Available'].split(' ', 1)[0])
 
@@ -1056,6 +1033,7 @@ class InfortrendCommon(object):
                     'max_over_subscription_ratio': provisioning_factor,
                     'thin_provisioning_support': provisioning_support,
                     'thick_provisioning_support': True,
+                    'infortrend_tiering': infortrend_tiering
                 }
                 pools.append(new_pool)
         return pools
