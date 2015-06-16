@@ -385,8 +385,19 @@ class InfortrendCLITestData(object):
         'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
     }
 
+    test_new_type_tier_wrong = {
+        'name': 'type0',
+        'qos_specs_id': None,
+        'deleted': False,
+        'extra_specs': {'infortrend:tiering': '0,4'},
+        'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+    }
+
     test_diff = {'extra_specs': {'infortrend:provisioning': ('full', 'thin')}}
     test_diff_tier = {'extra_specs': {'infortrend:tiering': ('0,2', '0,3')}}
+    test_diff_tier_wrong = {'extra_specs': {
+                            'infortrend:tiering': ('0,2', '0,4')}}
+
     def get_fake_cli_failed(self):
         return """
 CLI: Failed
