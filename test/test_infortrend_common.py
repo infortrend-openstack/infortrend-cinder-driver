@@ -960,7 +960,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'ShowLicense': self.cli_data.get_test_show_license(),
-            'ShowLV': self.cli_data.get_test_show_lv(),
+            'ShowLV': self._mock_show_lv,
             'ShowPartition': self.cli_data.get_test_show_partition_detail(),
         }
         self._driver_setup(mock_commands)
