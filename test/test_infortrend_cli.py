@@ -101,6 +101,11 @@ class InfortrendCLITestData(object):
         'size': 1,
     }
 
+    test_ref_volume_with_import = {
+        'source-name': 'import_into_openstack',
+        'size': 1,
+    }
+
     test_snapshot = {
         'id': 'ffa9bc5e-1172-4021-acaf-cdcd78a9584d',
         'volume_id': test_volume['id'],
