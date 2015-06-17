@@ -1659,6 +1659,30 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, size)
 
+    def test_manage_existing_get_size_with_import(self):
+
+        test_volume = self.cli_data.test_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_import
+        test_pool = self.cli_data.fake_lv_id[0]
+        test_partition_id = self.cli_data.fake_partition_id[2]
+
+        mock_commands = {
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(
+                test_ref_volume['source-name'], test_pool),
+            'ShowMap': SUCCEED,
+        }
+
+        self._driver_setup(mock_commands)
+
+        size = self.driver.manage_existing_get_size(
+            test_volume, test_ref_volume)
+
+        expect_cli_cmd = [
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertEqual(1, size)
+
     def test_manage_existing_get_size_in_use(self):
 
         test_volume = self.cli_data.test_volume
@@ -1686,7 +1710,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver = self._get_driver(self.configuration)
 
         self.assertRaises(
-            exception.VolumeBackendAPIException,
+            exception.ManageExistingInvalidReference,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)
@@ -1772,6 +1796,30 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             self.driver.manage_existing,
             test_volume,
             test_ref_volume)
+
+    @mock.patch.object(common_cli.LOG, 'info')
+    def test_manage_existing_with_import(self, log_info):
+
+        test_volume = self.cli_data.test_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_import
+        test_pool = self.cli_data.fake_lv_id[0]
+        test_partition_id = self.cli_data.fake_partition_id[2]
+
+        mock_commands = {
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(
+                test_ref_volume['source-name'], test_pool),
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        self.driver.manage_existing(test_volume, test_ref_volume)
+
+        expect_cli_cmd = [
+            mock.call('SetPartition', test_partition_id,
+                      'name=%s' % test_volume['id'].replace('-', '')),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(common_cli.LOG, 'info')
     def test_unmanage(self, log_info):

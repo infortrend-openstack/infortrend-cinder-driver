@@ -1728,14 +1728,8 @@ class InfortrendCommon(object):
     def manage_existing_get_size(self, volume, ref):
         """Return size of volume to be managed by manage_existing."""
 
-        if 'source-id' not in ref:
-            msg = _('Reference must contain source-id element.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        source_id = ref['source-id'].replace('-', '')
-
-        part_entry = self._get_latter_volume_dict(source_id)
+        volume_name = self._get_existing_volume_ref_name(ref)
+        part_entry = self._get_latter_volume_dict(volume_name)
 
         rc, map_info = self._execute('ShowMap', 'part=%s' % part_entry['ID'])
 
@@ -1747,21 +1741,30 @@ class InfortrendCommon(object):
         return int(math.ceil(mi_to_gi(float(part_entry['Size']))))
 
     def manage_existing(self, volume, ref):
-        if 'source-id' not in ref:
-            msg = _('Reference must contain source-id element.')
-            LOG.error(msg)
-            raise exception.ManageExistingInvalidReference(
-                existing_ref=ref, reason=msg)
-
-        source_id = ref['source-id'].replace('-', '')
+        volume_name = self._get_existing_volume_ref_name(ref)
         volume_id = volume['id'].replace('-', '')
 
-        part_entry = self._get_latter_volume_dict(source_id)
+        part_entry = self._get_latter_volume_dict(volume_name)
 
         self._execute('SetPartition', part_entry['ID'], 'name=%s' % volume_id)
 
         LOG.info(_LI('Rename Volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
+
+    def _get_existing_volume_ref_name(self, ref):
+        volume_name = None
+        if 'source-name' in ref:
+            volume_name = ref['source-name']
+        elif 'source-id' in ref:
+            volume_name = self._get_unmanaged_volume_name(
+                ref['source-id'].replace('-', ''))
+        else:
+            msg = _('Reference must contain source-id or source-name.')
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=ref, reason=msg)
+
+        return volume_name
 
     def unmanage(self, volume):
         volume_id = volume['id'].replace('-', '')
@@ -1791,13 +1794,12 @@ class InfortrendCommon(object):
 
         return ref_dict
 
-    def _get_latter_volume_dict(self, volume_id):
+    def _get_latter_volume_dict(self, volume_name):
         rc, part_list = self._execute('ShowPartition', '-l')
 
         latest_timestamps = 0
         ref_dict = {}
 
-        volume_name = self._get_unmanaged_volume_name(volume_id)
         for entry in part_list:
             if entry['Name'] == volume_name:
 
