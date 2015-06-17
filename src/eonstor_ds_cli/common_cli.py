@@ -83,57 +83,57 @@ CONF.register_opts(infortrend_esds_opts)
 CONF.register_opts(infortrend_esds_extra_opts)
 
 CLI_RC_FILTER = {
-    'CreatePartition': {'error': _('Failed to create partition')},
-    'DeletePartition': {'error': _('Failed to delete partition')},
-    'SetPartition': {'error': _('Failed to set partition')},
+    'CreatePartition': {'error': _('Failed to create partition.')},
+    'DeletePartition': {'error': _('Failed to delete partition.')},
+    'SetPartition': {'error': _('Failed to set partition.')},
     'CreateMap': {
-        'warning': {20: _LW('The MCS Channel is grouped')},
-        'error': _('Failed to create map'),
+        'warning': {20: _LW('The MCS Channel is grouped.')},
+        'error': _('Failed to create map.'),
     },
     'DeleteMap': {
-        'warning': {11: _LW('No mapping')},
-        'error': _('Failed to delete map'),
+        'warning': {11: _LW('No mapping.')},
+        'error': _('Failed to delete map.'),
     },
-    'CreateSnapshot': {'error': _('Failed to create snapshot')},
-    'DeleteSnapshot': {'error': _('Failed to delete snapshot')},
-    'CreateReplica': {'error': _('Failed to create replica')},
-    'DeleteReplica': {'error': _('Failed to delete replica')},
+    'CreateSnapshot': {'error': _('Failed to create snapshot.')},
+    'DeleteSnapshot': {'error': _('Failed to delete snapshot.')},
+    'CreateReplica': {'error': _('Failed to create replica.')},
+    'DeleteReplica': {'error': _('Failed to delete replica.')},
     'CreateIQN': {
-        'warning': {20: _LW('IQN already existed')},
-        'error': _('Failed to create iqn'),
+        'warning': {20: _LW('IQN already existed.')},
+        'error': _('Failed to create iqn.'),
     },
     'DeleteIQN': {
         'warning': {
-            20: _LW('IQN has been used to create map'),
-            11: _LW('No such host alias name'),
+            20: _LW('IQN has been used to create map.'),
+            11: _LW('No such host alias name.'),
         },
-        'error': _('Failed to delete iqn'),
+        'error': _('Failed to delete iqn.'),
     },
-    'ShowLV': {'error': _('Failed to get lv info')},
-    'ShowPartition': {'error': _('Failed to get partition info')},
-    'ShowSnapshot': {'error': _('Failed to get snapshot info')},
-    'ShowDevice': {'error': _('Failed to get device info')},
-    'ShowChannel': {'error': _('Failed to get channel info')},
-    'ShowMap': {'error': _('Failed to get map info')},
-    'ShowNet': {'error': _('Failed to get network info')},
-    'ShowLicense': {'error': _('Failed to get license info')},
-    'ShowReplica': {'error': _('Failed to get replica info')},
-    'ShowWWN': {'error': _('Failed to get wwn info')},
-    'ShowIQN': {'error': _('Failed to get iqn info')},
-    'ExecuteCommand': {'error': _('Failed to execute common command')},
+    'ShowLV': {'error': _('Failed to get lv info.')},
+    'ShowPartition': {'error': _('Failed to get partition info.')},
+    'ShowSnapshot': {'error': _('Failed to get snapshot info.')},
+    'ShowDevice': {'error': _('Failed to get device info.')},
+    'ShowChannel': {'error': _('Failed to get channel info.')},
+    'ShowMap': {'error': _('Failed to get map info.')},
+    'ShowNet': {'error': _('Failed to get network info.')},
+    'ShowLicense': {'error': _('Failed to get license info.')},
+    'ShowReplica': {'error': _('Failed to get replica info.')},
+    'ShowWWN': {'error': _('Failed to get wwn info.')},
+    'ShowIQN': {'error': _('Failed to get iqn info.')},
+    'ExecuteCommand': {'error': _('Failed to execute common command.')},
 }
 
 
 def log_func(func):
     def inner(self, *args, **kwargs):
-        LOG.debug('Enter %(method)s', {'method': func.__name__})
+        LOG.debug('Entering: %(method)s', {'method': func.__name__})
         start = timeutils.utcnow()
         ret = func(self, *args, **kwargs)
         end = timeutils.utcnow()
         LOG.debug(
-            'Leave %(method)s '
-            'Spent %(time)s sec '
-            'Return %(ret)s', {
+            'Leaving: %(method)s, '
+            'Spent: %(time)s sec, '
+            'Return: %(ret)s.', {
                 'method': func.__name__,
                 'time': timeutils.delta_seconds(start, end),
                 'ret': ret})
@@ -255,7 +255,7 @@ class InfortrendCommon(object):
         return command(self.cli_conf).execute(*args, **kwargs)
 
     def _execute(self, cli_type, *args, **kwargs):
-        LOG.debug('Enter %(method)s', {'method': cli_type})
+        LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
 
         rc, out = self._execute_command(cli_type, *args, **kwargs)
 
@@ -478,7 +478,7 @@ class InfortrendCommon(object):
         model_update = {
             "provider_location": self._concat_provider_location(model_dict),
         }
-        LOG.info(_LI('Create Volume %(volume_id)s done'), {
+        LOG.info(_LI('Create Volume %(volume_id)s completed.'), {
             'volume_id': volume_id})
         return model_update
 
@@ -546,7 +546,7 @@ class InfortrendCommon(object):
                 if len(tier_levels) == 0:
                     break
         if len(tier_levels) != 0:
-            msg = _('Have not created %(tier_levels)s tier(s)') % {
+            msg = _('Have not created %(tier_levels)s tier(s).') % {
                 'tier_levels': tier_levels}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -585,7 +585,7 @@ class InfortrendCommon(object):
                 break
 
         if map_channel_id is None:
-            msg = _('Failed to create map on mcs, no channel can map')
+            msg = _('Failed to create map on mcs, no channel can map.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -647,7 +647,7 @@ class InfortrendCommon(object):
             pool_id = self._select_most_free_capacity_pool_id(lv_info)
 
         if pool_id is None:
-            msg = _('Failed to get pool id with volume %(volume_id)s') % {
+            msg = _('Failed to get pool id with volume %(volume_id)s.') % {
                 'volume_id': volume['id']}
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -672,7 +672,7 @@ class InfortrendCommon(object):
 
         if lun_id == -1:
             msg = _('LUN number is out of bound '
-                    'on channel id: %(ch_id)s') % {'ch_id': ch_id}
+                    'on channel id: %(ch_id)s.') % {'ch_id': ch_id}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
         else:
@@ -780,7 +780,7 @@ class InfortrendCommon(object):
                 empty_lun_num = len(value)
 
         if int(min_map_chl) < 0:
-            msg = _('LUN map overflow on every channel')
+            msg = _('LUN map overflow on every channel.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
         else:
@@ -812,7 +812,7 @@ class InfortrendCommon(object):
                 break
 
         if mcs_id is None:
-            msg = _('Cannot get mcs_id by channel id=%(channel_id)s') % {
+            msg = _('Cannot get mcs_id by channel id: %(channel_id)s.') % {
                 'channel_id': channel_id}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -837,7 +837,7 @@ class InfortrendCommon(object):
         )
 
         if not check_exist:
-            LOG.warning(_LW('Volume %(volume_id)s already deleted'), {
+            LOG.warning(_LW('Volume %(volume_id)s already deleted.'), {
                 'volume_id': volume_id})
             return
 
@@ -872,7 +872,7 @@ class InfortrendCommon(object):
                 if si_has_pair:
                     msg = _('Failed to delete SI '
                             'for volume_id: %(volume_id)s '
-                            'because it has pair') % {
+                            'because it has pair.') % {
                                 'volume_id': volume_id}
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
@@ -886,12 +886,12 @@ class InfortrendCommon(object):
 
             self._execute('DeletePartition', part_id, '-y')
 
-            LOG.info(_LI('Delete Volume %(volume_id)s done'), {
+            LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
                 'volume_id': volume_id})
         else:
             msg = _('Failed to delete volume '
                     'for volume_id: %(volume_id)s '
-                    'because it has pair') % {
+                    'because it has pair.') % {
                         'volume_id': volume_id}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -938,7 +938,7 @@ class InfortrendCommon(object):
 
         model_update = self._create_volume_from_volume(volume, src_part_id)
 
-        LOG.info(_LI('Create Cloned Volume %(volume_id)s done'), {
+        LOG.info(_LI('Create Cloned Volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
         return model_update
 
@@ -990,7 +990,7 @@ class InfortrendCommon(object):
     def create_export(self, context, volume):
         model_update = volume['provider_location']
 
-        LOG.info(_LI('Create export done from Volume %(volume_id)s'), {
+        LOG.info(_LI('Create export done from Volume %(volume_id)s.'), {
             'volume_id': volume['id']})
 
         return {'provider_location': model_update}
@@ -1004,11 +1004,11 @@ class InfortrendCommon(object):
             self._update_volume_stats()
 
         LOG.info(_LI(
-            'Successfully update volume stats '
-            'backend: %(volume_backend_name)s '
-            'vendor: %(vendor_name)s '
-            'driver version: %(driver_version)s '
-            'storage protocol: %(storage_protocol)s'), self._volume_stats)
+            'Successfully update volume stats. '
+            'backend: %(volume_backend_name)s, '
+            'vendor: %(vendor_name)s, '
+            'driver version: %(driver_version)s, '
+            'storage protocol: %(storage_protocol)s.'), self._volume_stats)
 
         return self._volume_stats
 
@@ -1081,7 +1081,7 @@ class InfortrendCommon(object):
         snapshot_id = snapshot['id'].replace('-', '')
         volume_id = snapshot['volume_id'].replace('-', '')
 
-        LOG.debug('Create Snapshot %(snapshot)s volume %(volume)s',
+        LOG.debug('Create Snapshot %(snapshot)s volume %(volume)s.',
                   {'snapshot': snapshot_id, 'volume': volume_id})
 
         model_update = {}
@@ -1104,10 +1104,10 @@ class InfortrendCommon(object):
         snapshot_list = do_create_snapshot()
 
         LOG.info(_LI(
-            'Create success '
-            'Snapshot: %(snapshot)s '
-            'Snapshot ID in raid: %(raid_snapshot_id)s '
-            'volume: %(volume)s'), {
+            'Create success. '
+            'Snapshot: %(snapshot)s, '
+            'Snapshot ID in raid: %(raid_snapshot_id)s, '
+            'volume: %(volume)s.'), {
                 'snapshot': snapshot_id,
                 'raid_snapshot_id': snapshot_list[-1]['SI-ID'],
                 'volume': volume_id})
@@ -1120,7 +1120,7 @@ class InfortrendCommon(object):
         snapshot_id = snapshot['id'].replace('-', '')
         volume_id = snapshot['volume_id'].replace('-', '')
 
-        LOG.debug('Delete Snapshot %(snapshot)s volume %(volume)s',
+        LOG.debug('Delete Snapshot %(snapshot)s volume %(volume)s.',
                   {'snapshot': snapshot_id, 'volume': volume_id})
 
         raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
@@ -1135,12 +1135,12 @@ class InfortrendCommon(object):
             if not has_pair:
                 self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
 
-                LOG.info(_LI('Delete Snapshot %(snapshot_id)s done'), {
+                LOG.info(_LI('Delete Snapshot %(snapshot_id)s completed.'), {
                     'snapshot_id': snapshot_id})
             else:
                 msg = _('Failed to delete snapshot '
                         'for snapshot_id: %s '
-                        'because it has pair') % snapshot_id
+                        'because it has pair.') % snapshot_id
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
         else:
@@ -1155,7 +1155,7 @@ class InfortrendCommon(object):
         if 'provider_location' not in snapshot:
             LOG.warning(_LW(
                 'Failed to get Raid Snapshot ID and '
-                'did not store in snapshot'))
+                'did not store in snapshot.'))
             return
         return snapshot['provider_location']
 
@@ -1190,7 +1190,7 @@ class InfortrendCommon(object):
 
         if raid_snapshot_id is None:
             msg = _('Failed to get Raid Snapshot ID '
-                    'from snapshot: %(snapshot_id)s') % {
+                    'from snapshot: %(snapshot_id)s.') % {
                         'snapshot_id': snapshot['id']}
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
@@ -1202,7 +1202,7 @@ class InfortrendCommon(object):
 
         LOG.info(_LI(
             'Create Volume %(volume_id)s from '
-            'snapshot %(snapshot_id)s done'), {
+            'snapshot %(snapshot_id)s completed.'), {
                 'volume_id': volume['id'],
                 'snapshot_id': snapshot['id']})
 
@@ -1261,7 +1261,8 @@ class InfortrendCommon(object):
             return self._initialize_connection_fc(
                 volume, connector)
         else:
-            msg = _('Unknown protocol')
+            msg = _('Unknown protocol: %(protocol)s.') % {
+                'protocol': self.protocol}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -1276,10 +1277,10 @@ class InfortrendCommon(object):
         properties = self._generate_fc_connection_properties(
             map_lun, target_wwpns, initiator_target_map)
 
-        LOG.info(_LI('Successfully initialize connection '
-                     'target_wwn: %(target_wwn)s '
-                     'initiator_target_map: %(initiator_target_map)s '
-                     'lun: %(target_lun)s '), properties['data'])
+        LOG.info(_LI('Successfully initialized connection. '
+                     'target_wwn: %(target_wwn)s, '
+                     'initiator_target_map: %(initiator_target_map)s, '
+                     'lun: %(target_lun)s.'), properties['data'])
         return properties
 
     def _do_fc_connection(self, volume, connector):
@@ -1384,7 +1385,7 @@ class InfortrendCommon(object):
         if ip is None:
             msg = _(
                 'Failed to get ip on Channel %(channel_id)s '
-                'with volume_id %(volume_id)s') % {
+                'with volume: %(volume_id)s.') % {
                     'channel_id': channel_id, 'volume_id': volume_id}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -1401,8 +1402,8 @@ class InfortrendCommon(object):
 
         properties = self._generate_iscsi_connection_properties(
             property_value, volume)
-        LOG.info(_LI('Successfully initialize connection '
-                     'volume: %(volume_id)s'), properties['data'])
+        LOG.info(_LI('Successfully initialized connection '
+                     'with volume: %(volume_id)s.'), properties['data'])
         return properties
 
     @log_func
@@ -1499,8 +1500,10 @@ class InfortrendCommon(object):
             discovery_exist = True
 
         if not discovery_exist:
-            msg = _('Could not find iSCSI target for %(volume_id)s') % {
-                'volume_id': volume['id']}
+            msg = _(
+                'Could not find iSCSI target '
+                'for volume: %(volume_id)s.') % {
+                    'volume_id': volume['id']}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -1531,7 +1534,7 @@ class InfortrendCommon(object):
 
         if rc != 0:
             LOG.error(_LE(
-                'Can not discovery in %(target_ip)s with %(target_iqn)s'), {
+                'Can not discovery in %(target_ip)s with %(target_iqn)s.'), {
                     'target_ip': target_ip, 'target_iqn': target_iqn})
             return False
         else:
@@ -1560,8 +1563,7 @@ class InfortrendCommon(object):
         self._execute('SetPartition', 'expand', part_id, expand_command)
 
         LOG.info(_LI(
-            'Successfully extended volume %(volume_id)s '
-            'size %(size)s'), {
+            'Successfully extended volume %(volume_id)s to size %(size)s.'), {
                 'volume_id': volume['id'], 'size': new_size})
 
     @lockutils.synchronized('connection', 'infortrend-', True)
@@ -1597,7 +1599,7 @@ class InfortrendCommon(object):
                 conn_info['data']['initiator_target_map'] = init_target_map
 
         LOG.info(_LI(
-            'Successfully terminated connection for volume %(volume_id)s'), {
+            'Successfully terminated connection for volume: %(volume_id)s.'), {
                 'volume_id': volume['id']})
 
         return conn_info
@@ -1616,14 +1618,14 @@ class InfortrendCommon(object):
             "provider_location": self._concat_provider_location(model_dict),
         }
 
-        LOG.info(_LI('Migrate Volume %(volume_id)s done'), {
+        LOG.info(_LI('Migrate Volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
 
         return (True, model_update)
 
     def _is_valid_for_storage_assisted_migration(self, host):
         if 'pool_id' not in host['capabilities']:
-            LOG.warning(_LW('Failed to get target pool id'))
+            LOG.warning(_LW('Failed to get target pool id.'))
             return (False, None)
 
         dst_pool_id = host['capabilities']['pool_id']
@@ -1651,7 +1653,7 @@ class InfortrendCommon(object):
             volume_id, pool_id=dst_pool_id)
 
         if dst_part_id is None:
-            msg = _('Failed to get new part id in new pool: %(pool_id)s') % {
+            msg = _('Failed to get new part id in new pool: %(pool_id)s.') % {
                 'pool_id': dst_pool_id}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -1696,7 +1698,7 @@ class InfortrendCommon(object):
                 raise loopingcall.LoopingCallDone()
 
             if int(time.time()) - start_time > timeout:
-                msg = (_('Wait replica complete timeout'))
+                msg = _('Wait replica complete timeout.')
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
 
@@ -1757,7 +1759,7 @@ class InfortrendCommon(object):
 
         self._execute('SetPartition', part_entry['ID'], 'name=%s' % volume_id)
 
-        LOG.info(_LI('Rename Volume %(volume_id)s done'), {
+        LOG.info(_LI('Rename Volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
 
     def unmanage(self, volume):
@@ -1771,7 +1773,7 @@ class InfortrendCommon(object):
         commands = (part_id, 'name=cinder-unmanaged-%s' % volume_id[:-17])
         self._execute('SetPartition', *commands)
 
-        LOG.info(_LI('Unmanage volume %(volume_id)s done.'), {
+        LOG.info(_LI('Unmanage volume %(volume_id)s completed.'), {
             'volume_id': volume_id})
 
     def _get_specific_volume_dict(self, volume_id):
@@ -1851,8 +1853,8 @@ class InfortrendCommon(object):
 
             if rc:
                 LOG.info(_LI(
-                    'Retype Volume %(volume_id)s is done. '
-                    'and migrate to pool %(pool_id)s'), {
+                    'Retype Volume %(volume_id)s is done '
+                    'and migrated to pool %(pool_id)s.'), {
                         'volume_id': volume['id'],
                         'pool_id': host['capabilities']['pool_id']})
 
@@ -1869,7 +1871,7 @@ class InfortrendCommon(object):
                             diff['extra_specs']['infortrend_provisioning'][1]})
                 return False
 
-            LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
+            LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
                 'volume_id': volume['id']})
             return True
 
@@ -1886,12 +1888,12 @@ class InfortrendCommon(object):
 
         LOG.debug(
             'Rename partition %(part_id)s '
-            'into new volume %(new_volume)s', {
+            'into new volume %(new_volume)s.', {
                 'part_id': part_id, 'new_volume': dst_volume_id})
 
         self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
 
-        LOG.info(_LI('Update migrated volume %(new_volume)s done'), {
+        LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
             'new_volume': new_volume['id']})
 
         model_update = {
