@@ -208,13 +208,8 @@ class CLIBaseCommand(BaseCommand):
 
     @retry_cli
     def execute(self, *args, **kwargs):
-        """The execute command function need to add parameters.
-
-        :args args: Command's parameters
-        :returns: execute result
-        """
         command_line = self._generate_command(args)
-        LOG.debug('Execute %(command)s', {'command': command_line})
+        LOG.debug('Executing: %(command)s', {'command': command_line})
         rc = 0
         result = None
         try:
@@ -225,7 +220,7 @@ class CLIBaseCommand(BaseCommand):
             result = pe.stdout
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
-                'Error on execute %(command)s '
+                'Error on execute %(command)s. '
                 'Error code: %(exit_code)d Error msg: %(result)s'), {
                     'command': command_line,
                     'exit_code': pe.exit_code,
@@ -720,7 +715,7 @@ class ShowWWN(ShowCommand):
 
 class ShowIQN(ShowCommand):
 
-    """Show iSCSI initiator IQN which set by create iqn.
+    """Show iSCSI initiator IQN which is set by create iqn.
 
     show iqn
     """

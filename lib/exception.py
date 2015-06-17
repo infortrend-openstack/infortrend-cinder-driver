@@ -80,7 +80,7 @@ class CinderException(Exception):
             except AttributeError:
                 pass
 
-        for k, v in self.kwargs.iteritems():
+        for k, v in self.kwargs.items():
             if isinstance(v, Exception):
                 self.kwargs[k] = six.text_type(v)
 
@@ -93,11 +93,11 @@ class CinderException(Exception):
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
                 LOG.exception(_LE('Exception in string format operation'))
-                for name, value in kwargs.iteritems():
+                for name, value in kwargs.items():
                     LOG.error(_LE("%(name)s: %(value)s"),
                               {'name': name, 'value': value})
                 if CONF.fatal_exception_format_errors:
-                    raise exc_info[0], exc_info[1], exc_info[2]
+                    six.reraise(*exc_info)
                 # at least get the core message out if something happened
                 message = self.message
         elif isinstance(message, Exception):
@@ -903,13 +903,24 @@ class XtremIOAlreadyMappedError(CinderException):
     message = _("Volume to Initiator Group mapping already exists")
 
 
+# StorPool driver
+class StorPoolConfigurationMissing(CinderException):
+    message = _("Missing parameter %(param)s in the %(section)s section "
+                "of the /etc/storpool.conf file")
+
+
+class StorPoolConfigurationInvalid(CinderException):
+    message = _("Invalid parameter %(param)s in the %(section)s section "
+                "of the /etc/storpool.conf file: %(error)s")
+
+
 # Infortrend EonStor DS Driver
 class InfortrendCliException(CinderException):
     message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
                 "(Return Code: %(rc)s) (Output: %(out)s)")
 
 
-# DOTHILL
+# DOTHILL drivers
 class DotHillInvalidBackend(CinderException):
     message = _("Backend doesn't exist (%(backend)s)")
 
@@ -931,4 +942,4 @@ class DotHillRequestError(CinderException):
 
 
 class DotHillNotTargetPortal(CinderException):
-    message = _("No active iscsi portals with supplied iscsi ips")
+    message = _("No active iSCSI portals with supplied iSCSI IPs")
