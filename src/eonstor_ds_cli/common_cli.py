@@ -457,8 +457,7 @@ class InfortrendCommon(object):
             extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
 
         provisioning = self._get_extraspecs_value(extraspecs, 'provisioning')
-        self._check_extraspec_value(
-                    provisioning, self.provisioning_values)
+        self._check_extraspec_value(provisioning, self.provisioning_values)
         top_tier = self._get_top_tier(pool_id)
 
         extraspecs_dict = {}
