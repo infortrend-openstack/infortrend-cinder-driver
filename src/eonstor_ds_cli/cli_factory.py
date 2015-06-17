@@ -303,6 +303,7 @@ class SetPartition(CLIBaseCommand):
     set part expand [partition-ID] [size={expand-size}]
     set part purge [partition-ID] [number] [rule-type]
     set part reclaim [partition-ID]
+    set part tier-resided [partition-ID] tier={tier-level-list}
     """
 
     def __init__(self, *args, **kwargs):

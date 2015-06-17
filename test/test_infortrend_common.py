@@ -96,8 +96,6 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.configuration.volume_backend_name = 'infortrend_backend_1'
         self.configuration.san_ip = self.cli_data.fake_manage_port_ip[0]
         self.configuration.san_password = '111111'
-        self.configuration.infortrend_provisioning = 'full'
-        self.configuration.infortrend_tiering = '0'
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '0,5'
         self.configuration.infortrend_slots_b_channels_id = '0,5'
@@ -462,8 +460,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.configuration.volume_backend_name = 'infortrend_backend_1'
         self.configuration.san_ip = self.cli_data.fake_manage_port_ip[0]
         self.configuration.san_password = '111111'
-        self.configuration.infortrend_provisioning = 'full'
-        self.configuration.infortrend_tiering = '0'
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '1,2,4'
         self.configuration.infortrend_slots_b_channels_id = '1,2,4'
@@ -964,7 +960,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'ShowLicense': self.cli_data.get_test_show_license(),
-            'ShowLV': self.cli_data.get_test_show_lv(),
+            'ShowLV': self._mock_show_lv,
             'ShowPartition': self.cli_data.get_test_show_partition_detail(),
         }
         self._driver_setup(mock_commands)
@@ -1524,7 +1520,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
                       fake_pool['pool_id'],
                       test_volume['id'].replace('-', ''),
                       'size=%s' % (test_volume['size'] * 1024),
-                      ''),
+                      'tier=0'),
             mock.call('ShowPartition'),
             mock.call('CreateReplica',
                       'Cinder-Migrate',
@@ -1845,7 +1841,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowPartition': self.cli_data.get_test_show_partition(
                 test_volume_id, fake_pool['pool_id']),
             'CreateReplica': SUCCEED,
-            'ShowLV': self._mock_show_lv_for_migrate,
+            'ShowLV': self._mock_show_lv,
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_src_part_id, test_dst_part_id, test_volume_id),
@@ -1860,6 +1856,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         expect_cli_cmd = [
             mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
+            mock.call('ShowLV', 'tier'),
             mock.call(
                 'CreatePartition',
                 fake_pool['pool_id'],
@@ -1880,10 +1877,49 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             mock.call('DeleteReplica', test_pair_id, '-y'),
             mock.call('DeleteMap', 'part', test_src_part_id, '-y'),
             mock.call('DeletePartition', test_src_part_id, '-y'),
+
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertTrue(rc)
         self.assertDictMatch(model_update, test_model_update)
+
+    @mock.patch.object(common_cli.LOG, 'info')
+    def test_retype_tiering_succeed(self, log_info):
+        test_volume = self.cli_data.test_volume
+        test_new_type = self.cli_data.test_new_type_tier
+        test_diff_tier = self.cli_data.test_diff_tier
+        test_host = self.cli_data.test_migrate_host_2
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv,
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff_tier, test_host)
+
+        self.assertTrue(rc)
+        self.assertEqual(1, log_info.call_count)
+
+    @mock.patch.object(common_cli.LOG, 'error')
+    def test_retype_tiering_fail_by_wrong_tier(self, log_error):
+        test_volume = self.cli_data.test_volume
+        test_new_type = self.cli_data.test_new_type_tier_wrong
+        test_diff_tier = self.cli_data.test_diff_tier_wrong
+        test_host = self.cli_data.test_migrate_host_2
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv,
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.retype,
+            None, test_volume, test_new_type,
+            test_diff_tier, test_host)
 
     @mock.patch.object(common_cli.LOG, 'debug', mock.Mock())
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())

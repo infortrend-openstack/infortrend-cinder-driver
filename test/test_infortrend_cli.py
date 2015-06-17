@@ -292,7 +292,7 @@ class InfortrendCLITestData(object):
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
             round((400) / 1024, 2),
-        'infortrend_provisioning': 'full',
+        'infortrend_tiering':'2'
     }]
 
     test_volume_states = {
@@ -319,7 +319,6 @@ class InfortrendCLITestData(object):
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
-        'infortrend_provisioning': 'full',
     }
 
     test_migrate_host = {
@@ -338,7 +337,6 @@ class InfortrendCLITestData(object):
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
-        'infortrend_provisioning': 'full',
     }
 
     test_migrate_host_2 = {
@@ -375,11 +373,30 @@ class InfortrendCLITestData(object):
         'name': 'type0',
         'qos_specs_id': None,
         'deleted': False,
-        'extra_specs': {'infortrend_provisioning': 'thin'},
+        'extra_specs': {'infortrend:provisioning': 'thin'},
         'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
     }
 
-    test_diff = {'extra_specs': {'infortrend_provisioning': ('full', 'thin')}}
+    test_new_type_tier = {
+        'name': 'type0',
+        'qos_specs_id': None,
+        'deleted': False,
+        'extra_specs': {'infortrend:tiering': '0,3'},
+        'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+    }
+
+    test_new_type_tier_wrong = {
+        'name': 'type0',
+        'qos_specs_id': None,
+        'deleted': False,
+        'extra_specs': {'infortrend:tiering': '0,4'},
+        'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+    }
+
+    test_diff = {'extra_specs': {'infortrend:provisioning': ('full', 'thin')}}
+    test_diff_tier = {'extra_specs': {'infortrend:tiering': ('0,2', '0,3')}}
+    test_diff_tier_wrong = {'extra_specs': {
+                            'infortrend:tiering': ('0,2', '0,4')}}
 
     def get_fake_cli_failed(self):
         return """
