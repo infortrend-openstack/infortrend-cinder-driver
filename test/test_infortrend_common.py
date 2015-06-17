@@ -1640,10 +1640,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_ref_volume = self.cli_data.test_ref_volume
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
+        test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
-                test_ref_volume['source-id'].replace('-', ''), test_pool),
+                'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'ShowMap': SUCCEED,
         }
 
@@ -1663,10 +1664,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_volume = self.cli_data.test_volume
         test_ref_volume = self.cli_data.test_ref_volume
         test_pool = self.cli_data.fake_lv_id[0]
+        test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
-                test_ref_volume['source-id'].replace('-', ''), test_pool),
+                'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'ShowMap': self.cli_data.get_test_show_map(),
         }
         self._driver_setup(mock_commands)
@@ -1710,9 +1712,12 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         test_volume = self.cli_data.test_volume
         test_ref_volume = self.cli_data.test_ref_volume
+        test_pool = self.cli_data.fake_lv_id[0]
+        test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
         mock_commands = {
-            'ShowPartition': self.cli_data.get_test_show_partition_detail(),
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(
+                'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'ShowMap': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
@@ -1730,10 +1735,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_ref_volume = self.cli_data.test_ref_volume
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
+        test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
-                test_ref_volume['source-id'].replace('-', ''), test_pool),
+                'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'SetPartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
@@ -1752,10 +1758,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         test_volume = self.cli_data.test_volume
         test_ref_volume = self.cli_data.test_ref_volume
         test_pool = self.cli_data.fake_lv_id[0]
+        test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
-                test_ref_volume['source-id'].replace('-', ''), test_pool),
+                'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'SetPartition': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)

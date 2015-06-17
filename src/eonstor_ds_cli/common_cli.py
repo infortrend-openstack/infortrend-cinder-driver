@@ -182,7 +182,8 @@ class InfortrendCommon(object):
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
         self.cli_timeout = self.configuration.infortrend_cli_timeout * 60
-        self.iqn = "iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s"
+        self.iqn = 'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s'
+        self.unmanaged_prefix = "cinder-unmanaged-%s"
 
         if self.ip == '':
             msg = _('san_ip is not set.')
@@ -1770,11 +1771,14 @@ class InfortrendCommon(object):
         if part_id is None:
             part_id = self._get_part_id(volume_id)
 
-        commands = (part_id, 'name=cinder-unmanaged-%s' % volume_id[:-17])
-        self._execute('SetPartition', *commands)
+        new_vol_name = self._get_unmanaged_volume_name(volume_id)
+        self._execute('SetPartition', part_id, 'name=%s' % new_vol_name)
 
         LOG.info(_LI('Unmanage volume %(volume_id)s completed.'), {
             'volume_id': volume_id})
+
+    def _get_unmanaged_volume_name(self, volume_id):
+        return self.unmanaged_prefix % volume_id[:-17]
 
     def _get_specific_volume_dict(self, volume_id):
         ref_dict = {}
@@ -1793,8 +1797,9 @@ class InfortrendCommon(object):
         latest_timestamps = 0
         ref_dict = {}
 
+        volume_name = self._get_unmanaged_volume_name(volume_id)
         for entry in part_list:
-            if entry['Name'] == volume_id:
+            if entry['Name'] == volume_name:
 
                 timestamps = self._get_part_timestamps(
                     entry['Creation-time'])
