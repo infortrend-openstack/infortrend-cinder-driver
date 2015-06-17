@@ -477,7 +477,7 @@ class InfortrendCommon(object):
                     if len(tier_levels_list) > 1:
                         msg = _('Must specify only one tier instead of '
                                 '%(tier_levels_list)s tier(s)') % {
-                                'tier_levels_list': tier_levels_list}
+                            'tier_levels_list': tier_levels_list}
                         LOG.error(msg)
                         raise exception.VolumeDriverException(message=msg)
                     extraspecs_dict['tiering'] = tiering
