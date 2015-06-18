@@ -1748,8 +1748,18 @@ class InfortrendCommon(object):
 
         self._execute('SetPartition', part_entry['ID'], 'name=%s' % volume_id)
 
+        model_dict = {
+            'system_id': self._get_system_id(self.ip),
+            'partition_id': part_entry['ID'],
+        }
+        model_update = {
+            "provider_location": self._concat_provider_location(model_dict),
+        }
+
         LOG.info(_LI('Rename Volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
+
+        return model_update
 
     def _get_existing_volume_ref_name(self, ref):
         volume_name = None
