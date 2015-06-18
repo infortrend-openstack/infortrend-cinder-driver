@@ -28,3 +28,5 @@ class InfortrendCliException(exception.CinderException):
 VolumeBackendAPIException = exception.VolumeBackendAPIException
 
 VolumeDriverException = exception.VolumeDriverException
+
+ManageExistingInvalidReference = exception.ManageExistingInvalidReference
