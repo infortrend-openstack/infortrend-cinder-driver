@@ -21,15 +21,12 @@ from cinder.i18n import _
 
 
 # Infortrend EonStor DS Driver
-class InfortrendAPIException(exception.VolumeBackendAPIException):
-    message = _("The wrong parameters were transmitted from "
-                "Cinder API: %(err)s")
-
-
-class InfortrendDriverException(exception.VolumeDriverException):
-    message = _("Infortrend cinder driver exception: %(err)s")
-
-
 class InfortrendCliException(exception.CinderException):
     message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
                 "(Return Code: %(rc)s) (Output: %(out)s)")
+
+VolumeBackendAPIException = exception.VolumeBackendAPIException
+
+VolumeDriverException = exception.VolumeDriverException
+
+ManageExistingInvalidReference = exception.ManageExistingInvalidReference

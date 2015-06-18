@@ -1,5 +1,11 @@
-Eonstor DS Cinder Driver - Alpha Version
+Eonstor DS Cinder Driver - 1.0.0 Version
 =============
+| Branch  | Unit Test Status |
+| ------- | ------------ |
+| current | [![Travis branch][travis-ci-img]][travis-ci-url] |
+| master  | [![Travis branch][travis-ci-master-img]][travis-ci-master-url] |
+| develop | [![Travis branch][travis-ci-dev-img]][travis-ci-dev-url] |
+
 Copyright (c) 2015 Infortrend Technology, Inc. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,14 +26,15 @@ under the License.
 Infortrend implement ISCSI and FC volume drivers for EonStor DS product.
 It manages storage by Infortrend CLI tool.
 
-This is the Alpha version.
-Equal Patch-Set 4 version on openstack review system.
+This is the 1.0.0 version. It is merged into Cinder.
 https://review.openstack.org/#/c/177113/
 
 ## Support OpenStack Version
 
 - Base on Kilo.
-- Expect Release on Liberty.
+  + If you want to run on Kilo, please download from [release](https://github.com/infortrend-openstack/eonstor-ds-cinder-driver/releases).
+- Release on Liberty.
+  + It is already merged into Liberty. [More detail](https://blueprints.launchpad.net/cinder/+spec/infortrend-iscsi-fc-volume-driver).
 
 ## Supported Cinder Operations
 
@@ -40,6 +47,7 @@ https://review.openstack.org/#/c/177113/
 - Copy Volume to Image
 - Clone Volume
 - Extend Volume
+- Volume Manage/Unmanage
 
 ## Require Tools
 
@@ -51,3 +59,12 @@ Execute Bash file and it would git clone cinder driver to run unit test.
 ```
 ./run_test.sh
 ```
+
+[travis-ci-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver.svg?style=flat-square
+[travis-ci-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver
+
+[travis-ci-master-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver/master.svg?style=flat-square
+[travis-ci-master-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver/branches
+
+[travis-ci-dev-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver/develop.svg?style=flat-square
+[travis-ci-dev-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver/branches
