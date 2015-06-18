@@ -141,18 +141,42 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection information.
 
-        The iscsi driver returns a driver_volume_type of 'iscsi'.
-        The format of the driver data is defined in _get_iscsi_properties.
-        Example return value::
+        Assign any created volume to a compute node/host so that it can be
+        used from that host.
+
+        The  driver returns a driver_volume_type of 'fibre_channel'.
+        The target_wwn can be a single entry or a list of wwns that
+        correspond to the list of remote wwn(s) that will export the volume.
+        The initiator_target_map is a map that represents the remote wwn(s)
+        and a list of wwns which are visible to the remote wwn(s).
+        Example return values:
 
             {
-                'driver_volume_type': 'iscsi'
+                'driver_volume_type': 'fibre_channel'
                 'data': {
                     'target_discovered': True,
-                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
-                    'target_portal': '127.0.0.0.1:3260',
-                    'volume_id': 1,
+                    'target_lun': 1,
+                    'target_wwn': '1234567890123',
                     'access_mode': 'rw'
+                    'initiator_target_map': {
+                        '1122334455667788': ['1234567890123']
+                    }
+                }
+            }
+
+            or
+
+             {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': ['1234567890123', '0987654321321'],
+                    'access_mode': 'rw'
+                    'initiator_target_map': {
+                        '1122334455667788': ['1234567890123',
+                                             '0987654321321']
+                    }
                 }
             }
         """
