@@ -1466,7 +1466,7 @@ class InfortrendCommon(object):
 
         for entry in wwn_list:
             channel_id = entry['CH']
-            if 'BID:113' == entry['ID']:
+            if 'BID' in entry['ID']:
                 slot_name = 'slot_b'
             else:
                 slot_name = 'slot_a'
