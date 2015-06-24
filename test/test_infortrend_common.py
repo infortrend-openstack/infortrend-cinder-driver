@@ -1805,6 +1805,24 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             test_volume,
             test_ref_volume)
 
+    def test_manage_existing_with_part_not_found(self):
+
+        test_volume = self.cli_data.test_volume
+        test_ref_volume = self.cli_data.test_ref_volume
+
+        mock_commands = {
+            'ShowPartition':
+                self.cli_data.get_test_show_partition_detail(),
+            'SetPartition': SUCCEED,
+        }
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing,
+            test_volume,
+            test_ref_volume)
+
     @mock.patch.object(common_cli.LOG, 'info')
     def test_manage_existing_with_import(self, log_info):
 
