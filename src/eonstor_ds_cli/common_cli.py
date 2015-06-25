@@ -154,7 +154,11 @@ class InfortrendCommon(object):
         'MAX_LUN_MAP_PER_CHL': 128
     }
 
-    provisioning_values = ['thin', 'full']
+    PROVISIONING_KEY = 'infortrend:provisioning'
+    TIERING_SET_KEY = 'infortrend:tiering'
+    TIERING_NUM_KEY = 'infortrend_tiering'
+
+    PROVISIONING_VALUES = ['thin', 'full']
 
     def __init__(self, protocol, configuration=None):
 
@@ -478,10 +482,10 @@ class InfortrendCommon(object):
 
         if extraspecs is None:
             extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
+        self._check_extraspecs_conflict_and_legality(extraspecs, pool_id)
 
-        provisioning = self._get_extraspecs_value(extraspecs, 'provisioning')
-        self._check_extraspec_value(provisioning, self.provisioning_values)
-
+        provisioning = self._get_extraspecs_value(
+                            extraspecs, self.PROVISIONING_KEY)
         top_tier = self._get_top_tier(pool_id)
 
         extraspecs_dict = {}
@@ -494,18 +498,10 @@ class InfortrendCommon(object):
                 extraspecs_dict['init'] = 'disable'
         # Tier Pool
         else:
-            tiering = self._get_extraspecs_value(extraspecs, 'tiering')
+            tiering = self._get_extraspecs_value(
+                        extraspecs, self.TIERING_SET_KEY)
             if provisioning == 'full':
                 if tiering != '-1':
-                    tier_levels_list = tiering.split(',')
-                    tier_levels_list = list(map(str, tier_levels_list))
-                    self._check_tiering_existing(tier_levels_list, pool_id)
-                    if len(tier_levels_list) > 1:
-                        msg = _('Must specify only one tier instead of '
-                                '%(tier_levels_list)s tier(s)') % {
-                            'tier_levels_list': tier_levels_list}
-                        LOG.error(msg)
-                        raise exception.VolumeDriverException(message=msg)
                     extraspecs_dict['tiering'] = tiering
                 else:
                     extraspecs_dict['tiering'] = top_tier
@@ -513,9 +509,6 @@ class InfortrendCommon(object):
                 extraspecs_dict['provisioning'] = 0
                 extraspecs_dict['init'] = 'disable'
                 if tiering != '-1':
-                    tier_levels_list = tiering.split(',')
-                    tier_levels_list = list(map(str, tier_levels_list))
-                    self._check_tiering_existing(tier_levels_list, pool_id)
                     extraspecs_dict['tiering'] = tiering
 
         if extraspecs_dict:
@@ -618,29 +611,55 @@ class InfortrendCommon(object):
 
     def _get_extraspecs_value(self, extraspecs, key):
         value = None
-        if key == 'provisioning':
+        if key == self.PROVISIONING_KEY:
             if (extraspecs and
-                    'infortrend:provisioning' in extraspecs.keys()):
-                value = extraspecs['infortrend:provisioning'].lower()
+                    self.PROVISIONING_KEY in extraspecs.keys()):
+                value = extraspecs[self.PROVISIONING_KEY].lower()
             else:
                 value = 'full'
-        elif key == 'tiering':
-            if (extraspecs and
-                    'infortrend:tiering' in extraspecs.keys()):
-                value = extraspecs['infortrend:tiering'].lower()
+        elif key == self.TIERING_SET_KEY:
+            if (extraspecs and self.TIERING_SET_KEY in extraspecs.keys()):
+                value = extraspecs[self.TIERING_SET_KEY].lower()
             else:
                 value = '-1'
         return value
+
+    def _check_extraspecs_conflict_and_legality(self, extraspecs, pool_id):
+        if self.PROVISIONING_KEY in extraspecs.keys():
+            provisioning = extraspecs[self.PROVISIONING_KEY].lower()
+            validvalues = self.PROVISIONING_VALUES
+            self._check_extraspec_value(provisioning, validvalues)
+            if (provisioing == 'full' and
+                    self.TIERING_SET_KEY in extraspecs.keys()):
+                tiering_set = extraspecs[self.TIERING_SET_KEY].lower()
+                tier_levels_list = tiering.split(',')
+                self._check_tiering_existing(tier_levels_list, pool_id)
+                if len(tier_levels_list) > 1:
+                    msg = _('Must specify only one tier instead of '
+                            '%(tier_levels_list)s tier(s)') % {
+                        'tier_levels_list': tier_levels_list}
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+
+        if self.TIERING_SET_KEY in extraspecs.keys():
+            tiering_set = extraspecs[self.TIERING_SET_KEY].lower()
+            tier_levels_list = tiering_set.split(',')
+            self._check_tiering_existing(tier_levels_list, pool_id)
+
+        if self.TIERING_NUM_KEY in extraspecs.keys():
+            tiering_num = extraspecs[self.TIERING_NUM_KEY].lower()
+            tier_levels_list = list(range(int(tiering_num)))
+            self._check_tiering_existing(tier_levels_list, pool_id)
 
     def _select_most_free_capacity_pool_id(self, lv_info, extraspecs=None):
         largest_free_capacity_gb = 0.0
         dest_pool_id = None
         tiering_num = None
         tiering_str = None
-        if 'infortrend_tiering' in extraspecs.keys():
-            tiering_num = extraspecs['infortrend_tiering'].lower()
-        if 'infortrend:tiering' in extraspecs.keys():
-            tiering_str = extraspecs['infortrend:tiering'].lower()
+        if self.TIERING_NUM_KEY in extraspecs.keys():
+            tiering_num = extraspecs[self.TIERING_NUM_KEY].lower()
+        if self.TIERING_SET_KEY in extraspecs.keys():
+            tiering_str = extraspecs[self.TIERING_SET_KEY].lower()
 
         if not tiering_num:
             for lv in lv_info:
@@ -1898,20 +1917,22 @@ class InfortrendCommon(object):
 
             return (rc, model_update)
         else:
-            if ('infortrend:provisioning' in diff['extra_specs'] and
-                    (diff['extra_specs']['infortrend:provisioning'][0] !=
-                        diff['extra_specs']['infortrend:provisioning'][1])):
+            # self._check_retype_diff(diff, self.PROVISIONING_KEY)
+            # self._check_retype_diff(diff, self.TIERING_SET_KEY)
+            if (self.PROVISIONING_KEY in diff['extra_specs'] and
+                    (diff['extra_specs'][self.PROVISIONING_KEY][0] !=
+                        diff['extra_specs'][self.PROVISIONING_KEY][1])):
 
                 LOG.warning(_LW(
                     'The provisioning: %(provisioning)s '
                     'is not valid.'), {
                         'provisioning':
-                            diff['extra_specs']['infortrend:provisioning'][1]})
+                            diff['extra_specs'][self.PROVISIONING_KEY][1]})
                 return False
 
-            if ('infortrend:tiering' in diff['extra_specs'] and
-                    (diff['extra_specs']['infortrend:tiering'][0] !=
-                        diff['extra_specs']['infortrend:tiering'][1])):
+            if (self.TIERING_SET_KEY in diff['extra_specs'] and
+                    (diff['extra_specs'][self.TIERING_SET_KEY][0] !=
+                        diff['extra_specs'][self.TIERING_SET_KEY][1])):
                 volume_id = volume['id'].replace('-', '')
                 part_id = self._extract_specific_provider_location(
                     volume['provider_location'], 'partition_id')
@@ -1920,9 +1941,8 @@ class InfortrendCommon(object):
                     part_id = self._get_part_id(volume_id)
 
                 pool_id = self._get_target_pool_id(volume)
-                tiering = diff['extra_specs']['infortrend:tiering'][1]
+                tiering = diff['extra_specs'][self.TIERING_SET_KEY][1]
                 tier_levels_list = tiering.split(',')
-                tier_levels_list = list(map(str, tier_levels_list))
                 self._check_tiering_existing(tier_levels_list, pool_id)
 
                 expand_command = 'tier=%s' % tiering
@@ -1930,15 +1950,13 @@ class InfortrendCommon(object):
                 rc, out = self._execute('SetPartition', 'tier-resided',
                                         part_id, expand_command)
 
-                if rc != 0:
-                    LOG.error(_LE(
-                        'Can not retype tiering level = %(tiering)s'), {
-                            'tiering': tiering})
-                    return False
-
             LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
                 'volume_id': volume['id']})
             return True
+
+    def _check_retype_diff(self, diff, key):
+        if key == self.PROVISIONING_KEY:
+            pass
 
     def update_migrated_volume(self, ctxt, volume, new_volume):
         """Return model update for migrated volume."""
