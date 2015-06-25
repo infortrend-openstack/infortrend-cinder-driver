@@ -204,9 +204,6 @@ class InfortrendCommon(object):
                 'slot_b': {},
             }
 
-        self._init_pool_list()
-        self._init_channel_list()
-
         self.cli_conf = {
             'path': self.path,
             'password': self.password,
@@ -445,6 +442,10 @@ class InfortrendCommon(object):
                 'pool_list': pool_list}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
+
+    def do_setup(self, context):
+        self._init_channel_list()
+        self._init_pool_list()
 
     def check_for_setup_error(self):
         self._check_pools_setup()

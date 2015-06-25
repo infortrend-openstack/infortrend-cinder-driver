@@ -38,6 +38,10 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
             'iSCSI', configuration=self.configuration)
         self.VERSION = self.common.VERSION
 
+    def do_setup(self, context):
+        LOG.debug('check_for_setup_error start')
+        self.common.do_setup()
+
     def check_for_setup_error(self):
         LOG.debug('check_for_setup_error start')
         self.common.check_for_setup_error()
