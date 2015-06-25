@@ -28,13 +28,13 @@ SUCCEED = (0, '')
 FAKE_ERROR_RETURN = (-1, '')
 
 
-class InfortrendTestCass(test.TestCase):
+class InfortrendTestCase(test.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(InfortrendTestCass, self).__init__(*args, **kwargs)
+        super(InfortrendTestCase, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        super(InfortrendTestCass, self).setUp()
+        super(InfortrendTestCase, self).setUp()
         self.cli_data = test_infortrend_cli.InfortrendCLITestData()
 
         self.configuration = configuration.Configuration(None)
@@ -85,7 +85,7 @@ class InfortrendTestCass(test.TestCase):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
 
 
-class InfortrendFCCommonTestCase(InfortrendTestCass):
+class InfortrendFCCommonTestCase(InfortrendTestCase):
 
     def __init__(self, *args, **kwargs):
         super(InfortrendFCCommonTestCase, self).__init__(*args, **kwargs)
@@ -449,7 +449,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.assertEqual(None, conn_info)
 
 
-class InfortrendiSCSICommonTestCase(InfortrendTestCass):
+class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
     def __init__(self, *args, **kwargs):
         super(InfortrendiSCSICommonTestCase, self).__init__(*args, **kwargs)
