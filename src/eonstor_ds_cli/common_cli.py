@@ -1917,12 +1917,19 @@ class InfortrendCommon(object):
 
             return (rc, model_update)
         else:
-            # self._check_retype_diff(diff, self.PROVISIONING_KEY)
-            # self._check_retype_diff(diff, self.TIERING_SET_KEY)
-            if (self.PROVISIONING_KEY in diff['extra_specs'] and
-                    (diff['extra_specs'][self.PROVISIONING_KEY][0] !=
-                        diff['extra_specs'][self.PROVISIONING_KEY][1])):
+            if self.PROVISIONING_KEY in diff['extra_specs'].keys():
+                self._execute_retype_diff(diff, self.PROVISIONING_KEY)
 
+            if self.TIERING_SET_KEY in diff['extra_specs'].keys():
+                self._execute_retype_diff(diff, self.TIERING_SET_KEY, volume)
+
+            LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
+                'volume_id': volume['id']})
+            return True
+
+    def _execute_retype_diff(self, diff, key, volume=None):
+        if key == self.PROVISIONING_KEY:
+            if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
                 LOG.warning(_LW(
                     'The provisioning: %(provisioning)s '
                     'is not valid.'), {
@@ -1930,9 +1937,8 @@ class InfortrendCommon(object):
                             diff['extra_specs'][self.PROVISIONING_KEY][1]})
                 return False
 
-            if (self.TIERING_SET_KEY in diff['extra_specs'] and
-                    (diff['extra_specs'][self.TIERING_SET_KEY][0] !=
-                        diff['extra_specs'][self.TIERING_SET_KEY][1])):
+        if key == self.TIERING_SET_KEY:
+            if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
                 volume_id = volume['id'].replace('-', '')
                 part_id = self._extract_specific_provider_location(
                     volume['provider_location'], 'partition_id')
@@ -1949,14 +1955,6 @@ class InfortrendCommon(object):
 
                 rc, out = self._execute('SetPartition', 'tier-resided',
                                         part_id, expand_command)
-
-            LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
-                'volume_id': volume['id']})
-            return True
-
-    def _check_retype_diff(self, diff, key):
-        if key == self.PROVISIONING_KEY:
-            pass
 
     def update_migrated_volume(self, ctxt, volume, new_volume):
         """Return model update for migrated volume."""
