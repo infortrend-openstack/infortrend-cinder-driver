@@ -630,10 +630,10 @@ class InfortrendCommon(object):
             provisioning = extraspecs[self.PROVISIONING_KEY].lower()
             validvalues = self.PROVISIONING_VALUES
             self._check_extraspec_value(provisioning, validvalues)
-            if (provisioing == 'full' and
+            if (provisioning == 'full' and
                     self.TIERING_SET_KEY in extraspecs.keys()):
                 tiering_set = extraspecs[self.TIERING_SET_KEY].lower()
-                tier_levels_list = tiering.split(',')
+                tier_levels_list = tiering_set.split(',')
                 self._check_tiering_existing(tier_levels_list, pool_id)
                 if len(tier_levels_list) > 1:
                     msg = _('Must specify only one tier instead of '
