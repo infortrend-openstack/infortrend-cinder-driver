@@ -662,20 +662,20 @@ class InfortrendCommon(object):
         if self.TIERING_SET_KEY in extraspecs.keys():
             tiering_str = extraspecs[self.TIERING_SET_KEY].lower()
 
-        if not tiering_num:
+        if not (tiering_num or tiering_str):
             for lv in lv_info:
-                if not (lv['Name'] in self.tier_pools_dict.keys() and
-                        len(self.tier_pools_dict[lv['Name']]) >= tiering_num):
+                if lv['Name'] in self.tier_pools_dict.keys():
                     lv_info.remove[lv]
 
-        if not tiering_str:
-            tiering_levels = tiering_str.split(',')
-            tiering_levels = list(map(str, tiering_levels))
+        if tiering_num or tiering_str:
             for lv in lv_info:
-                if not (lv['Name'] in self.tier_pools_dict.keys() and
-                        set(tiering_levels).issubset(
-                            set(self.tier_pools_dict[lv['Name']]))):
-                    lv_info.remove[lv]
+                if lv['Name'] in self.tier_pools_dict:
+                    available_space = float(lv['Available'].split(' ', 1)[0])
+                    free_capacity_gb = round(mi_to_gi(available_space))
+                    if free_capacity_gb > largest_free_capacity_gb:
+                        largest_free_capacity_gb = free_capacity_gb
+                        dest_pool_id = lv['ID']
+            return dest_pool_id
 
         for lv in lv_info:
             if lv['Name'] in self.pool_list:
