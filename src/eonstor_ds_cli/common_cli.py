@@ -21,9 +21,9 @@ import time
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import timeutils
 from oslo_utils import units
-from oslo_service import loopingcall
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -486,7 +486,7 @@ class InfortrendCommon(object):
         self._check_extraspecs_conflict_and_legality(extraspecs, pool_id)
 
         provisioning = self._get_extraspecs_value(
-                            extraspecs, self.PROVISIONING_KEY)
+            extraspecs, self.PROVISIONING_KEY)
         top_tier = self._get_top_tier(pool_id)
 
         extraspecs_dict = {}
@@ -500,7 +500,7 @@ class InfortrendCommon(object):
         # Tier Pool
         else:
             tiering = self._get_extraspecs_value(
-                        extraspecs, self.TIERING_SET_KEY)
+                extraspecs, self.TIERING_SET_KEY)
             if provisioning == 'full':
                 if tiering != '-1':
                     extraspecs_dict['tiering'] = tiering
@@ -1927,7 +1927,6 @@ class InfortrendCommon(object):
 
             LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
                 'volume_id': volume['id']})
-            print("Something Wrong")
             return True
 
     def _execute_retype_diff(self, diff, key, volume=None):
