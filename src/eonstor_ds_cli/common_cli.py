@@ -1919,7 +1919,8 @@ class InfortrendCommon(object):
             return (rc, model_update)
         else:
             if self.PROVISIONING_KEY in diff['extra_specs'].keys():
-                self._execute_retype_diff(diff, self.PROVISIONING_KEY)
+                if not self._execute_retype_diff(diff, self.PROVISIONING_KEY):
+                    return False
 
             if self.TIERING_SET_KEY in diff['extra_specs'].keys():
                 self._execute_retype_diff(diff, self.TIERING_SET_KEY, volume)
@@ -1930,9 +1931,6 @@ class InfortrendCommon(object):
             return True
 
     def _execute_retype_diff(self, diff, key, volume=None):
-        print(' key = ' + key)
-        print(diff['extra_specs'][key][0])
-        print(diff['extra_specs'][key][1])
         if key == self.PROVISIONING_KEY:
             if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
                 LOG.warning(_LW(
@@ -1940,9 +1938,7 @@ class InfortrendCommon(object):
                     'is not valid.'), {
                         'provisioning':
                             diff['extra_specs'][self.PROVISIONING_KEY][1]})
-                print("ket == PROVISIONING_KEY")
                 return False
-        print('Hi PROVISIONING_KEY')
 
         if key == self.TIERING_SET_KEY:
             if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
