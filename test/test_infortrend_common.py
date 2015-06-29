@@ -48,7 +48,7 @@ class InfortrendTestCase(test.TestCase):
         if configuration is None:
             configuration = self.configuration
         self.driver = self._get_driver(configuration)
-
+        self.driver.do_setup()
         mock_commands_execute = self._mock_command_execute(mock_commands)
         mock_cli = mock.Mock(side_effect=mock_commands_execute)
 
