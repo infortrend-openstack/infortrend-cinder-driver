@@ -48,11 +48,12 @@ class InfortrendTestCase(test.TestCase):
         if configuration is None:
             configuration = self.configuration
         self.driver = self._get_driver(configuration)
-        self.driver.do_setup(None)
+        mock_commands['ShowLV'] = self._mock_show_lv
+
         mock_commands_execute = self._mock_command_execute(mock_commands)
         mock_cli = mock.Mock(side_effect=mock_commands_execute)
-
         self.driver._execute_command = mock_cli
+        self.driver.do_setup(None)
 
     def _get_driver(self, conf):
         raise NotImplementedError
