@@ -1517,6 +1517,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         rc, model_update = self.driver.migrate_volume(test_volume, test_host)
 
         expect_cli_cmd = [
+            mock.call('ShowLV'),
             mock.call('ShowLV', 'tier'),
             mock.call('ShowLV', 'tier'),
             mock.call('CreatePartition',

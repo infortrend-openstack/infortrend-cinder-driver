@@ -1926,6 +1926,7 @@ class InfortrendCommon(object):
 
             LOG.info(_LI('Retype Volume %(volume_id)s is done'), {
                 'volume_id': volume['id']})
+            print("Something Wrong")
             return True
 
     def _execute_retype_diff(self, diff, key, volume=None):
@@ -1936,6 +1937,7 @@ class InfortrendCommon(object):
                     'is not valid.'), {
                         'provisioning':
                             diff['extra_specs'][self.PROVISIONING_KEY][1]})
+                print("ket == PROVISIONING_KEY")
                 return False
 
         if key == self.TIERING_SET_KEY:
