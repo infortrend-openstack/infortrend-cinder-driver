@@ -1523,7 +1523,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             mock.call('CreatePartition',
                       fake_pool['pool_id'],
                       test_volume['id'].replace('-', ''),
-                      'size=%s' % (test_volume['size'] * 1024),),
+                      'size=%s' % (test_volume['size'] * 1024), ''),
             mock.call('ShowPartition'),
             mock.call('CreateReplica',
                       'Cinder-Migrate',

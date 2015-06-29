@@ -1930,7 +1930,6 @@ class InfortrendCommon(object):
             return True
 
     def _execute_retype_diff(self, diff, key, volume=None):
-        print(' diff = ' + diff)
         print(' key = ' + key)
         if key == self.PROVISIONING_KEY:
             if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
