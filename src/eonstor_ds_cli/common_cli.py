@@ -1931,6 +1931,8 @@ class InfortrendCommon(object):
 
     def _execute_retype_diff(self, diff, key, volume=None):
         print(' key = ' + key)
+        print(diff['extra_specs'][key][0])
+        print(diff['extra_specs'][key][1])
         if key == self.PROVISIONING_KEY:
             if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
                 LOG.warning(_LW(
