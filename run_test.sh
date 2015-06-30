@@ -2,14 +2,14 @@
 
 export CINDER_DIR=./cinder
 export CINDER_REPO_URL=https://git.openstack.org/openstack/cinder
-export CINDER_TEST_DIR=cinder/tests/unit
+export CINDER_TEST_DIR=cinder/tests
 export INFORTREND_DRIVER_DIR=cinder/volume/drivers/infortrend
 
 if [ -d "$CINDER_DIR" ]; then
     rm -rf $CINDER_DIR
 fi
 
-git clone $CINDER_REPO_URL --depth=1
+git clone $CINDER_REPO_URL -b stable/kilo --depth=1
 
 if [ ! -d "$CINDER_DIR/$INFORTREND_DRIVER_DIR" ]; then
     mkdir $CINDER_DIR/$INFORTREND_DRIVER_DIR

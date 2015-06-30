@@ -1,4 +1,4 @@
-Eonstor DS Cinder Driver - 1.0.0 Version
+Eonstor DS Cinder Driver
 =============
 | Branch  | Unit Test Status |
 | ------- | ------------ |
@@ -26,9 +26,6 @@ under the License.
 Infortrend implement ISCSI and FC volume drivers for EonStor DS product.
 It manages storage by Infortrend CLI tool.
 
-This is the 1.0.0 version. It is merged into Cinder.
-https://review.openstack.org/#/c/177113/
-
 ## Support OpenStack Version
 
 - Base on Kilo.
@@ -51,7 +48,7 @@ https://review.openstack.org/#/c/177113/
 
 ## Require Tools
 
-- Infortrend CLI
+- Infortrend CLI, please download from [release](https://github.com/infortrend-openstack/eonstor-ds-cinder-driver/releases).
 
 # Run Test
 
