@@ -21,12 +21,12 @@ import time
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import loopingcall
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -155,9 +155,10 @@ class InfortrendCommon(object):
 
     Version history:
         1.0.0 - Initial driver
+        1.0.1 - Support DS4000
     """
 
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -1466,7 +1467,7 @@ class InfortrendCommon(object):
 
         for entry in wwn_list:
             channel_id = entry['CH']
-            if 'BID:113' == entry['ID']:
+            if 'BID' in entry['ID']:
                 slot_name = 'slot_b'
             else:
                 slot_name = 'slot_a'
@@ -1731,6 +1732,12 @@ class InfortrendCommon(object):
         volume_name = self._get_existing_volume_ref_name(ref)
         part_entry = self._get_latter_volume_dict(volume_name)
 
+        if part_entry is None:
+            msg = _('Specified logical volume does not exist.')
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=ref, reason=msg)
+
         rc, map_info = self._execute('ShowMap', 'part=%s' % part_entry['ID'])
 
         if len(map_info) != 0:
@@ -1746,10 +1753,26 @@ class InfortrendCommon(object):
 
         part_entry = self._get_latter_volume_dict(volume_name)
 
+        if part_entry is None:
+            msg = _('Specified logical volume does not exist.')
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=ref, reason=msg)
+
         self._execute('SetPartition', part_entry['ID'], 'name=%s' % volume_id)
+
+        model_dict = {
+            'system_id': self._get_system_id(self.ip),
+            'partition_id': part_entry['ID'],
+        }
+        model_update = {
+            "provider_location": self._concat_provider_location(model_dict),
+        }
 
         LOG.info(_LI('Rename Volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
+
+        return model_update
 
     def _get_existing_volume_ref_name(self, ref):
         volume_name = None
@@ -1798,7 +1821,7 @@ class InfortrendCommon(object):
         rc, part_list = self._execute('ShowPartition', '-l')
 
         latest_timestamps = 0
-        ref_dict = {}
+        ref_dict = None
 
         for entry in part_list:
             if entry['Name'] == volume_name:
