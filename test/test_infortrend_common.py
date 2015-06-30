@@ -18,8 +18,8 @@ import copy
 import mock
 
 from cinder import test
-from cinder.tests.unit import test_infortrend_cli
-from cinder.tests.unit import utils
+from cinder.tests import test_infortrend_cli
+from cinder.tests import utils
 from cinder.volume import configuration
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
 from cinder.volume.drivers.infortrend import infortrend_exception as exception
