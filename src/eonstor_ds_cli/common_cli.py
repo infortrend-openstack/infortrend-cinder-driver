@@ -206,6 +206,11 @@ class InfortrendCommon(object):
                 'slot_b': {},
             }
 
+        self.tier_pools_dict = {}
+
+        self._init_pool_list()
+        self._init_channel_list()
+
         self.cli_conf = {
             'path': self.path,
             'password': self.password,
@@ -214,39 +219,15 @@ class InfortrendCommon(object):
         }
 
     def _init_pool_list(self):
+        self.pool_list = []
         pools_name = self.configuration.infortrend_pools_name
         if pools_name == '':
             msg = _('Pools name is not set.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        tmp_pool_list = pools_name.split(',')
-        self.pool_list = [pool.strip() for pool in tmp_pool_list]
-
-        """Record the tier pools information.
-
-        tier_pools_dict = {
-            'LV0': [0, 1, 2, 3], # LV0 has 4 tiers which are 0, 1, 2, 3
-            'LV1': [0, 1, 3]     # LV1 has 3 tiers which are 0, 1, 3
-        }
-        """
-
-        rc, pools_info = self._execute('ShowLV')
-        rc, lv_info = self._execute('ShowLV', 'tier')
-
-        self.tier_pools_dict = {}
-        for pool in pools_info:
-            if pool['Name'] in self.pool_list:
-                is_tier_pool = False
-                tier_pools = []
-                dest_pool_name = ''
-                for entry in lv_info:
-                    if entry['LV-ID'] == pool['ID']:
-                        is_tier_pool = True
-                        dest_pool_name = entry['LV-Name']
-                        tier_pools.append(int(entry['Tier']))
-                if is_tier_pool:
-                    self.tier_pools_dict[dest_pool_name] = tier_pools
+        for pool in pools_name.split(','):
+            self.pool_list.append(pool.strip())
 
     def _init_channel_list(self):
         self.channel_list = {
@@ -430,6 +411,36 @@ class InfortrendCommon(object):
             self.mcs_dict[controller][mcs_id] = []
         self.mcs_dict[controller][mcs_id].append(channel_id)
 
+    def do_setup(self, context):
+        self._setup_pool_tiers()
+
+    def _setup_pool_tiers(self):
+        """Setup the tier pools information.
+
+        tier_pools_dict = {
+            'LV0': [0, 1, 2, 3], # LV0 has 4 tiers which are 0, 1, 2, 3
+            'LV1': [0, 1, 3]     # LV1 has 3 tiers which are 0, 1, 3
+        }
+        """
+        rc, pools_info = self._execute('ShowLV')
+        rc, lv_info = self._execute('ShowLV', 'tier')
+
+        for pool in pools_info:
+            if pool['Name'] in self.pool_list:
+                is_tier_pool = False
+                tier_pools = []
+                dest_pool_name = ''
+                for entry in lv_info:
+                    if entry['LV-ID'] == pool['ID']:
+                        is_tier_pool = True
+                        dest_pool_name = entry['LV-Name']
+                        tier_pools.append(int(entry['Tier']))
+                if is_tier_pool:
+                    self.tier_pools_dict[dest_pool_name] = tier_pools
+
+    def check_for_setup_error(self):
+        self._check_pools_setup()
+
     def _check_pools_setup(self):
         pool_list = self.pool_list[:]
 
@@ -446,13 +457,6 @@ class InfortrendCommon(object):
                 'pool_list': pool_list}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
-
-    def do_setup(self, context):
-        self._init_channel_list()
-        self._init_pool_list()
-
-    def check_for_setup_error(self):
-        self._check_pools_setup()
 
     def create_volume(self, volume):
         """Create a Infortrend partition."""
@@ -726,8 +730,8 @@ class InfortrendCommon(object):
                 if entry['Name'] == poolname:
                     pool_id = entry['ID']
         else:
-            pool_id = self._select_most_free_capacity_pool_id(lv_info,
-                                                              extraspecs)
+            pool_id = self._select_most_free_capacity_pool_id(
+                lv_info, extraspecs)
 
         if pool_id is None:
             msg = _('Failed to get pool id with volume %(volume_id)s.') % {
