@@ -541,8 +541,10 @@ class InfortrendCommon(object):
         cmd = ' '.join(parameters_list)
         return cmd
 
-    def _check_tiering_existing(self, tier_levels, pool_id):
-        rc, lv_info = self._execute('ShowLV', 'tier')
+    def _check_tiering_existing(self, tier_levels, pool_id, lv_info=None):
+        if not lv_info:
+            rc, lv_info = self._execute('ShowLV', 'tier')
+
         tier_levels_list = tier_levels[:]
         for entry in lv_info:
             if entry['LV-ID'] == pool_id and entry['Tier'] in tier_levels_list:
@@ -554,6 +556,7 @@ class InfortrendCommon(object):
                 'tier_levels_list': tier_levels_list}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
+        return lv_info
 
     def _get_top_tier(self, pool_id):
         rc, lv_info = self._execute('ShowLV', 'tier')
@@ -635,84 +638,93 @@ class InfortrendCommon(object):
         return value
 
     def _check_extraspecs_conflict_and_legality(self, extraspecs, pool_id):
-        if self.PROVISIONING_KEY in extraspecs.keys():
-            provisioning = extraspecs[self.PROVISIONING_KEY].lower()
-            validvalues = self.PROVISIONING_VALUES
-            self._check_extraspec_value(provisioning, validvalues)
-            if (provisioning == 'full' and
-                    self.TIERING_SET_KEY in extraspecs.keys()):
-                tiering_set = extraspecs[self.TIERING_SET_KEY].lower()
-                tier_levels_list = tiering_set.split(',')
-                self._check_tiering_existing(tier_levels_list, pool_id)
-                if len(tier_levels_list) > 1:
-                    msg = _('Must specify only one tier instead of '
-                            '%(tier_levels_list)s tier(s)') % {
-                        'tier_levels_list': tier_levels_list}
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
+        provisioning = extraspecs.get(self.PROVISIONING_KEY, None)
+        tiering_set = extraspecs.get(self.TIERING_SET_KEY, None)
+        tiering_num = extraspecs.get(self.TIERING_NUM_KEY, None)
+        tier_levels_list = []
+        lv_info = []
 
-        if self.TIERING_SET_KEY in extraspecs.keys():
-            tiering_set = extraspecs[self.TIERING_SET_KEY].lower()
-            tier_levels_list = tiering_set.split(',')
-            self._check_tiering_existing(tier_levels_list, pool_id)
+        if tiering_set:
+            tier_levels_list = tiering_set.lower().split(',')
+            lv_info = self._check_tiering_existing(tier_levels_list, pool_id)
 
-        if self.TIERING_NUM_KEY in extraspecs.keys():
-            tiering_num = extraspecs[self.TIERING_NUM_KEY].lower()
-            tier_levels_list = list(range(int(tiering_num)))
-            tier_levels_list = list(map(str, tier_levels_list))
-            self._check_tiering_existing(tier_levels_list, pool_id)
+        # Is tiering num checking method right?
+        # If tiering_num = 3, but raid tiering= 0 2 4. Is it right?
+        if tiering_num:
+            tier_levels_list_2 = [str(num) for num in range(int(tiering_num))]
+            self._check_tiering_existing(tier_levels_list_2, pool_id, lv_info)
+
+        if provisioning:
+            provisioning = provisioning.lower()
+            self._check_extraspec_value(provisioning, self.PROVISIONING_VALUES)
+
+            if provisioning == 'full' and len(tier_levels_list) > 1:
+                msg = _('Must specify only one tier instead of '
+                        '%(tier_levels_list)s tier(s)') % {
+                    'tier_levels_list': tier_levels_list}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
     def _select_most_free_capacity_pool_id(self, lv_info, extraspecs=None):
-        largest_free_capacity_gb = 0.0
         dest_pool_id = None
-        tiering_num = None
-        tiering_str = None
-        if self.TIERING_NUM_KEY in extraspecs.keys():
-            tiering_num = extraspecs[self.TIERING_NUM_KEY].lower()
-        if self.TIERING_SET_KEY in extraspecs.keys():
-            tiering_str = extraspecs[self.TIERING_SET_KEY].lower()
+        tiering_num = extraspecs.get(self.TIERING_NUM_KEY, None)
+        tiering_set = extraspecs.get(self.TIERING_SET_KEY, None)
 
-        # LOG.info(_LI('tier_pools %(tier_pools)s'), {
-        #    'tier_pools': self.tier_pools_dict.keys()})
+        if not (tiering_num or tiering_set):
+            dest_pool_id = self._get_most_free_capacity_pool_without_tier(
+                lv_info)
+        else:
+            tier_level = self._get_tier_level(tiering_num, tiering_set)
+            dest_pool_id = self._get_most_free_capacity_pool_with_tier(
+                lv_info, tier_level, tiering_set)
 
-        if not (tiering_num or tiering_str):
-            for lv in lv_info[:]:
-                if lv['Name'] in self.tier_pools_dict.keys():
-                    # LOG.info(_LI('Del Tier %(tier)s'), {'tier': lv['Name']})
-                    lv_info.remove(lv)
-
-        if tiering_num or tiering_str:
-            tier_level = self._get_tier_level(tiering_num, tiering_str)
-            for lv in lv_info:
-                # LOG.info(_LI('Loop Tier %(tier)s'), {'tier': lv['Name']})
-                if (lv['Name'] in self.tier_pools_dict.keys() and
-                        tier_level <= (max(
-                            self.tier_pools_dict[lv['Name']]) + 1)):
-                    available_space = float(lv['Available'].split(' ', 1)[0])
-                    free_capacity_gb = round(mi_to_gi(available_space))
-                    if free_capacity_gb > largest_free_capacity_gb:
-                        largest_free_capacity_gb = free_capacity_gb
-                        dest_pool_id = lv['ID']
-            return dest_pool_id
-
-        for lv in lv_info:
-            if lv['Name'] in self.pool_list:
-                # LOG.info(_LI('Sel Pool %(tier)s'), {'tier': lv['Name']})
-                available_space = float(lv['Available'].split(' ', 1)[0])
-                free_capacity_gb = round(mi_to_gi(available_space))
-                if free_capacity_gb > largest_free_capacity_gb:
-                    largest_free_capacity_gb = free_capacity_gb
-                    dest_pool_id = lv['ID']
         return dest_pool_id
 
-    def _get_tier_level(self, tiering_num, tiering_str):
+    def _get_most_free_capacity_pool_without_tier(self, lv_info):
+        largest_free_capacity = 0.0
+        dest_pool_id = None
+
+        for lv in lv_info:
+            if (lv['Name'] in self.pool_list and
+                    lv['Name'] not in self.tier_pools_dict.keys()):
+                free_capacity = float(lv['Available'].split(' ', 1)[0])
+                if free_capacity > largest_free_capacity:
+                    largest_free_capacity = free_capacity
+                    dest_pool_id = lv['ID']
+
+        return dest_pool_id
+
+    def _get_most_free_capacity_pool_with_tier(
+            self, lv_info, tier_level, tier_set):
+
+        largest_free_capacity = 0.0
+        dest_pool_id = None
+
+        for lv in lv_info:
+            tier_pool = self.tier_pools_dict.get(lv['Name'], None)
+            if (tier_pool and lv['Name'] in self.pool_list and
+                    tier_level <= (max(tier_pool) + 1)):
+
+                check_tier_exist = True
+                for tier_id in tier_pool:
+                    check_tier_exist &= tier_id in tier_set
+
+                if check_tier_exist:
+                    free_capacity = float(lv['Available'].split(' ', 1)[0])
+                    if free_capacity > largest_free_capacity:
+                        largest_free_capacity = free_capacity
+                        dest_pool_id = lv['ID']
+
+        return dest_pool_id
+
+    def _get_tier_level(self, tiering_num, tiering_set):
         if tiering_num:
             tier_level = int(tiering_num)
         else:
             tier_level = 0
 
-        if tiering_str:
-            tiers = tiering_str.split(',')
+        if tiering_set:
+            tiers = tiering_set.lower().split(',')
             for tier in tiers:
                 if((int(tier) + 1) > tier_level):
                     tier_level = int(tier) + 1
