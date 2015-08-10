@@ -402,8 +402,9 @@ class InfortrendCLITestData(object):
 
     test_diff = {'extra_specs': {'infortrend:provisioning': ('full', 'thin')}}
     test_diff_tier = {'extra_specs': {'infortrend:tiering': ('0,2', '0,3')}}
-    test_diff_tier_wrong = {'extra_specs': {
-                            'infortrend:tiering': ('0,2', '0,4')}}
+    test_diff_tier_wrong = {
+        'extra_specs': {'infortrend:tiering': ('0,2', '0,4')}
+    }
 
     def get_fake_cli_failed(self):
         return """
@@ -1258,7 +1259,7 @@ Return: 0x0000
 
     def get_test_show_lv_tier_for_migration(self):
         return (0, [{
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[1],
             'Tier': '0',
             'Size': '418.93 GB',
@@ -1266,7 +1267,7 @@ Return: 0x0000
             'Data Service': '0 MB(0.0%)',
             'Reserved Ratio': '10.0%',
         }, {
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[1],
             'Tier': '3',
             'Size': '931.02 GB',
@@ -1277,7 +1278,7 @@ Return: 0x0000
 
     def get_test_show_lv_tier(self):
         return (0, [{
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[0],
             'Tier': '0',
             'Size': '418.93 GB',
@@ -1285,7 +1286,7 @@ Return: 0x0000
             'Data Service': '0 MB(0.0%)',
             'Reserved Ratio': '10.0%',
         }, {
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[0],
             'Tier': '3',
             'Size': '931.02 GB',
@@ -1384,8 +1385,8 @@ Return: 0x0000
 
  LV-Name  LV-ID  Tier  Size       Used          Data Service   Reserved Ratio
 ------------------------------------------------------------------------------
- TierLV   %s     0     418.93 GB  10 GB(2.4%%)  0 MB(0.0%%)    10.0%%
- TierLV   %s     3     931.02 GB  0 MB(0.0%%)   0 MB(0.0%%)    0.0%%
+ LV-1     %s     0     418.93 GB  10 GB(2.4%%)  0 MB(0.0%%)    10.0%%
+ LV-1     %s     3     931.02 GB  0 MB(0.0%%)   0 MB(0.0%%)    0.0%%
 
 CLI: Successful: 2 lv tiering(s) shown
 Return: 0x0000

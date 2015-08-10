@@ -44,7 +44,7 @@ class InfortrendTestCase(test.TestCase):
     def _fake_safe_get(self, key):
         return getattr(self.configuration, key)
 
-    def _driver_setup(self, mock_commands, configuration=None, do_setup=False):
+    def _driver_setup(self, mock_commands, configuration=None):
         if configuration is None:
             configuration = self.configuration
         self.driver = self._get_driver(configuration)
@@ -52,11 +52,6 @@ class InfortrendTestCase(test.TestCase):
         mock_commands_execute = self._mock_command_execute(mock_commands)
         mock_cli = mock.Mock(side_effect=mock_commands_execute)
         self.driver._execute_command = mock_cli
-
-        if not do_setup:
-            self._do_setup_default()
-        else:
-            self._do_setup_with_tier()
 
     def _get_driver(self, conf):
         raise NotImplementedError
@@ -85,23 +80,15 @@ class InfortrendTestCase(test.TestCase):
             return self.cli_data.get_test_show_lv_tier()
         return self.cli_data.get_test_show_lv()
 
-    def _mock_show_lv_for_do_setup(self, *args, **kwargs):
-        if 'tier' in args:
-            return self.cli_data.get_test_show_lv_tier_for_do_setup()
-        return self.cli_data.get_test_show_lv_for_do_setup()
-
     def _assert_cli_has_calls(self, expect_cli_cmd):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
 
-    def _do_setup_default(self):
-        self.driver.tier_pools_dict = {}
-
-    def _do_setup_with_tier(self):
-        self.driver.tier_pools_dict = {
-            'LV-1': [0],
-            'LV-2': [0, 1],
-            'LV-3': [0, 1, 2],
-            'LV-4': [0, 1, 2, 3],
+    def _mock_fake_tier_pools_dict(self):
+        return {
+            self.cli_data.fake_lv_id[1]: [0],
+            self.cli_data.fake_lv_id[2]: [0, 1],
+            self.cli_data.fake_lv_id[3]: [0, 1, 2],
+            self.cli_data.fake_lv_id[4]: [0, 1, 2, 3],
         }
 
 
@@ -1586,12 +1573,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         rc, model_update = self.driver.migrate_volume(test_volume, test_host)
 
         expect_cli_cmd = [
-            mock.call('ShowLV', 'tier'),
             mock.call('CreatePartition',
                       fake_pool['pool_id'],
                       test_volume['id'].replace('-', ''),
                       'size=%s' % (test_volume['size'] * 1024),
-                      'init=disable min=0MB'),
+                      ''),
             mock.call('ShowPartition'),
             mock.call('CreateReplica',
                       'Cinder-Migrate',
@@ -2016,7 +2002,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         expect_cli_cmd = [
             mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
-            mock.call('ShowLV', 'tier'),
             mock.call(
                 'CreatePartition',
                 fake_pool['pool_id'],
@@ -2052,9 +2037,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         mock_commands = {
             'ShowLV': self._mock_show_lv,
+            'ShowPartition': self.cli_data.get_test_show_partition(),
             'SetPartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
+        self.driver.tier_pools_dict = {
+            self.cli_data.fake_lv_id[0]: [0, 1, 2, 3]
+        }
 
         rc = self.driver.retype(
             None, test_volume, test_new_type, test_diff_tier, test_host)
@@ -2071,9 +2060,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         mock_commands = {
             'ShowLV': self._mock_show_lv,
+            'ShowPartition': self.cli_data.get_test_show_partition(),
             'SetPartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
+        self.driver.tier_pools_dict = {
+            self.cli_data.fake_lv_id[0]: [0, 1, 2, 3]
+        }
 
         self.assertRaises(
             exception.VolumeDriverException,
@@ -2119,31 +2112,29 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
 
         mock_commands = {
-            'SetPartition': FAKE_ERROR_RETURN
+            'SetPartition': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
         model_update = self.driver.update_migrated_volume(
             None, src_volume, dst_volume, 'available')
         self.assertEqual({'_name_id': 'fake_name_id'}, model_update)
 
-    def test_do_setup_init_pool_list(self):
+    def test_update_pool_tiers(self):
         test_tier_pools_dict = {
-            'LV-1': [0],
-            'LV-2': [0, 1],
-            'LV-3': [0, 1, 2],
-            'LV-4': [0, 1, 2, 3],
+            self.cli_data.fake_lv_id[1]: [0],
+            self.cli_data.fake_lv_id[2]: [0, 1],
+            self.cli_data.fake_lv_id[3]: [0, 1, 2],
+            self.cli_data.fake_lv_id[4]: [0, 1, 2, 3],
         }
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
         mock_commands = {
-            'ShowLV': self._mock_show_lv_for_do_setup,
+            'ShowLV': self.cli_data.get_test_show_lv_tier_for_do_setup(),
         }
-        self.driver = self._get_driver(configuration)
-        mock_commands_execute = self._mock_command_execute(mock_commands)
-        mock_cli = mock.Mock(side_effect=mock_commands_execute)
-        self.driver._execute_command = mock_cli
-        self.driver.do_setup(None)
+        self._driver_setup(mock_commands, configuration)
+
+        self.driver._update_pool_tiers()
 
         self.assertDictMatch(self.driver.tier_pools_dict, test_tier_pools_dict)
 
@@ -2154,7 +2145,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
-        self._driver_setup({}, configuration, True)
+        self._driver_setup({}, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         dest_pool_id = self.driver._select_most_free_capacity_pool_id(
             test_lv_info, test_extraspecs)
 
@@ -2167,7 +2160,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
-        self._driver_setup({}, configuration, True)
+        self._driver_setup({}, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         dest_pool_id = self.driver._select_most_free_capacity_pool_id(
             test_lv_info, test_extraspecs)
 
@@ -2178,12 +2173,14 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         rc, test_lv_info = self.cli_data.get_test_show_lv_for_do_setup()
         test_extraspecs = {
             'infortrend:tiering': '0,3',
-            'infortrend_tiering': '2'
+            'infortrend_tiering': '2',
         }
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
-        self._driver_setup({}, configuration, True)
+        self._driver_setup({}, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         dest_pool_id = self.driver._select_most_free_capacity_pool_id(
             test_lv_info, test_extraspecs)
 
@@ -2195,7 +2192,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
-        self._driver_setup({}, configuration, True)
+        self._driver_setup({}, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         dest_pool_id = self.driver._select_most_free_capacity_pool_id(
             test_lv_info, {})
 
@@ -2209,15 +2208,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
         mock_commands = {
-            'ShowLV': self.cli_data.get_test_show_lv_tier_for_do_setup(),
             'CreatePartition': SUCCEED,
         }
-        self._driver_setup(mock_commands, configuration, True)
+        self._driver_setup(mock_commands, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         self.driver._create_partition_with_pool(
             test_volume, test_pool_id, test_extraspecs)
 
         expect_cli_cmd = [
-            mock.call('ShowLV', 'tier'),
             mock.call('CreatePartition',
                       test_pool_id,
                       test_volume['id'].replace('-', ''),
@@ -2232,29 +2231,26 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_pool_id = self.cli_data.fake_lv_id[3]
         test_extraspecs = {
             'infortrend:tiering': '2',
-            'infortrend:provisioning': 'full'
+            'infortrend:provisioning': 'full',
         }
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
         mock_commands = {
-            'ShowLV': self.cli_data.get_test_show_lv_tier_for_do_setup(),
             'CreatePartition': SUCCEED,
         }
-        self._driver_setup(mock_commands, configuration, True)
+        self._driver_setup(mock_commands, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         self.driver._create_partition_with_pool(
             test_volume, test_pool_id, test_extraspecs)
 
         expect_cli_cmd = [
-            mock.call('ShowLV', 'tier'),
-            mock.call('ShowLV', 'tier'),
-            mock.call('ShowLV', 'tier'),
             mock.call('CreatePartition',
                       test_pool_id,
                       test_volume['id'].replace('-', ''),
                       'size=%s' % (test_volume['size'] * 1024),
-                      'tier=%s' % (
-                          test_extraspecs['infortrend:tiering'])),
+                      'tier=%s' % (test_extraspecs['infortrend:tiering'])),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -2266,15 +2262,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
         mock_commands = {
-            'ShowLV': self.cli_data.get_test_show_lv_tier_for_do_setup(),
             'CreatePartition': SUCCEED,
         }
-        self._driver_setup(mock_commands, configuration, True)
+        self._driver_setup(mock_commands, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         self.driver._create_partition_with_pool(
             test_volume, test_pool_id, test_extraspecs)
 
         expect_cli_cmd = [
-            mock.call('ShowLV', 'tier'),
             mock.call('CreatePartition',
                       test_pool_id,
                       test_volume['id'].replace('-', ''),
@@ -2283,35 +2279,12 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-    def test_create_partition_with_pool_wrong_tier_full(self):
-        test_volume = self.cli_data.test_volume
-        test_pool_id = self.cli_data.fake_lv_id[3]
-        test_extraspecs = {
-            'infortrend:tiering': '1,2',
-            'infortrend:provisioning': 'full'
-        }
-        configuration = copy.copy(self.configuration)
-        configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
-
-        mock_commands = {
-            'ShowLV': self.cli_data.get_test_show_lv_tier_for_do_setup(),
-            'CreatePartition': SUCCEED,
-        }
-        self._driver_setup(mock_commands, configuration, True)
-
-        self.assertRaises(
-            exception.VolumeDriverException,
-            self.driver._create_partition_with_pool,
-            test_volume,
-            test_pool_id,
-            test_extraspecs)
-
     def test_create_partition_with_pool_settier_thin(self):
         test_volume = self.cli_data.test_volume
         test_pool_id = self.cli_data.fake_lv_id[3]
         test_extraspecs = {
             'infortrend:tiering': '0,2',
-            'infortrend:provisioning': 'thin'
+            'infortrend:provisioning': 'thin',
         }
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
@@ -2320,13 +2293,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowLV': self.cli_data.get_test_show_lv_tier_for_do_setup(),
             'CreatePartition': SUCCEED,
         }
-        self._driver_setup(mock_commands, configuration, True)
+        self._driver_setup(mock_commands, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         self.driver._create_partition_with_pool(
             test_volume, test_pool_id, test_extraspecs)
 
         expect_cli_cmd = [
-            mock.call('ShowLV', 'tier'),
-            mock.call('ShowLV', 'tier'),
             mock.call('CreatePartition',
                       test_pool_id,
                       test_volume['id'].replace('-', ''),
@@ -2341,22 +2314,21 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_pool_id = self.cli_data.fake_lv_id[3]
         test_extraspecs = {
             'infortrend_tiering': '2',
-            'infortrend:provisioning': 'thin'
+            'infortrend:provisioning': 'thin',
         }
         configuration = copy.copy(self.configuration)
         configuration.infortrend_pools_name = 'LV-0, LV-1, LV-2, LV-3, LV-4'
 
         mock_commands = {
-            'ShowLV': self.cli_data.get_test_show_lv_tier_for_do_setup(),
             'CreatePartition': SUCCEED,
         }
-        self._driver_setup(mock_commands, configuration, True)
+        self._driver_setup(mock_commands, configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
         self.driver._create_partition_with_pool(
             test_volume, test_pool_id, test_extraspecs)
 
         expect_cli_cmd = [
-            mock.call('ShowLV', 'tier'),
-            mock.call('ShowLV', 'tier'),
             mock.call('CreatePartition',
                       test_pool_id,
                       test_volume['id'].replace('-', ''),
@@ -2364,3 +2336,45 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
                       'init=disable min=0MB'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
+
+    def test_check_extraspecs_conflict_and_legality(self):
+        test_extraspecs = {
+            'infortrend:tiering': '1,2',
+            'infortrend:provisioning': 'thin',
+        }
+
+        self.driver = self._get_driver(self.configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
+        result = self.driver._check_extraspecs_conflict_and_legality(
+            test_extraspecs)
+
+        self.assertEqual(None, result)
+
+    def test_check_extraspecs_conflict_and_legality_full_with_muti_tier(self):
+        test_extraspecs = {
+            'infortrend:tiering': '1,2',
+            'infortrend:provisioning': 'full',
+        }
+
+        self.driver = self._get_driver(self.configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver._check_extraspecs_conflict_and_legality,
+            test_extraspecs)
+
+    def test_check_extraspecs_conflict_and_legality_tier_set_wrong(self):
+        test_extraspecs = {
+            'infortrend:tiering': '1,2',
+            'infortrend_tiering': '1',
+        }
+
+        self.driver = self._get_driver(self.configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver._check_extraspecs_conflict_and_legality,
+            test_extraspecs)

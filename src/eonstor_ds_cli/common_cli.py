@@ -411,9 +411,6 @@ class InfortrendCommon(object):
             self.mcs_dict[controller][mcs_id] = []
         self.mcs_dict[controller][mcs_id].append(channel_id)
 
-    # def do_setup(self, context):
-    #     self._setup_pool_tiers()
-
     def _update_pool_tiers(self):
         """Setup the tier pools information.
 
@@ -426,6 +423,8 @@ class InfortrendCommon(object):
 
         for entry in lv_info:
             if entry['LV-Name'] in self.pool_list:
+                if entry['LV-ID'] not in self.tier_pools_dict.keys():
+                    self.tier_pools_dict[entry['LV-ID']] = []
                 self.tier_pools_dict[entry['LV-ID']].append(int(entry['Tier']))
 
     def check_for_setup_error(self):
@@ -487,25 +486,23 @@ class InfortrendCommon(object):
         extraspecs_dict = {}
         cmd = ''
         # Normal Pool
-        if top_tier == '-1':
+        if top_tier is None:
             if provisioning == 'thin':
-                provisioning = int(volume_size * 0.2)
-                extraspecs_dict['provisioning'] = provisioning
+                extraspecs_dict['provisioning'] = int(volume_size * 0.2)
                 extraspecs_dict['init'] = 'disable'
         # Tier Pool
         else:
             tiering = self._get_extraspecs_value(
                 extraspecs, self.TIERING_SET_KEY)
-            if (provisioning == 'full' and
-                    self.PROVISIONING_KEY in extraspecs.keys()):
-                if tiering != '-1':
+            if provisioning == 'full':
+                if tiering:
                     extraspecs_dict['tiering'] = tiering
                 else:
                     extraspecs_dict['tiering'] = top_tier
             else:
                 extraspecs_dict['provisioning'] = 0
                 extraspecs_dict['init'] = 'disable'
-                if tiering != '-1':
+                if tiering:
                     extraspecs_dict['tiering'] = tiering
 
         if extraspecs_dict:
@@ -525,13 +522,12 @@ class InfortrendCommon(object):
             value = parameters[extraspec] % (extraspecs_dict[extraspec])
             parameters_list.append(value)
 
-        cmd = ' '.join(parameters_list)
-        return cmd
+        return ' '.join(parameters_list)
 
     def _check_tiering_existing(self, tier_levels, pool_id):
         pool_tiers = self.tier_pools_dict.get(pool_id, [])
 
-        tier_levels_list = tier_levels[:]
+        tier_levels_list = [int(tier.strip()) for tier in tier_levels]
         for tier_id in pool_tiers:
             if tier_id in tier_levels_list:
                 tier_levels_list.remove(tier_id)
@@ -544,12 +540,11 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
     def _get_top_tier(self, pool_id):
-        rc, lv_info = self._execute('ShowLV', 'tier')
+        tier_levels_list = self.tier_pools_dict.get(pool_id, [])
 
-        for entry in lv_info:
-            if entry['LV-ID'] == pool_id:
-                return entry['Tier']
-        return '-1'
+        if tier_levels_list:
+            return tier_levels_list[0]
+        return None
 
     @log_func
     def _create_map_with_lun_filter(
@@ -608,60 +603,59 @@ class InfortrendCommon(object):
         return extraspecs
 
     def _get_extraspecs_value(self, extraspecs, key):
-        value = None
-        if key == self.PROVISIONING_KEY:
-            if (extraspecs and
-                    self.PROVISIONING_KEY in extraspecs.keys()):
-                value = extraspecs[self.PROVISIONING_KEY].lower()
-            else:
-                value = 'full'
-        elif key == self.TIERING_SET_KEY:
-            if (extraspecs and self.TIERING_SET_KEY in extraspecs.keys()):
-                value = extraspecs[self.TIERING_SET_KEY].lower()
-            else:
-                value = '-1'
-        return value
+        if (extraspecs and key in extraspecs.keys()):
+            return extraspecs[key].lower()
+        return None
 
     def _check_extraspecs_conflict_and_legality(self, extraspecs):
         provisioning = extraspecs.get(self.PROVISIONING_KEY, None)
+        tiering_num = extraspecs.get(self.TIERING_NUM_KEY, None)
         tiering_set = extraspecs.get(self.TIERING_SET_KEY, None)
         tier_levels_list = []
 
         if tiering_set:
             tier_levels_list = tiering_set.lower().split(',')
 
+            if tiering_num and len(tier_levels_list) > int(tiering_num):
+                msg = _('Tiering set length must not exceed tiering number.'
+                        'Tiering set: %(tier_levels_list)s.'
+                        'Tiering num: %(tiering_num)s') % {
+                            'tier_levels_list': tier_levels_list,
+                            'tiering_num': tiering_num}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
         if provisioning:
             provisioning = provisioning.lower()
             self._check_extraspec_value(provisioning, self.PROVISIONING_VALUES)
 
             if provisioning == 'full' and len(tier_levels_list) > 1:
-                msg = _('Must specify only one tier instead of '
-                        '%(tier_levels_list)s tier(s)') % {
-                    'tier_levels_list': tier_levels_list}
+                msg = _('When provision is full, '
+                        'it must specify only one tier instead of '
+                        '%(tier_levels_list)s tiers.') % {
+                            'tier_levels_list': tier_levels_list}
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
+        return
 
     def _select_most_free_capacity_pool_id(self, lv_info, extraspecs=None):
-        dest_pool_id = None
         tiering_num = extraspecs.get(self.TIERING_NUM_KEY, None)
         tiering_set = extraspecs.get(self.TIERING_SET_KEY, None)
 
         if not (tiering_num or tiering_set):
-            dest_pool_id = self._get_most_free_capacity_pool_without_tier(
+            return self._get_most_free_capacity_pool_without_tier(
                 lv_info)
         else:
             tier_level = self._get_tier_level(tiering_num, tiering_set)
-            dest_pool_id = self._get_most_free_capacity_pool_with_tier(
+            return self._get_most_free_capacity_pool_with_tier(
                 lv_info, tier_level, tiering_set)
-
-        return dest_pool_id
 
     def _get_most_free_capacity_pool_without_tier(self, lv_info):
         largest_free_capacity = 0.0
         dest_pool_id = None
 
         for lv in lv_info:
-            if (lv['ID'] in self.pool_list and
+            if (lv['Name'] in self.pool_list and
                     lv['ID'] not in self.tier_pools_dict.keys()):
                 free_capacity = float(lv['Available'].split(' ', 1)[0])
                 if free_capacity > largest_free_capacity:
@@ -671,19 +665,20 @@ class InfortrendCommon(object):
         return dest_pool_id
 
     def _get_most_free_capacity_pool_with_tier(
-            self, lv_info, tier_level, tier_set):
+            self, lv_info, tier_level, tiering_set):
 
         largest_free_capacity = 0.0
         dest_pool_id = None
 
         for lv in lv_info:
-            tier_pool = self.tier_pools_dict.get(lv['ID'], None)
-            if (tier_pool and lv['ID'] in self.pool_list and
+            tier_pool = self.tier_pools_dict.get(lv['ID'], [])
+            if (tier_pool and lv['Name'] in self.pool_list and
                     tier_level <= (max(tier_pool) + 1)):
 
                 check_tier_exist = True
-                for tier_id in tier_pool:
-                    check_tier_exist &= tier_id in tier_set
+                if tiering_set:
+                    for tier_id in tiering_set.lower().split(','):
+                        check_tier_exist &= (int(tier_id.strip()) in tier_pool)
 
                 if check_tier_exist:
                     free_capacity = float(lv['Available'].split(' ', 1)[0])
@@ -702,7 +697,7 @@ class InfortrendCommon(object):
         if tiering_set:
             tiers = tiering_set.lower().split(',')
             for tier in tiers:
-                if((int(tier) + 1) > tier_level):
+                if((int(tier.strip()) + 1) > tier_level):
                     tier_level = int(tier) + 1
         return tier_level
 
@@ -722,6 +717,7 @@ class InfortrendCommon(object):
             for entry in lv_info:
                 if entry['Name'] == pool_name:
                     if tiering_set:
+                        tiering_set = tiering_set.lower().split(',')
                         self._check_tiering_existing(tiering_set, entry['ID'])
                     pool_id = entry['ID']
         else:
@@ -1123,7 +1119,8 @@ class InfortrendCommon(object):
 
         for pool in pools_info:
             if pool['Name'] in self.pool_list:
-                infortrend_tiering = len(self.tier_pools_dict[pool['ID']])
+                infortrend_tiering = len(
+                    self.tier_pools_dict.get(pool['ID'], []))
 
                 total_space = float(pool['Size'].split(' ', 1)[0])
                 available_space = float(pool['Available'].split(' ', 1)[0])
@@ -1801,9 +1798,7 @@ class InfortrendCommon(object):
         timer.start(interval=10).wait()
 
     def _check_extraspec_value(self, extraspec, validvalues):
-        if not extraspec:
-            LOG.debug("The given extraspec is None.")
-        elif extraspec not in validvalues:
+        if extraspec not in validvalues:
             msg = _("The extraspec: %(extraspec)s is not valid.") % {
                 'extraspec': extraspec}
             LOG.error(msg)
@@ -2018,7 +2013,7 @@ class InfortrendCommon(object):
                 pool_id = self._get_pool_id(volume_id, part_list)
 
                 tiering = diff['extra_specs'][self.TIERING_SET_KEY][1]
-                tiering_set = tiering.split(',')
+                tiering_set = tiering.lower().split(',')
                 self._check_tiering_existing(tiering_set, pool_id)
 
                 expand_command = 'tier=%s' % tiering
