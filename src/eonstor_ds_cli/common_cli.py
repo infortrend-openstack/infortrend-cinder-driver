@@ -421,6 +421,7 @@ class InfortrendCommon(object):
         """
         rc, lv_info = self._execute('ShowLV', 'tier')
 
+        self.tier_pools_dict = {}
         for entry in lv_info:
             if entry['LV-Name'] in self.pool_list:
                 if entry['LV-ID'] not in self.tier_pools_dict.keys():
@@ -534,8 +535,10 @@ class InfortrendCommon(object):
                 if len(tier_levels_list) == 0:
                     break
         if len(tier_levels_list) != 0:
-            msg = _('Have not created %(tier_levels_list)s tier(s).') % {
-                'tier_levels_list': tier_levels_list}
+            msg = _('Have not created %(tier_levels_list)s tier(s) '
+                    'in pool %(pool_id)s.') % {
+                        'tier_levels_list': tier_levels_list,
+                        'pool_id': pool_id}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -1978,20 +1981,7 @@ class InfortrendCommon(object):
 
             return (rc, model_update)
         else:
-            if self.PROVISIONING_KEY in diff['extra_specs'].keys():
-                if not self._execute_retype_diff(diff, self.PROVISIONING_KEY):
-                    return False
-
-            if self.TIERING_SET_KEY in diff['extra_specs'].keys():
-                self._execute_retype_diff(diff, self.TIERING_SET_KEY, volume)
-
-            LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
-                'volume_id': volume['id']})
-            return True
-
-    def _execute_retype_diff(self, diff, key, volume=None):
-        if key == self.PROVISIONING_KEY:
-            if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
+            if self._check_volume_type_diff(diff, self.PROVISIONING_KEY):
                 LOG.warning(_LW(
                     'The provisioning: %(provisioning)s '
                     'is not valid.'), {
@@ -1999,27 +1989,37 @@ class InfortrendCommon(object):
                             diff['extra_specs'][self.PROVISIONING_KEY][1]})
                 return False
 
-        if key == self.TIERING_SET_KEY:
-            if (diff['extra_specs'][key][0] != diff['extra_specs'][key][1]):
-                volume_id = volume['id'].replace('-', '')
-                part_id = self._extract_specific_provider_location(
-                    volume['provider_location'], 'partition_id')
+            if self._check_volume_type_diff(diff, self.TIERING_SET_KEY):
+                self._execute_retype_tiering(diff, volume)
 
-                rc, part_list = self._execute('ShowPartition')
+            LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
+                'volume_id': volume['id']})
+            return True
 
-                if part_id is None:
-                    part_id = self._get_part_id(volume_id, None, part_list)
+    def _check_volume_type_diff(self, diff, key):
+        diff_extra_specs = diff['extra_specs'].get(key, None)
+        if diff_extra_specs and diff_extra_specs[0] != diff_extra_specs[1]:
+            return True
+        return False
 
-                pool_id = self._get_pool_id(volume_id, part_list)
+    def _execute_retype_tiering(self, diff, volume):
+        volume_id = volume['id'].replace('-', '')
+        part_id = self._extract_specific_provider_location(
+            volume['provider_location'], 'partition_id')
 
-                tiering = diff['extra_specs'][self.TIERING_SET_KEY][1]
-                tiering_set = tiering.lower().split(',')
-                self._check_tiering_existing(tiering_set, pool_id)
+        rc, part_list = self._execute('ShowPartition')
 
-                expand_command = 'tier=%s' % tiering
+        if part_id is None:
+            part_id = self._get_part_id(volume_id, None, part_list)
 
-                rc, out = self._execute('SetPartition', 'tier-resided',
-                                        part_id, expand_command)
+        pool_id = self._get_pool_id(volume_id, part_list)
+
+        tiering = diff['extra_specs'][self.TIERING_SET_KEY][1]
+        tiering_set = tiering.lower().split(',')
+        self._check_tiering_existing(tiering_set, pool_id)
+
+        rc, out = self._execute(
+            'SetPartition', 'tier-resided', part_id, 'tier=%s' % tiering)
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
