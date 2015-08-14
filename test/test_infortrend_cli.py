@@ -299,7 +299,6 @@ class InfortrendCLITestData(object):
         'thick_provisioning_support': True,
         'provisioned_capacity_gb':
             round((400) / 1024, 2),
-        'infortrend_tiering':'2'
     }]
 
     test_volume_states = {
@@ -1167,7 +1166,7 @@ Return: 0x0000
             'Status': 'On-line',
         }])
 
-    def get_test_show_lv_for_do_setup(self):
+    def get_test_show_lv_for_multi_pool(self):
         return (0, [{
             'Name': 'LV-0',
             'LD-amount': '1',
@@ -1295,7 +1294,7 @@ Return: 0x0000
             'Reserved Ratio': '0.0%',
         }])
 
-    def get_test_show_lv_tier_for_do_setup(self):
+    def get_test_show_lv_tier_for_multi_pool(self):
         return (0, [{
             'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[1],
