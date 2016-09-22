@@ -2,7 +2,7 @@
 
 export CINDER_DIR=./cinder
 export CINDER_REPO_URL=https://git.openstack.org/openstack/cinder
-export CINDER_TEST_DIR=cinder/tests/unit
+export CINDER_TEST_DIR=cinder/tests/unit/volume/drivers/infortrend
 export INFORTREND_DRIVER_DIR=cinder/volume/drivers/infortrend
 
 if [ -d "$CINDER_DIR" ]; then
@@ -22,6 +22,7 @@ cd $CINDER_DIR
 
 ./run_tests.sh -V test_infortrend_cli
 ./run_tests.sh test_infortrend_common
+# flake8
 ./run_tests.sh -p
 
 cd ..
