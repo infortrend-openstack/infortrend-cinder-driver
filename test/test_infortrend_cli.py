@@ -90,6 +90,7 @@ class InfortrendCLITestData(object):
         'provider_auth': None,
         'project_id': 'project',
         'display_name': None,
+        '_name_id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
         'display_description': 'Part-1-Copy',
         'volume_type_id': None,
         'provider_location': '',
@@ -109,7 +110,6 @@ class InfortrendCLITestData(object):
     test_snapshot = {
         'id': 'ffa9bc5e-1172-4021-acaf-cdcd78a9584d',
         'volume_id': test_volume['id'],
-        'size': 2,
         'volume_name': test_volume['name'],
         'volume_size': 2,
         'project_id': 'project',
@@ -175,7 +175,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': fake_target_wwpns[0:2],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map,
         },
     }
@@ -191,7 +190,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [fake_target_wwpns[1]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_specific_channel,
         },
     }
@@ -214,7 +212,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': test_target_wwpns_map_multipath_r_model[:],
-            'access_mode': 'rw',
             'initiator_target_map':
                 test_initiator_target_map_multipath_r_model,
         },
@@ -233,7 +230,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [x.lower() for x in fake_target_wwpns[0:2]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning,
         },
     }
@@ -251,7 +247,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [x.lower() for x in fake_target_wwpns[1:3]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning_r_model,
         },
     }
@@ -2025,9 +2020,6 @@ class InfortrendCLITestCase(test.TestCase):
         super(InfortrendCLITestCase, self).__init__(*args, **kwargs)
         self.cli_data = InfortrendCLITestData()
 
-    def setUp(self):
-        super(InfortrendCLITestCase, self).setUp()
-
     def _cli_set(self, cli, fake_result):
         cli_conf = {
             'path': '',
@@ -2169,9 +2161,9 @@ class InfortrendCLITestCase(test.TestCase):
 
         if isinstance(out, list):
             for i in range(len(test_data[1])):
-                self.assertDictMatch(out[i], test_data[1][i])
+                self.assertDictMatch(test_data[1][i], out[i])
         else:
-            self.assertDictMatch(out, test_data[1])
+            self.assertDictMatch(test_data[1], out)
 
     @mock.patch.object(cli.LOG, 'debug', mock.Mock())
     def test_cli_all_command_execute(self):
