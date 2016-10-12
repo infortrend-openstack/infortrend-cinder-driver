@@ -33,6 +33,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
+        1.0.2 - Support GS Series
     """
 
     def __init__(self, *args, **kwargs):
@@ -123,7 +124,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Synchronously recreates an export for a volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume.
 
         Can optionally return a Dictionary of changes
@@ -158,7 +159,6 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'access_mode': 'rw'
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123']
                     }
@@ -173,7 +173,6 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'access_mode': 'rw'
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123',
                                              '0987654321321']
@@ -263,16 +262,19 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'volume_id': volume['id'], 'type_id': new_type['id']})
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         """Return model update for migrated volume.
 
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
-        :return model_update to update DB with any needed changes
+        :param original_volume_status: The status of the original volume
+        :returns: model_update to update DB with any needed changes
         """
         LOG.debug(
             'update migrated volume original volume id= %(volume_id)s '
             'new volume id=%(new_volume_id)s', {
                 'volume_id': volume['id'], 'new_volume_id': new_volume['id']})
-        return self.common.update_migrated_volume(ctxt, volume, new_volume)
+        return self.common.update_migrated_volume(ctxt, volume, new_volume,
+                                                  original_volume_status)
