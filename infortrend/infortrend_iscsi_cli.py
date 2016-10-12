@@ -13,32 +13,31 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """
-Fibre Channel Driver for Infortrend Eonstor based on CLI.
+iSCSI Driver for Infortrend Eonstor based on CLI.
 """
-
 
 from oslo_log import log as logging
 
 from cinder.volume import driver
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
-from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
 
-class InfortrendCLIFCDriver(driver.FibreChannelDriver):
+class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
-    """Infortrend Fibre Channel Driver for Eonstor DS using CLI.
+    """Infortrend iSCSI Driver for Eonstor DS using CLI.
 
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
+        1.0.2 - Support GS Series
     """
 
     def __init__(self, *args, **kwargs):
-        super(InfortrendCLIFCDriver, self).__init__(*args, **kwargs)
+        super(InfortrendCLIISCSIDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(
-            'FC', configuration=self.configuration)
+            'iSCSI', configuration=self.configuration)
         self.VERSION = self.common.VERSION
 
     def check_for_setup_error(self):
@@ -105,7 +104,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Creates a snapshot."""
         LOG.debug(
             'create_snapshot snapshot id=%(snapshot_id)s '
-            'volume id=%(volume_id)s', {
+            'volume_id=%(volume_id)s', {
                 'snapshot_id': snapshot['id'],
                 'volume_id': snapshot['volume_id']})
         return self.common.create_snapshot(snapshot)
@@ -114,7 +113,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Deletes a snapshot."""
         LOG.debug(
             'delete_snapshot snapshot id=%(snapshot_id)s '
-            'volume id=%(volume_id)s', {
+            'volume_id=%(volume_id)s', {
                 'snapshot_id': snapshot['id'],
                 'volume_id': snapshot['volume_id']})
         self.common.delete_snapshot(snapshot)
@@ -123,7 +122,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Synchronously recreates an export for a volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume.
 
         Can optionally return a Dictionary of changes
@@ -138,46 +137,21 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Removes an export for a volume."""
         pass
 
-    @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection information.
 
-        Assign any created volume to a compute node/host so that it can be
-        used from that host.
-
-        The  driver returns a driver_volume_type of 'fibre_channel'.
-        The target_wwn can be a single entry or a list of wwns that
-        correspond to the list of remote wwn(s) that will export the volume.
-        The initiator_target_map is a map that represents the remote wwn(s)
-        and a list of wwns which are visible to the remote wwn(s).
-        Example return values:
+        The iscsi driver returns a driver_volume_type of 'iscsi'.
+        The format of the driver data is defined in _get_iscsi_properties.
+        Example return value::
 
             {
-                'driver_volume_type': 'fibre_channel'
+                'driver_volume_type': 'iscsi'
                 'data': {
                     'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': '1234567890123',
+                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
+                    'target_portal': '127.0.0.0.1:3260',
+                    'volume_id': 1,
                     'access_mode': 'rw'
-                    'initiator_target_map': {
-                        '1122334455667788': ['1234567890123']
-                    }
-                }
-            }
-
-            or
-
-             {
-                'driver_volume_type': 'fibre_channel'
-                'data': {
-                    'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': ['1234567890123', '0987654321321'],
-                    'access_mode': 'rw'
-                    'initiator_target_map': {
-                        '1122334455667788': ['1234567890123',
-                                             '0987654321321']
-                    }
                 }
             }
         """
@@ -188,12 +162,11 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'initiator': connector['initiator']})
         return self.common.initialize_connection(volume, connector)
 
-    @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {
             'volume_id': volume['id']})
-        return self.common.terminate_connection(volume, connector)
+        self.common.terminate_connection(volume, connector)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -263,16 +236,19 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'volume_id': volume['id'], 'type_id': new_type['id']})
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         """Return model update for migrated volume.
 
         :param volume: The original volume that was migrated to this backend
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
+        :param original_volume_status: The status of the original volume
         :return model_update to update DB with any needed changes
         """
         LOG.debug(
             'update migrated volume original volume id= %(volume_id)s '
             'new volume id=%(new_volume_id)s', {
                 'volume_id': volume['id'], 'new_volume_id': new_volume['id']})
-        return self.common.update_migrated_volume(ctxt, volume, new_volume)
+        return self.common.update_migrated_volume(ctxt, volume, new_volume,
+                                                  original_volume_status)

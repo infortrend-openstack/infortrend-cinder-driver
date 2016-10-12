@@ -156,9 +156,10 @@ class InfortrendCommon(object):
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
+        1.0.2 - Support GS Series
     """
 
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -329,10 +330,12 @@ class InfortrendCommon(object):
                         int(lun) in self.map_dict[slot_key][ch]):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
-    def _check_initiator_has_lun_map(self, initiator_wwns, map_info):
-        for initiator in initiator_wwns:
+    def _check_initiator_has_lun_map(self, initiator_info, map_info):
+        if not isinstance(initiator_info, list):
+            initiator_info = (initiator_info,)
+        for initiator_name in initiator_info:
             for entry in map_info:
-                if initiator.lower() == entry['Host-ID'].lower():
+                if initiator_name.lower() == entry['Host-ID'].lower():
                     return True
         return False
 
@@ -341,12 +344,12 @@ class InfortrendCommon(object):
             self, channel_info, controller='slot_a', multipath=False):
 
         if self.protocol == 'iSCSI':
-            check_channel_type = 'NETWORK'
+            check_channel_type = ('NETWORK', 'LAN')
         else:
-            check_channel_type = 'FIBRE'
+            check_channel_type = ('FIBRE', 'Fibre')
 
         for entry in channel_info:
-            if entry['Type'] == check_channel_type:
+            if entry['Type'] in check_channel_type:
                 if entry['Ch'] in self.channel_list[controller]:
                     self.map_dict[controller][entry['Ch']] = []
 
@@ -1581,19 +1584,22 @@ class InfortrendCommon(object):
             part_id = self._get_part_id(volume_id)
 
         self._execute('DeleteMap', 'part', part_id, '-y')
-
-        if self.protocol == 'iSCSI':
-            self._execute(
-                'DeleteIQN', self._truncate_host_name(connector['initiator']))
         map_info = self._update_map_info(multipath)
 
-        if self.protocol == 'FC' and self.fc_lookup_service:
+        if self.protocol == 'iSCSI':
+            initiator_iqn = self._truncate_host_name(connector['initiator'])
+            lun_map_exist = self._check_initiator_has_lun_map(
+                initiator_iqn, map_info)
+            if not lun_map_exist:
+                self._execute('DeleteIQN', initiator_iqn)
+
+        elif self.protocol == 'FC':
+            conn_info = {'driver_volume_type': 'fibre_channel',
+                         'data': {}}
             lun_map_exist = self._check_initiator_has_lun_map(
                 connector['wwpns'], map_info)
 
             if not lun_map_exist:
-                conn_info = {'driver_volume_type': 'fibre_channel',
-                             'data': {}}
                 wwpn_list, wwpn_channel_info = self._get_wwpn_list()
                 init_target_map, target_wwpns = (
                     self._build_initiator_target_map(connector, wwpn_list)
@@ -1905,7 +1911,8 @@ class InfortrendCommon(object):
                 'volume_id': volume['id']})
             return True
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         """Return model update for migrated volume."""
 
         src_volume_id = volume['id'].replace('-', '')
@@ -1920,13 +1927,19 @@ class InfortrendCommon(object):
             'Rename partition %(part_id)s '
             'into new volume %(new_volume)s.', {
                 'part_id': part_id, 'new_volume': dst_volume_id})
-
-        self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
+        try:
+            self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
+        except exception.InfortrendCliException:
+            LOG.exception(_LE('Failed to rename %(new_volume)s into '
+                              '%(volume)s.'), {'new_volume': new_volume['id'],
+                                               'volume': volume['id']})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
 
         LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
             'new_volume': new_volume['id']})
 
         model_update = {
+            '_name_id': None,
             'provider_location': new_volume['provider_location'],
         }
         return model_update
