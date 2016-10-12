@@ -522,7 +522,7 @@ class InfortrendCommon(object):
         if extraspecs_dict:
             cmd = self._create_part_parameters_str(extraspecs_dict)
 
-        commands = (pool_id, volume_id, 'size=%s' % volume_size, cmd)
+        commands = (pool_id, volume_id, 'size=%s' % int(volume_size), cmd)
         self._execute('CreatePartition', *commands)
 
     def _create_part_parameters_str(self, extraspecs_dict):
@@ -776,7 +776,9 @@ class InfortrendCommon(object):
         empty_lun_num = 0
         min_map_chl = -1
 
-        for key, value in self.map_dict[controller].items():
+        # Sort items to get a reliable behaviour. Dictionary items
+        # are iterated in a random order because of hash randomization.
+        for key, value in sorted(self.map_dict[controller].items()):
             if empty_lun_num < len(value):
                 min_map_chl = key
                 empty_lun_num = len(value)
@@ -1303,7 +1305,9 @@ class InfortrendCommon(object):
 
         map_lun = self._get_common_lun_map_id(wwpn_channel_info)
 
-        for initiator_wwpn in initiator_target_map:
+        # Sort items to get a reliable behaviour. Dictionary items
+        # are iterated in a random order because of hash randomization.
+        for initiator_wwpn in sorted(initiator_target_map):
             for target_wwpn in initiator_target_map[initiator_wwpn]:
                 channel_id = wwpn_channel_info[target_wwpn.upper()]['channel']
                 controller = wwpn_channel_info[target_wwpn.upper()]['slot']
@@ -1346,7 +1350,6 @@ class InfortrendCommon(object):
                 'target_discovered': True,
                 'target_lun': int(lun_id),
                 'target_wwn': target_wwpns,
-                'access_mode': 'rw',
                 'initiator_target_map': initiator_target_map,
             },
         }
@@ -1905,7 +1908,8 @@ class InfortrendCommon(object):
                 'volume_id': volume['id']})
             return True
 
-    def update_migrated_volume(self, ctxt, volume, new_volume):
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
         """Return model update for migrated volume."""
 
         src_volume_id = volume['id'].replace('-', '')
@@ -1920,13 +1924,19 @@ class InfortrendCommon(object):
             'Rename partition %(part_id)s '
             'into new volume %(new_volume)s.', {
                 'part_id': part_id, 'new_volume': dst_volume_id})
-
-        self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
+        try:
+            self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
+        except exception.InfortrendCliException:
+            LOG.exception(_LE('Failed to rename %(new_volume)s into '
+                              '%(volume)s.'), {'new_volume': new_volume['id'],
+                                               'volume': volume['id']})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
 
         LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
             'new_volume': new_volume['id']})
 
         model_update = {
+            '_name_id': None,
             'provider_location': new_volume['provider_location'],
         }
         return model_update
