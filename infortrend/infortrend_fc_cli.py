@@ -34,6 +34,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
+        1.0.3 - Add iSCSI MPIO support
     """
 
     def __init__(self, *args, **kwargs):
@@ -159,7 +160,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'access_mode': 'rw'
+                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123']
                     }
@@ -174,7 +175,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'access_mode': 'rw'
+                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123',
                                              '0987654321321']
