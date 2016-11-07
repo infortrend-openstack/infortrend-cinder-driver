@@ -20,9 +20,9 @@ cp ./test/* $CINDER_DIR/$CINDER_TEST_DIR/ -r
 
 cd $CINDER_DIR
 
-./run_tests.sh -V test_infortrend_cli
-./run_tests.sh test_infortrend_common
+tox -e py27 test_infortrend_*
 # flake8
-./run_tests.sh -p
+flake8 $CINDER_DIR/$INFORTREND_DRIVER_DIR/
+flake8 $CINDER_DIR/$CINDER_TEST_DIR/
 
 cd ..

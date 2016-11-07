@@ -16,7 +16,7 @@
 import mock
 
 from cinder import test
-from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
+from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 
 
 class InfortrendCLITestData(object):
@@ -63,7 +63,9 @@ class InfortrendCLITestData(object):
     # cinder entry
     test_provider_location = [(
         'system_id^%s@partition_id^%s') % (
-            int(fake_system_id[0], 16), fake_partition_id[0]),
+            int(fake_system_id[0], 16), fake_partition_id[0]), (
+        'system_id^%s@partition_id^%s') % (
+            int(fake_system_id[0], 16), fake_partition_id[1])
     ]
 
     test_volume = {
@@ -81,6 +83,21 @@ class InfortrendCLITestData(object):
         'volume_attachment': [],
     }
 
+    test_volume_1 = {
+        'id': '5aa119a8-d25b-45a7-8d1b-88e127885634',
+        'size': 1,
+        'name': 'Part-1',
+        'host': 'infortrend-server1@backend_1#LV-1',
+        'name_id': '5aa119a8-d25b-45a7-8d1b-88e127885635',
+        'provider_auth': None,
+        'project_id': 'project',
+        'display_name': None,
+        'display_description': 'Part-1',
+        'volume_type_id': None,
+        'provider_location': test_provider_location[1],
+        'volume_attachment': [],
+    }
+
     test_dst_volume = {
         'id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
         'size': 1,
@@ -90,6 +107,7 @@ class InfortrendCLITestData(object):
         'provider_auth': None,
         'project_id': 'project',
         'display_name': None,
+        '_name_id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
         'display_description': 'Part-1-Copy',
         'volume_type_id': None,
         'provider_location': '',
@@ -109,7 +127,6 @@ class InfortrendCLITestData(object):
     test_snapshot = {
         'id': 'ffa9bc5e-1172-4021-acaf-cdcd78a9584d',
         'volume_id': test_volume['id'],
-        'size': 2,
         'volume_name': test_volume['name'],
         'volume_size': 2,
         'project_id': 'project',
@@ -123,7 +140,9 @@ class InfortrendCLITestData(object):
         'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
             int(fake_system_id[0], 16), 1, 0, 1), (
         'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
-            int(fake_system_id[0], 16), 1, 0, 1),
+            int(fake_system_id[0], 16), 1, 0, 1), (
+        'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
+            int(fake_system_id[0], 16), 2, 0, 1),
     ]
 
     test_iscsi_properties = {
@@ -141,10 +160,21 @@ class InfortrendCLITestData(object):
         'driver_volume_type': 'iscsi',
         'data': {
             'target_discovered': True,
-            'target_portal': '%s:3260' % fake_data_port_ip[0],
-            'target_iqn': test_iqn[1],
-            'target_lun': fake_lun_map[2],
+            'target_portal': '%s:3260' % fake_data_port_ip[4],
+            'target_iqn': test_iqn[2],
+            'target_lun': fake_lun_map[0],
             'volume_id': test_volume['id'],
+        },
+    }
+
+    test_iscsi_properties_with_mcs_1 = {
+        'driver_volume_type': 'iscsi',
+        'data': {
+            'target_discovered': True,
+            'target_portal': '%s:3260' % fake_data_port_ip[4],
+            'target_iqn': test_iqn[2],
+            'target_lun': fake_lun_map[1],
+            'volume_id': test_volume_1['id'],
         },
     }
 
@@ -175,7 +205,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': fake_target_wwpns[0:2],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map,
         },
     }
@@ -191,7 +220,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [fake_target_wwpns[1]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_specific_channel,
         },
     }
@@ -214,7 +242,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': test_target_wwpns_map_multipath_r_model[:],
-            'access_mode': 'rw',
             'initiator_target_map':
                 test_initiator_target_map_multipath_r_model,
         },
@@ -233,7 +260,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [x.lower() for x in fake_target_wwpns[0:2]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning,
         },
     }
@@ -251,7 +277,6 @@ class InfortrendCLITestData(object):
             'target_discovered': True,
             'target_lun': fake_lun_map[0],
             'target_wwn': [x.lower() for x in fake_target_wwpns[1:3]],
-            'access_mode': 'rw',
             'initiator_target_map': test_initiator_target_map_zoning_r_model,
         },
     }
@@ -266,6 +291,12 @@ class InfortrendCLITestData(object):
     test_connector_iscsi = {
         'ip': fake_host_ip[0],
         'initiator': fake_initiator_iqn[0],
+        'host': 'infortrend-server1@backend_1',
+    }
+
+    test_connector_iscsi_1 = {
+        'ip': fake_host_ip[0],
+        'initiator': fake_initiator_iqn[1],
         'host': 'infortrend-server1@backend_1',
     }
 
@@ -305,6 +336,7 @@ class InfortrendCLITestData(object):
         'vendor_name': 'Infortrend',
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
+        'model_type': 'R',
         'pools': test_pools,
     }
 
@@ -1718,7 +1750,7 @@ Return: 0x0000
                 'Ch': '1',
                 'LUN': '0',
                 'Media': 'PART',
-                'Host-ID': '---',
+                'Host-ID': self.fake_initiator_iqn[0],
                 'Target': '0',
                 'Name': 'Part-1',
                 'ID': self.fake_partition_id[0],
@@ -1726,7 +1758,7 @@ Return: 0x0000
                 'Ch': '1',
                 'LUN': '1',
                 'Media': 'PART',
-                'Host-ID': '---',
+                'Host-ID': self.fake_initiator_iqn[0],
                 'Target': '0',
                 'Name': 'Part-1',
                 'ID': self.fake_partition_id[0],
@@ -1734,7 +1766,7 @@ Return: 0x0000
                 'Ch': '4',
                 'LUN': '0',
                 'Media': 'PART',
-                'Host-ID': '---',
+                'Host-ID': self.fake_initiator_iqn[0],
                 'Target': '0',
                 'Name': 'Part-1',
                 'ID': self.fake_partition_id[0],
@@ -1782,16 +1814,19 @@ Return: 0x0000
 
  Ch  Target  LUN  Media  Name    ID  Host-ID
 -----------------------------------------------------------
- 1   0       0    PART   Part-1  %s  ---
- 1   0       1    PART   Part-1  %s  ---
- 4   0       0    PART   Part-1  %s  ---
+ 1   0       0    PART   Part-1  %s  %s
+ 1   0       1    PART   Part-1  %s  %s
+ 4   0       0    PART   Part-1  %s  %s
 
 CLI: Successful: 3 mapping(s) shown
 Return: 0x0000
 """
         return msg % (self.fake_partition_id[0],
+                      self.fake_initiator_iqn[0],
                       self.fake_partition_id[0],
-                      self.fake_partition_id[0])
+                      self.fake_initiator_iqn[0],
+                      self.fake_partition_id[0],
+                      self.fake_initiator_iqn[0])
 
     def get_test_show_license(self):
         return (0, {
@@ -2025,9 +2060,6 @@ class InfortrendCLITestCase(test.TestCase):
         super(InfortrendCLITestCase, self).__init__(*args, **kwargs)
         self.cli_data = InfortrendCLITestData()
 
-    def setUp(self):
-        super(InfortrendCLITestCase, self).setUp()
-
     def _cli_set(self, cli, fake_result):
         cli_conf = {
             'path': '',
@@ -2169,9 +2201,9 @@ class InfortrendCLITestCase(test.TestCase):
 
         if isinstance(out, list):
             for i in range(len(test_data[1])):
-                self.assertDictMatch(out[i], test_data[1][i])
+                self.assertDictMatch(test_data[1][i], out[i])
         else:
-            self.assertDictMatch(out, test_data[1])
+            self.assertDictMatch(test_data[1], out)
 
     @mock.patch.object(cli.LOG, 'debug', mock.Mock())
     def test_cli_all_command_execute(self):
