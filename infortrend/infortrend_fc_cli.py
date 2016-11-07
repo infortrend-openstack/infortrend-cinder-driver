@@ -36,6 +36,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
+        1.0.3 - Add iSCSI MPIO support
     """
 
     # ThirdPartySystems wiki page
