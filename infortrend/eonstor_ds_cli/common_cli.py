@@ -158,6 +158,7 @@ class InfortrendCommon(object):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
+                Fix terminate_connection
     """
 
     VERSION = '1.0.3'
@@ -275,20 +276,18 @@ class InfortrendCommon(object):
         return rc, out
 
     @log_func
-    def _init_map_info(self, multipath=False):
+    def _init_map_info(self):
         if not self.map_dict_init:
 
             rc, channel_info = self._execute('ShowChannel')
 
+            self._set_channel_id(channel_info, 'slot_a')
+
             if 'BID' in channel_info[0]:
                 self._model_type = 'R'
+                self._set_channel_id(channel_info, 'slot_b')
             else:
                 self._model_type = 'G'
-
-            self._set_channel_id(channel_info, 'slot_a', multipath)
-
-            if multipath and self._model_type == 'R':
-                self._set_channel_id(channel_info, 'slot_b', multipath)
 
             self.map_dict_init = True
 
@@ -311,6 +310,7 @@ class InfortrendCommon(object):
 
         if multipath and self._model_type == 'R':
             self._update_map_info_by_slot(map_info, 'slot_b')
+
         return map_info
 
     @log_func
@@ -331,18 +331,21 @@ class InfortrendCommon(object):
                         int(lun) in self.map_dict[slot_key][ch]):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
-    def _check_initiator_has_lun_map(self, initiator_info, map_info):
+    def _check_initiator_has_lun_map(self, initiator_info):
+        rc, map_info = self._execute('ShowMap')
+
         if not isinstance(initiator_info, list):
             initiator_info = (initiator_info,)
-        for initiator_name in initiator_info:
-            for entry in map_info:
-                if initiator_name.lower() == entry['Host-ID'].lower():
-                    return True
+        if len(map_info) > 0:
+            for initiator_name in initiator_info:
+                for entry in map_info:
+                    if initiator_name.lower() == entry['Host-ID'].lower():
+                        return True
         return False
 
     @log_func
     def _set_channel_id(
-            self, channel_info, controller='slot_a', multipath=False):
+            self, channel_info, controller='slot_a'):
 
         if self.protocol == 'iSCSI':
             check_channel_type = ('NETWORK', 'LAN')
@@ -365,7 +368,7 @@ class InfortrendCommon(object):
                         LOG.warning(_LW(
                             'Controller[%(controller)s] '
                             'Channel[%(Ch)s] not linked, please check.'), {
-                                'controller': controller, 'Ch': entry['Ch']})
+                            'controller': controller, 'Ch': entry['Ch']})
 
     @log_func
     def _update_target_dict(self, channel, controller):
@@ -602,7 +605,7 @@ class InfortrendCommon(object):
                     rc, out = self._execute('CreateMap', *commands)
                     if rc != 0:
                         msg = _('Volume[%(part_id)s] create map failed, '
-                                'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].'), {
+                                'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
                                     'part_id': part_id, 'Ch': channel_id,
                                     'tid': target_id, 'lun': lun_id}
                         LOG.error(msg)
@@ -1314,7 +1317,7 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
     def _initialize_connection_fc(self, volume, connector):
-        self._init_map_info(True)
+        self._init_map_info()
         self._update_map_info(True)
 
         map_lun, target_wwpns, initiator_target_map = (
@@ -1399,7 +1402,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _initialize_connection_iscsi(self, volume, connector, multipath):
-        self._init_map_info(multipath)
+        self._init_map_info()
         self._update_map_info(multipath)
 
         volume_id = volume['id'].replace('-', '')
@@ -1470,7 +1473,6 @@ class InfortrendCommon(object):
                             'channel_id': channel_id, 'controller': slot_name}
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
-                    return
                 else:
                     return entry['IPv4']
 
@@ -1603,7 +1605,6 @@ class InfortrendCommon(object):
     @lockutils.synchronized('connection', 'infortrend-', True)
     def terminate_connection(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
-        multipath = connector.get('multipath', False)
         conn_info = None
 
         part_id = self._extract_specific_provider_location(
@@ -1612,25 +1613,22 @@ class InfortrendCommon(object):
         if part_id is None:
             part_id = self._get_part_id(volume_id)
 
-        self._execute('DeleteMap', 'part', part_id, '-y')
-        map_info = self._update_map_info(multipath)
+        self._delete_map(part_id, connector)
 
         if self.protocol == 'iSCSI':
-            initiator_iqn = self._truncate_host_name(connector['initiator'])
             lun_map_exist = self._check_initiator_has_lun_map(
-                initiator_iqn, map_info)
-
+                connector['initiator'])
             if not lun_map_exist:
-                self._execute('DeleteIQN', initiator_iqn)
+                host_name = self._truncate_host_name(connector['initiator'])
+                self._execute('DeleteIQN', host_name)
 
         elif self.protocol == 'FC':
             conn_info = {'driver_volume_type': 'fibre_channel',
                          'data': {}}
+
             lun_map_exist = self._check_initiator_has_lun_map(
-                connector['wwpns'], map_info)
-
+                connector['wwpns'])
             if not lun_map_exist:
-
                 wwpn_list, wwpn_channel_info = self._get_wwpn_list()
                 init_target_map, target_wwpns = (
                     self._build_initiator_target_map(connector, wwpn_list)
@@ -1642,6 +1640,22 @@ class InfortrendCommon(object):
                 'volume_id': volume['id']})
 
         return conn_info
+
+    def _delete_map(self, part_id, connector):
+        rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
+        if self.protocol == 'iSCSI':
+            host = connector['initiator']
+            host = (host,)
+        elif self.protocol == 'FC':
+            host = connector['wwpns']
+
+        if len(part_map_info) > 0:
+            for entry in part_map_info:
+                if entry['Host-ID'] in host:
+                    self._execute(
+                        'DeleteMap', 'part', part_id, entry['Ch'],
+                        entry['Target'], entry['LUN'], '-y')
+        return
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
         is_valid, dst_pool_id = (
