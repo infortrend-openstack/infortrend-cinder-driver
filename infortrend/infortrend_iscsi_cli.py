@@ -33,6 +33,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
+                Fix terminate_connection
     """
 
     def __init__(self, *args, **kwargs):
