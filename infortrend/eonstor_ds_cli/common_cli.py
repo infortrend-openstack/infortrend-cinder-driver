@@ -1651,12 +1651,20 @@ class InfortrendCommon(object):
         elif self.protocol == 'FC':
             host = [x.lower() for x in connector['wwpns']]
 
+        record = {'Ch':[], 'Target':[], 'LUN': []}
+
         if len(part_map_info) > 0:
             for entry in part_map_info:
                 if entry['Host-ID'].lower() in host:
-                    self._execute(
-                        'DeleteMap', 'part', part_id, entry['Ch'],
-                        entry['Target'], entry['LUN'], '-y')
+                    if not (entry['Ch'] in record['Ch'] and
+                            entry['Target'] in record['Target'] and
+                            entry['LUN'] in record['LUN']):
+                        self._execute(
+                            'DeleteMap', 'part', part_id, entry['Ch'],
+                            entry['Target'], entry['LUN'], '-y')
+                        record['Ch'].append(entry['Ch'])
+                        record['Target'].append(entry['Target'])
+                        record['LUN'].append(entry['LUN'])
         return
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
