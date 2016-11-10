@@ -158,7 +158,7 @@ class InfortrendCommon(object):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
-                Fix terminate_connection
+                Fix initialize and terminate connection
     """
 
     VERSION = '1.0.3'
@@ -569,18 +569,6 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
     @log_func
-    def _create_map_with_lun_filter(
-            self, part_id, channel_id, lun_id, host, controller='slot_a'):
-
-        host_filter = self._create_host_filter(host)
-        target_id = self.target_dict[controller][channel_id]
-
-        commands = (
-            'part', part_id, channel_id, target_id, lun_id, host_filter
-        )
-        self._execute('CreateMap', *commands)
-
-    @log_func
     def _iscsi_create_map(
             self, part_id, channel_dict, lun_id, host, system_id):
 
@@ -636,7 +624,7 @@ class InfortrendCommon(object):
             for entry in part_map_info:
                 if (entry['Ch'] == channel_id and
                         entry['Target'] == target_id and
-                        entry['Host-ID'] == host):
+                        entry['Host-ID'].lower() == host.lower()):
                     return int(entry['LUN'])
         return -1
 
@@ -1333,6 +1321,7 @@ class InfortrendCommon(object):
                      'lun: %(target_lun)s.'), properties['data'])
         return properties
 
+    @log_func
     def _do_fc_connection(self, volume, connector):
         volume_id = volume['id'].replace('-', '')
         target_wwpns = []
@@ -1350,16 +1339,56 @@ class InfortrendCommon(object):
             connector, wwpn_list)
 
         map_lun = self._get_common_lun_map_id(wwpn_channel_info)
+        rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id)
 
-        # Sort items to get a reliable behaviour. Dictionary items
-        # are iterated in a random order because of hash randomization.
+        create_new_maps = False
+        map_lun_list = []
+
+        # We need to check all the maps first
+        # Because fibre needs a consistent lun id
         for initiator_wwpn in sorted(initiator_target_map):
             for target_wwpn in initiator_target_map[initiator_wwpn]:
-                channel_id = wwpn_channel_info[target_wwpn.upper()]['channel']
+                ch_id = wwpn_channel_info[target_wwpn.upper()]['channel']
                 controller = wwpn_channel_info[target_wwpn.upper()]['slot']
-                self._create_map_with_lun_filter(
-                    part_id, channel_id, map_lun, initiator_wwpn,
-                    controller=controller)
+                target_id = self.target_dict[controller][ch_id]
+
+                exist_lun_id = self._check_map(
+                    ch_id, target_id, part_mapping, initiator_wwpn)
+                map_lun_list.append(exist_lun_id)
+
+        # To check if all the luns are the same
+        if map_lun_list.count(map_lun_list[0]) == len(map_lun_list):
+            if map_lun_list[0] == -1:
+                create_new_maps = True
+            else:
+                map_lun = str(map_lun_list[0])
+        else:
+            create_new_maps = True
+
+        LOG.info(_LI('Map_lun_list:[%(list)s] '), {'list': map_lun_list})
+
+        if create_new_maps:
+            for initiator_wwpn in sorted(initiator_target_map):
+                for target_wwpn in initiator_target_map[initiator_wwpn]:
+                    ch_id = wwpn_channel_info[target_wwpn.upper()]['channel']
+                    controller = wwpn_channel_info[target_wwpn.upper()]['slot']
+                    target_id = self.target_dict[controller][ch_id]
+                    host_filter = self._create_host_filter(initiator_wwpn)
+                    commands = (
+                        'part', part_id, ch_id, target_id, map_lun,
+                        host_filter
+                    )
+                    rc, out = self._execute('CreateMap', *commands)
+                    if rc != 0:
+                        msg = _('Volume[%(part_id)s] create map failed, '
+                                'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
+                                    'part_id': part_id, 'Ch': ch_id,
+                                    'tid': target_id, 'lun': map_lun}
+                        LOG.error(msg)
+                        raise exception.VolumeDriverException(message=msg)
+
+                    if int(map_lun) in self.map_dict[controller][ch_id]:
+                        self.map_dict[controller][ch_id].remove(int(map_lun))
 
         return map_lun, target_wwpns, initiator_target_map
 
@@ -1651,20 +1680,25 @@ class InfortrendCommon(object):
         elif self.protocol == 'FC':
             host = [x.lower() for x in connector['wwpns']]
 
-        record = {'Ch':[], 'Target':[], 'LUN': []}
+        temp_ch = None
+        temp_tid = None
+        temp_lun = None
 
+        # The default result of ShowMap is ordered by Ch-Target-LUN
+        # The same lun-map might have different host filters
+        # We need to specify Ch-Target-LUN and delete it only once
         if len(part_map_info) > 0:
             for entry in part_map_info:
                 if entry['Host-ID'].lower() in host:
-                    if not (entry['Ch'] in record['Ch'] and
-                            entry['Target'] in record['Target'] and
-                            entry['LUN'] in record['LUN']):
+                    if not (entry['Ch'] == temp_ch and
+                            entry['Target'] == temp_tid and
+                            entry['LUN'] == temp_lun):
                         self._execute(
                             'DeleteMap', 'part', part_id, entry['Ch'],
                             entry['Target'], entry['LUN'], '-y')
-                        record['Ch'].append(entry['Ch'])
-                        record['Target'].append(entry['Target'])
-                        record['LUN'].append(entry['LUN'])
+                        temp_ch = entry['Ch']
+                        temp_tid = entry['Target']
+                        temp_lun = entry['LUN']
         return
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
