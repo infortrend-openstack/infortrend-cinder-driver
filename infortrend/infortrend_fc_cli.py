@@ -35,7 +35,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
-                Fix initialize and terminate connection
+        1.0.4 - Fix Nova live migration bugs. #1481968
     """
 
     def __init__(self, *args, **kwargs):

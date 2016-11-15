@@ -158,10 +158,10 @@ class InfortrendCommon(object):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
-                Fix initialize and terminate connection
+        1.0.4 - Fix Nova live migration bugs. #1481968
     """
 
-    VERSION = '1.0.3'
+    VERSION = '1.0.4'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -281,13 +281,13 @@ class InfortrendCommon(object):
 
             rc, channel_info = self._execute('ShowChannel')
 
-            self._set_channel_id(channel_info, 'slot_a')
-
             if 'BID' in channel_info[0]:
                 self._model_type = 'R'
                 self._set_channel_id(channel_info, 'slot_b')
             else:
                 self._model_type = 'G'
+
+            self._set_channel_id(channel_info, 'slot_a')
 
             self.map_dict_init = True
 
@@ -368,7 +368,7 @@ class InfortrendCommon(object):
                         LOG.warning(_LW(
                             'Controller[%(controller)s] '
                             'Channel[%(Ch)s] not linked, please check.'), {
-                            'controller': controller, 'Ch': entry['Ch']})
+                                'controller': controller, 'Ch': entry['Ch']})
 
     @log_func
     def _update_target_dict(self, channel, controller):
