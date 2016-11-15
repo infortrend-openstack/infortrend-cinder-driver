@@ -1772,6 +1772,41 @@ Return: 0x0000
                 'ID': self.fake_partition_id[0],
             }])
 
+    def get_test_show_map_fc(self):
+        return (0, [{
+            'Ch': '0',
+            'LUN': '0',
+            'Media': 'PART',
+            'Host-ID': self.fake_initiator_wwpns[0],
+            'Target': '112',
+            'Name': 'Part-1',
+            'ID': self.fake_partition_id[0],
+        }, {
+            'Ch': '0',
+            'LUN': '0',
+            'Media': 'PART',
+            'Host-ID': self.fake_initiator_wwpns[1],
+            'Target': '112',
+            'Name': 'Part-1',
+            'ID': self.fake_partition_id[0],
+        }, {
+            'Ch': '5',
+            'LUN': '0',
+            'Media': 'PART',
+            'Host-ID': self.fake_initiator_wwpns[0],
+            'Target': '112',
+            'Name': 'Part-1',
+            'ID': self.fake_partition_id[0],
+        }, {
+            'Ch': '5',
+            'LUN': '0',
+            'Media': 'PART',
+            'Host-ID': self.fake_initiator_wwpns[1],
+            'Target': '112',
+            'Name': 'Part-1',
+            'ID': self.fake_partition_id[0],
+        }])
+
     def get_test_show_map_multimap(self):
         return (0, [{
             'Ch': '1',

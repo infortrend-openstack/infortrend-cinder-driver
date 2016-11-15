@@ -121,7 +121,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver._init_map_info(True)
+        self.driver._init_map_info()
 
         self.assertDictMatch(test_map_dict, self.driver.map_dict)
         self.assertDictMatch(test_target_dict, self.driver.target_dict)
@@ -140,8 +140,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
         }
         self._driver_setup(mock_commands)
-
-        self.driver._init_map_info(True)
+        self.driver._init_map_info()
 
         self.assertDictMatch(test_map_dict, self.driver.map_dict)
         self.assertDictMatch(test_target_dict, self.driver.target_dict)
@@ -213,8 +212,11 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             mock.call('ShowChannel'),
             mock.call('ShowMap'),
             mock.call('ShowWWN'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
             mock.call('CreateMap', 'part', test_partition_id, '5', '48', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
+            mock.call('CreateMap', 'part', test_partition_id, '5', '48', '0',
+                      'wwn=%s' % test_initiator_wwpns[1]),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -234,7 +236,6 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowWWN': self.cli_data.get_test_show_wwn(),
         }
         self._driver_setup(mock_commands)
-
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
@@ -293,6 +294,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             mock.call('ShowChannel'),
             mock.call('ShowMap'),
             mock.call('ShowWWN'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
             mock.call('CreateMap', 'part', test_partition_id, '0', '112', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
             mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
@@ -342,6 +344,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             mock.call('ShowChannel'),
             mock.call('ShowMap'),
             mock.call('ShowWWN'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
             mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
             mock.call('CreateMap', 'part', test_partition_id, '0', '113', '0',
@@ -376,6 +379,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowWWN': self.cli_data.get_test_show_wwn_with_diff_target_id(),
         }
         self._driver_setup(mock_commands)
+
         self.driver.fc_lookup_service = mock.Mock()
         get_device_mapping_from_network = (
             self.driver.fc_lookup_service.get_device_mapping_from_network
@@ -392,6 +396,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             mock.call('ShowChannel'),
             mock.call('ShowMap'),
             mock.call('ShowWWN'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
             mock.call('CreateMap', 'part', test_partition_id, '5', '48', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
             mock.call('CreateMap', 'part', test_partition_id, '0', '33', '0',
@@ -415,7 +420,8 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'DeleteMap': SUCCEED,
-            'ShowMap': self.cli_data.get_test_show_map(),
+            'ShowMap': [self.cli_data.get_test_show_map_fc(),
+                        self.cli_data.get_test_show_empty_list()],
             'ShowWWN': SUCCEED,
         }
         self._driver_setup(mock_commands)
@@ -423,7 +429,11 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.driver.terminate_connection(test_volume, test_connector)
 
         expect_cli_cmd = [
-            mock.call('DeleteMap', 'part', test_partition_id, '-y'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '0', '112', '0', '-y'),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '5', '112', '0', '-y'),
             mock.call('ShowMap'),
             mock.call('ShowWWN'),
         ]
@@ -435,12 +445,13 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
         test_connector = self.cli_data.test_connector_fc
-        test_all_target_wwpns = self.cli_data.fake_target_wwpns[0:2]
+        test_all_target_wwpns = self.cli_data.fake_target_wwpns[:2]
         test_lookup_map = self.cli_data.fake_lookup_map
 
         mock_commands = {
             'DeleteMap': SUCCEED,
-            'ShowMap': self.cli_data.get_test_show_map(),
+            'ShowMap': [self.cli_data.get_test_show_map_fc(),
+                        self.cli_data.get_test_show_empty_list()],
             'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
         }
         self._driver_setup(mock_commands)
@@ -459,8 +470,13 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
 
         get_device_mapping_from_network.assert_has_calls(
             [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
+
         expect_cli_cmd = [
-            mock.call('DeleteMap', 'part', test_partition_id, '-y'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '0', '112', '0', '-y'),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '5', '112', '0', '-y'),
             mock.call('ShowMap'),
             mock.call('ShowWWN'),
         ]
@@ -495,7 +511,9 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             test_volume, test_connector)
 
         expect_cli_cmd = [
-            mock.call('DeleteMap', 'part', test_partition_id, '-y'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '0', '112', '0', '-y'),
             mock.call('ShowMap'),
         ]
         expect_conn_info = {'driver_volume_type': 'fibre_channel',
@@ -599,7 +617,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
         }
         self._driver_setup(mock_commands)
-
         self.driver._init_map_info()
 
         self.assertDictMatch(test_map_dict, self.driver.map_dict)
@@ -620,7 +637,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
 
-        self.driver._init_map_info(multipath=True)
+        self.driver._init_map_info()
 
         self.assertDictMatch(test_map_dict, self.driver.map_dict)
         self.assertDictMatch(test_target_dict, self.driver.target_dict)
@@ -642,7 +659,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel(),
         }
         self._driver_setup(mock_commands, configuration)
-
         self.driver._init_map_info()
 
         self.assertDictMatch(test_map_dict, self.driver.map_dict)
@@ -660,8 +676,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         mock_commands = {
             'ShowChannel': self.cli_data.get_test_show_channel_with_mcs(),
         }
-        self._driver_setup(mock_commands, configuration)
 
+        self._driver_setup(mock_commands, configuration)
         self.driver._init_map_info()
 
         self.assertDictMatch(test_mcs_dict, self.driver.mcs_dict)
@@ -789,7 +805,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands, configuration)
 
-        self.driver._init_map_info(multipath=True)
+        self.driver._init_map_info()
 
         self.assertDictMatch(test_map_dict, self.driver.map_dict)
         self.assertDictMatch(test_target_dict, self.driver.target_dict)
@@ -812,8 +828,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowChannel': self.cli_data.get_test_show_channel_r_model(),
         }
         self._driver_setup(mock_commands, configuration)
-
-        self.driver._init_map_info(multipath=True)
+        self.driver._init_map_info()
 
         self.assertDictMatch(test_map_dict, self.driver.map_dict)
         self.assertDictMatch(test_target_dict, self.driver.target_dict)
@@ -1579,7 +1594,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
 
         mock_commands = {
             'DeleteMap': SUCCEED,
-            'ShowMap': self.cli_data.get_test_show_map(),
+            'ShowMap': [self.cli_data.get_test_show_map(),
+                        self.cli_data.get_test_show_empty_list()],
             'DeleteIQN': SUCCEED,
         }
         self._driver_setup(mock_commands)
@@ -1587,7 +1603,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.driver.terminate_connection(test_volume, test_connector)
 
         expect_cli_cmd = [
-            mock.call('DeleteMap', 'part', test_partition_id, '-y'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '1', '0', '0', '-y'),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '1', '0', '1', '-y'),
+            mock.call('DeleteMap',
+                      'part', test_partition_id, '4', '0', '0', '-y'),
             mock.call('ShowMap'),
             mock.call('DeleteIQN', test_connector['initiator'][-16:]),
         ]
