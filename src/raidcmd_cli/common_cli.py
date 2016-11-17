@@ -158,7 +158,7 @@ class InfortrendCommon(object):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
-        1.0.4 - Fix Nova live migration bugs. #1481968
+        1.0.4 - Fix Nova live migration bugs #1481968
     """
 
     VERSION = '1.0.4'
