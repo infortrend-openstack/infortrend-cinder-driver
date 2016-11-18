@@ -158,7 +158,7 @@ class InfortrendCommon(object):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
-        1.0.4 - Fix Nova live migration bugs. #1481968
+        1.0.4 - Fix Nova live migration bugs #1481968
     """
 
     VERSION = '1.0.4'
@@ -197,6 +197,7 @@ class InfortrendCommon(object):
         self.fc_lookup_service = fczm_utils.create_lookup_service()
 
         self._volume_stats = None
+        self.system_id = None
         self._model_type = 'R'
         self._replica_timeout = self.cli_timeout
 
@@ -691,12 +692,12 @@ class InfortrendCommon(object):
         return pool_id
 
     def _get_system_id(self, system_ip):
-        rc, device_info = self._execute('ShowDevice')
-
-        for entry in device_info:
-            if system_ip == entry['Connected-IP']:
-                return str(int(entry['ID'], 16))
-        return
+        if not self.system_id:
+            rc, device_info = self._execute('ShowDevice')
+            for entry in device_info:
+                if system_ip == entry['Connected-IP']:
+                    self.system_id = str(int(entry['ID'], 16))
+        return self.system_id
 
     @log_func
     def _get_lun_id(self, ch_id, controller='slot_a'):
@@ -1043,9 +1044,10 @@ class InfortrendCommon(object):
             'Successfully update volume stats. '
             'backend: %(volume_backend_name)s, '
             'vendor: %(vendor_name)s, '
-            'driver version: %(driver_version)s, '
-            'model type: %(model_type)s, '
-            'storage protocol: %(storage_protocol)s.'), self._volume_stats)
+            'model_type: %(model_type)s, '
+            'system_id: %(system_id)s, '
+            'driver_version: %(driver_version)s, '
+            'storage_protocol: %(storage_protocol)s.'), self._volume_stats)
 
         return self._volume_stats
 
@@ -1059,6 +1061,7 @@ class InfortrendCommon(object):
             'driver_version': self.VERSION,
             'storage_protocol': self.protocol,
             'model_type': self._model_type,
+            'system_id': self._get_system_id(self.ip),
             'pools': self._update_pools_stats(),
         }
         self._volume_stats = data
@@ -1365,7 +1368,12 @@ class InfortrendCommon(object):
         else:
             create_new_maps = True
 
-        LOG.info(_LI('Map_lun_list:[%(list)s] '), {'list': map_lun_list})
+        LOG.info(_LI('volume: [%(volume)s], '
+                     'mapped_lun_list: %(list)s, '
+                     'create_new_maps: [%(flag)s]'), {
+                         'volume': volume['id'],
+                         'list': map_lun_list,
+                         'flag': create_new_maps})
 
         if create_new_maps:
             for initiator_wwpn in sorted(initiator_target_map):
