@@ -337,6 +337,7 @@ class InfortrendCLITestData(object):
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
         'model_type': 'R',
+        'system_id': fake_system_id[0],
         'pools': test_pools,
     }
 

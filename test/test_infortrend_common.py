@@ -1077,6 +1077,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         }
         self._driver_setup(mock_commands)
         self.driver.VERSION = '99.99'
+        self.driver.system_id = self.cli_data.fake_system_id[0]
 
         volume_states = self.driver.get_volume_stats(True)
 
