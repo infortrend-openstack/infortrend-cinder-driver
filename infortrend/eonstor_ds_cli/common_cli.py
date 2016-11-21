@@ -17,6 +17,7 @@ Infortrend Common CLI.
 """
 import math
 import time
+import os,sys,time,thread
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -159,9 +160,10 @@ class InfortrendCommon(object):
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration bugs #1481968
+        1.0.5 - Improve driver speed
     """
 
-    VERSION = '1.0.4'
+    VERSION = '1.0.5'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -221,12 +223,23 @@ class InfortrendCommon(object):
         self._init_pool_list()
         self._init_channel_list()
 
+        self.pid, self.fd = os.forkpty()
+        if self.pid == 0:
+            os.execv('/usr/bin/java', ['/usr/bin/java','-jar', self.path])
+            LOG.debug('Raidcmd process has started.')
+        os.read(self.fd, 1024)
+
         self.cli_conf = {
             'path': self.path,
             'password': self.password,
             'ip': self.ip,
             'cli_retry_time': int(self.cli_retry_time),
+            'pid': self.pid,
+            'fd': self.fd,
         }
+
+        rc, _ = self._execute('ConnectRaid')
+        LOG.info(_LI('Raid process [%s:%s] start!' % (self.pid, self.fd)))
 
     def _init_pool_list(self):
         pools_name = self.configuration.infortrend_pools_name
@@ -256,14 +269,15 @@ class InfortrendCommon(object):
             [channel.strip() for channel in tmp_channel_list]
         )
 
-    def _execute_command(self, cli_type, *args, **kwargs):
-        command = getattr(cli, cli_type)
-        return command(self.cli_conf).execute(*args, **kwargs)
-
     def _execute(self, cli_type, *args, **kwargs):
         LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
 
-        rc, out = self._execute_command(cli_type, *args, **kwargs)
+        @lockutils.synchronized('raidcmd-%s' % self.pid, 'infortrend-', False)
+        def _execute_command(cli_type, *args, **kwargs):
+            command = getattr(cli, cli_type)
+            return command(self.cli_conf).execute(*args, **kwargs)
+
+        rc, out = _execute_command(cli_type, *args, **kwargs)
 
         if rc != 0:
             if ('warning' in CLI_RC_FILTER[cli_type] and
@@ -346,7 +360,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _set_channel_id(
-            self, channel_info, controller='slot_a'):
+            self, channel_info, controller):
 
         if self.protocol == 'iSCSI':
             check_channel_type = ('NETWORK', 'LAN')
@@ -1310,6 +1324,12 @@ class InfortrendCommon(object):
     def _initialize_connection_fc(self, volume, connector):
         self._init_map_info()
         self._update_map_info(True)
+
+        for controller in sorted(self.map_dict.keys()):
+            LOG.info(_LI('Controller: [%(controller)s] '
+                         'enable channels: %(ch)s'), {
+                             'controller': controller,
+                             'ch': sorted(self.map_dict[controller].keys())})
 
         map_lun, target_wwpns, initiator_target_map = (
             self._do_fc_connection(volume, connector)
