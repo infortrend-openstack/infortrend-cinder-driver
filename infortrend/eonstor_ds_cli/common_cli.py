@@ -122,6 +122,7 @@ CLI_RC_FILTER = {
     'ShowWWN': {'error': _('Failed to get wwn info.')},
     'ShowIQN': {'error': _('Failed to get iqn info.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
+    'ShellCommand': {'error': _('Failed to execute shell command.')},
 }
 
 
@@ -1101,11 +1102,12 @@ class InfortrendCommon(object):
 
     def _get_raidcmd_stat(self):
         rc, out = self._execute(
-            'ExecuteCommand',
-            'pidof', 'java', run_as_root=True)
+            'ShellCommand',
+            'ps', 'aux', '|', 'grep', 'java',
+            '|', 'grep', str(self.pid),
+            run_as_root=True)
         if len(out) > 0:
-            if self.pid in out:
-                return 'Active'
+            return 'Active'
         else:
             self._init_raidcmd()
             return 'Reconnected'
@@ -1338,7 +1340,7 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
-
+        LOG.info(_LI('Connector: %s' % connector))
         @lockutils.synchronized(
             '%s-connection' % system_id, 'infortrend-', True)
         def lock_initialize_conn():

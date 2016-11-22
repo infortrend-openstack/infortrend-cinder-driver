@@ -140,9 +140,35 @@ class BaseCommand(object):
         pass
 
 
+class ShellCommand(BaseCommand):
+
+    """The Common ShellCommand."""
+
+    def __init__(self, cli_conf):
+        super(ShellCommand, self).__init__()
+        self.cli_retry_time = cli_conf.get('cli_retry_time')
+
+    @retry_cli
+    def execute(self, *args, **kwargs):
+        commands = ' '.join(args)
+        result = None
+        rc = 0
+        try:
+            result, err = utils.execute(commands, shell=True)
+        except processutils.ProcessExecutionError as pe:
+            rc = pe.exit_code
+            result = pe.stdout
+            result = result.replace('\n', '\\n')
+            LOG.error(_LE(
+                'Error on execute command. '
+                'Error code: %(exit_code)d Error msg: %(result)s'), {
+                    'exit_code': pe.exit_code, 'result': result})
+        return rc, result
+
+
 class ExecuteCommand(BaseCommand):
 
-    """The Common ExecuteCommand."""
+    """The Cinder FilterCommand."""
 
     def __init__(self, cli_conf):
         super(ExecuteCommand, self).__init__()
@@ -171,8 +197,6 @@ class CLIBaseCommand(BaseCommand):
 
     def __init__(self, cli_conf):
         super(CLIBaseCommand, self).__init__()
-        self.java = "java -jar"
-        self.execute_file = cli_conf.get('path')
         self.ip = cli_conf.get('ip')
         self.password = cli_conf.get('password')
         self.cli_retry_time = cli_conf.get('cli_retry_time')
@@ -444,7 +468,7 @@ class ShowCommand(CLIBaseCommand):
         self.param_detail = "-l"
         self.default_type = "table"
         self.start_key = ""
-        self.show_noinit = "-noinit"
+        self.show_noinit = ""
 
     def _parser(self, content=None):
         """Parse Table or Detail format into dict.
