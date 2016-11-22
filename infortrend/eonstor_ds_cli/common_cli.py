@@ -17,7 +17,7 @@ Infortrend Common CLI.
 """
 import math
 import time
-import os,sys,time,thread
+import os
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -187,7 +187,7 @@ class InfortrendCommon(object):
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
-        self.cli_timeout = self.configuration.infortrend_cli_timeout * 60
+        self.cli_timeout = self.configuration.infortrend_cli_timeout
         self.iqn = 'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s'
         self.unmanaged_prefix = 'cinder-unmanaged-%s'
 
@@ -201,7 +201,7 @@ class InfortrendCommon(object):
         self._volume_stats = None
         self.system_id = None
         self._model_type = 'R'
-        self._replica_timeout = self.cli_timeout
+        self._replica_timeout = int(self.cli_timeout) * 60
 
         self.map_dict = {
             'slot_a': {},
@@ -222,24 +222,20 @@ class InfortrendCommon(object):
 
         self._init_pool_list()
         self._init_channel_list()
-
-        self.pid, self.fd = os.forkpty()
-        if self.pid == 0:
-            os.execv('/usr/bin/java', ['/usr/bin/java','-jar', self.path])
-            LOG.debug('Raidcmd process has started.')
-        os.read(self.fd, 1024)
+        self._init_raidcmd()
 
         self.cli_conf = {
             'path': self.path,
             'password': self.password,
             'ip': self.ip,
             'cli_retry_time': int(self.cli_retry_time),
+            'cli_timeout': int(self.cli_timeout),
             'pid': self.pid,
             'fd': self.fd,
         }
 
         rc, _ = self._execute('ConnectRaid')
-        LOG.info(_LI('Raid process [%s:%s] start!' % (self.pid, self.fd)))
+        LOG.info(_LI('Raidcmd [%s:%s] start!' % (self.pid, self.fd)))
 
     def _init_pool_list(self):
         pools_name = self.configuration.infortrend_pools_name
@@ -268,6 +264,27 @@ class InfortrendCommon(object):
         self.channel_list['slot_b'] = (
             [channel.strip() for channel in tmp_channel_list]
         )
+
+    def _init_raidcmd(self):
+        self.pid, self.fd = os.forkpty()
+        if self.pid == 0:
+            os.execv('/usr/bin/java', ['/usr/bin/java', '-jar', self.path])
+
+        start_time = int(time.time())
+        content = ''
+        while True:
+            time.sleep(0.5)
+            output = os.read(self.fd, 1024)
+            if len(output) > 0:
+                content += output
+            if content.find('RAIDCmd:>') >= 0:
+                LOG.debug('Raidcmd has started.')
+                break
+            if int(time.time()) - start_time > int(self.cli_timeout):
+                msg = _('Raidcmd start timeout.')
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+                break
 
     def _execute(self, cli_type, *args, **kwargs):
         LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
@@ -1306,20 +1323,26 @@ class InfortrendCommon(object):
 
         return model_update
 
-    @lockutils.synchronized('connection', 'infortrend-', True)
     def initialize_connection(self, volume, connector):
-        if self.protocol == 'iSCSI':
-            multipath = connector.get('multipath', False)
-            return self._initialize_connection_iscsi(
-                volume, connector, multipath)
-        elif self.protocol == 'FC':
-            return self._initialize_connection_fc(
-                volume, connector)
-        else:
-            msg = _('Unknown protocol: %(protocol)s.') % {
-                'protocol': self.protocol}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+        system_id = self._get_system_id(self.ip)
+
+        @lockutils.synchronized(
+            '%s-connection' % system_id, 'infortrend-', True)
+        def lock_initialize_conn():
+            if self.protocol == 'iSCSI':
+                multipath = connector.get('multipath', False)
+                return self._initialize_connection_iscsi(
+                    volume, connector, multipath)
+            elif self.protocol == 'FC':
+                return self._initialize_connection_fc(
+                    volume, connector)
+            else:
+                msg = _('Unknown protocol: %(protocol)s.') % {
+                    'protocol': self.protocol}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
+        return lock_initialize_conn()
 
     def _initialize_connection_fc(self, volume, connector):
         self._init_map_info()
@@ -1661,44 +1684,51 @@ class InfortrendCommon(object):
             'Successfully extended volume %(volume_id)s to size %(size)s.'), {
                 'volume_id': volume['id'], 'size': new_size})
 
-    @lockutils.synchronized('connection', 'infortrend-', True)
     def terminate_connection(self, volume, connector):
-        volume_id = volume['id'].replace('-', '')
-        conn_info = None
+        system_id = self._get_system_id(self.ip)
 
-        part_id = self._extract_specific_provider_location(
-            volume['provider_location'], 'partition_id')
+        @lockutils.synchronized(
+            '%s-connection' % system_id, 'infortrend-', True)
+        def lock_terminate_conn():
+            volume_id = volume['id'].replace('-', '')
+            conn_info = None
 
-        if part_id is None:
-            part_id = self._get_part_id(volume_id)
+            part_id = self._extract_specific_provider_location(
+                volume['provider_location'], 'partition_id')
 
-        self._delete_map(part_id, connector)
+            if part_id is None:
+                part_id = self._get_part_id(volume_id)
 
-        if self.protocol == 'iSCSI':
-            lun_map_exist = self._check_initiator_has_lun_map(
-                connector['initiator'])
-            if not lun_map_exist:
-                host_name = self._truncate_host_name(connector['initiator'])
-                self._execute('DeleteIQN', host_name)
+            self._delete_map(part_id, connector)
 
-        elif self.protocol == 'FC':
-            conn_info = {'driver_volume_type': 'fibre_channel',
-                         'data': {}}
+            if self.protocol == 'iSCSI':
+                lun_map_exist = self._check_initiator_has_lun_map(
+                    connector['initiator'])
+                if not lun_map_exist:
+                    host_name = self._truncate_host_name(
+                        connector['initiator'])
+                    self._execute('DeleteIQN', host_name)
 
-            lun_map_exist = self._check_initiator_has_lun_map(
-                connector['wwpns'])
-            if not lun_map_exist:
-                wwpn_list, wwpn_channel_info = self._get_wwpn_list()
-                init_target_map, target_wwpns = (
-                    self._build_initiator_target_map(connector, wwpn_list)
-                )
-                conn_info['data']['initiator_target_map'] = init_target_map
+            elif self.protocol == 'FC':
+                conn_info = {'driver_volume_type': 'fibre_channel',
+                             'data': {}}
 
-        LOG.info(_LI(
-            'Successfully terminated connection for volume: %(volume_id)s.'), {
-                'volume_id': volume['id']})
+                lun_map_exist = self._check_initiator_has_lun_map(
+                    connector['wwpns'])
+                if not lun_map_exist:
+                    wwpn_list, wwpn_channel_info = self._get_wwpn_list()
+                    init_target_map, target_wwpns = (
+                        self._build_initiator_target_map(connector, wwpn_list)
+                    )
+                    conn_info['data']['initiator_target_map'] = init_target_map
 
-        return conn_info
+            LOG.info(_LI(
+                'Successfully terminated connection '
+                'for volume: %(volume_id)s.'), {
+                    'volume_id': volume['id']})
+
+            return conn_info
+        return lock_terminate_conn()
 
     def _delete_map(self, part_id, connector):
         rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)

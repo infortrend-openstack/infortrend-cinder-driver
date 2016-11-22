@@ -17,13 +17,14 @@ Infortrend basic CLI factory.
 """
 
 import abc
-import os,sys,time,thread
+import os
+import time
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 import six
 
-from cinder.i18n import _LE, _LI
+from cinder.i18n import _LE
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
@@ -61,20 +62,19 @@ def retry_cli(func):
     return inner
 
 
-def util_execute(command_line):
-    content, err = utils.execute(command_line, shell=True)
-    return content
-
-
-def os_execute(fd, command_line):
+def os_execute(fd, cli_timeout, command_line):
     content = ''
     os.write(fd, command_line)
+    start_time = int(time.time())
     while True:
         time.sleep(0.5)
         output = os.read(fd, 8192)
         if len(output) > 0:
             content += output
-        if output.find('RAIDCmd:>') >= 0:
+        if content.find('RAIDCmd:>') >= 0:
+            break
+        if int(time.time()) - start_time > cli_timeout:
+            LOG.error(_LE('Raidcmd timeout.'))
             break
     return content
 
@@ -176,6 +176,7 @@ class CLIBaseCommand(BaseCommand):
         self.ip = cli_conf.get('ip')
         self.password = cli_conf.get('password')
         self.cli_retry_time = cli_conf.get('cli_retry_time')
+        self.cli_timeout = cli_conf.get('cli_timeout')
         self.pid = cli_conf.get('pid')
         self.fd = cli_conf.get('fd')
         self.command = ""
@@ -243,7 +244,8 @@ class CLIBaseCommand(BaseCommand):
         return rc, result
 
     def _execute(self, command_line):
-        return os_execute(self.fd, command_line)
+        return os_execute(
+            self.fd, self.cli_timeout, command_line)
 
     def set_ip(self, ip):
         """Set the Raid's ip."""
@@ -259,6 +261,7 @@ class CLIBaseCommand(BaseCommand):
 
         return rc, return_cli_result
 
+
 class ConnectRaid(CLIBaseCommand):
 
     """The Create LD Command."""
@@ -266,6 +269,7 @@ class ConnectRaid(CLIBaseCommand):
     def __init__(self, *args, **kwargs):
         super(ConnectRaid, self).__init__(*args, **kwargs)
         self.command = "connect %s" % self.ip
+
 
 class CreateLD(CLIBaseCommand):
 
