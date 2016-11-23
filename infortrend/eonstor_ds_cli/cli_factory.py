@@ -62,18 +62,23 @@ def retry_cli(func):
     return inner
 
 
-def os_execute(fd, cli_timeout, command_line):
-    content = ''
+def os_execute(fd, raidcmd_timeout, command_line):
     os.write(fd, command_line)
+    return os_read(fd, 8192, 'RAIDCmd:>', raidcmd_timeout)
+
+
+def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
+    content = ''
     start_time = int(time.time())
     while True:
         time.sleep(0.5)
-        output = os.read(fd, 8192)
+        output = os.read(fd, buffer_size)
         if len(output) > 0:
             content += output
-        if content.find('RAIDCmd:>') >= 0:
+        if content.find(cmd_pattern) >= 0:
             break
-        if int(time.time()) - start_time > cli_timeout:
+        if int(time.time()) - start_time > raidcmd_timeout:
+            content = 'Raidcmd timeout.'
             LOG.error(_LE('Raidcmd timeout.'))
             break
     return content
@@ -200,7 +205,7 @@ class CLIBaseCommand(BaseCommand):
         self.ip = cli_conf.get('ip')
         self.password = cli_conf.get('password')
         self.cli_retry_time = cli_conf.get('cli_retry_time')
-        self.cli_timeout = cli_conf.get('cli_timeout')
+        self.raidcmd_timeout = cli_conf.get('raidcmd_timeout')
         self.pid = cli_conf.get('pid')
         self.fd = cli_conf.get('fd')
         self.command = ""
@@ -269,7 +274,7 @@ class CLIBaseCommand(BaseCommand):
 
     def _execute(self, command_line):
         return os_execute(
-            self.fd, self.cli_timeout, command_line)
+            self.fd, self.raidcmd_timeout, command_line)
 
     def set_ip(self, ip):
         """Set the Raid's ip."""

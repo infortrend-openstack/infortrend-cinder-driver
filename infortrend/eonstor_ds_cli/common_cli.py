@@ -201,8 +201,11 @@ class InfortrendCommon(object):
 
         self._volume_stats = None
         self.system_id = None
+        self.pid = None
+        self.fd = None
         self._model_type = 'R'
         self._replica_timeout = int(self.cli_timeout) * 60
+        self._raidcmd_timeout = int(self.cli_timeout) * 3
 
         self.map_dict = {
             'slot_a': {},
@@ -224,19 +227,16 @@ class InfortrendCommon(object):
         self._init_pool_list()
         self._init_channel_list()
         self._init_raidcmd()
-
         self.cli_conf = {
             'path': self.path,
             'password': self.password,
             'ip': self.ip,
             'cli_retry_time': int(self.cli_retry_time),
-            'cli_timeout': int(self.cli_timeout),
+            'raidcmd_timeout': int(self._raidcmd_timeout),
             'pid': self.pid,
             'fd': self.fd,
         }
-
-        rc, _ = self._execute('ConnectRaid')
-        LOG.info(_LI('Raidcmd [%s:%s] start!' % (self.pid, self.fd)))
+        self._init_raid_connection()
 
     def _init_pool_list(self):
         pools_name = self.configuration.infortrend_pools_name
@@ -267,25 +267,23 @@ class InfortrendCommon(object):
         )
 
     def _init_raidcmd(self):
-        self.pid, self.fd = os.forkpty()
-        if self.pid == 0:
-            os.execv('/usr/bin/java', ['/usr/bin/java', '-jar', self.path])
+        java_path = '/usr/bin/java'
+        if not self.pid:
+            self.pid, self.fd = os.forkpty()
+            if self.pid == 0:
+                os.execv(java_path, [java_path, '-jar', self.path])
 
-        start_time = int(time.time())
-        content = ''
-        while True:
-            time.sleep(0.5)
-            output = os.read(self.fd, 1024)
-            if len(output) > 0:
-                content += output
-            if content.find('RAIDCmd:>') >= 0:
-                LOG.debug('Raidcmd has started.')
-                break
-            if int(time.time()) - start_time > int(self.cli_timeout):
-                msg = _('Raidcmd start timeout.')
+            check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 15)
+            if check_java_start == 'Raidcmd timeout.':
+                msg = _('Raidcmd failed to start. '
+                        'Please check Java is installed.')
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
-                break
+        LOG.debug('Raidcmd has started.')
+
+    def _init_raid_connection(self):
+        rc, _ = self._execute('ConnectRaid')
+        LOG.info(_LI('Raidcmd [%s:%s] start!' % (self.pid, self.fd)))
 
     def _execute(self, cli_type, *args, **kwargs):
         LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
@@ -1110,6 +1108,7 @@ class InfortrendCommon(object):
             return 'Active'
         else:
             self._init_raidcmd()
+            self._init_raid_connection()
             return 'Reconnected'
 
     def _update_pools_stats(self):
@@ -1340,7 +1339,7 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
-        LOG.info(_LI('Connector: %s' % connector))
+        LOG.debug('Connector: %s' % connector)
         @lockutils.synchronized(
             '%s-connection' % system_id, 'infortrend-', True)
         def lock_initialize_conn():
