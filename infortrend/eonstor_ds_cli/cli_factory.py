@@ -284,10 +284,16 @@ class CLIBaseCommand(BaseCommand):
     def _parse_return(self, content_lines):
         """Get the end of command line result."""
         rc = 0
-        return_value = content_lines[-3].strip().split(' ', 1)[1]
-        return_cli_result = content_lines[-4].strip().split(' ', 1)[1]
-
-        rc = int(return_value, 16)
+        if content_lines == 'Raidcmd timeout.':
+            rc = -1
+            return_cli_result = content_lines
+        elif len(content_lines) < 4:
+            rc = -2
+            return_cli_result = 'Raidcmd output error.'
+        else:
+            return_value = content_lines[-3].strip().split(' ', 1)[1]
+            return_cli_result = content_lines[-4].strip().split(' ', 1)[1]
+            rc = int(return_value, 16)
 
         return rc, return_cli_result
 

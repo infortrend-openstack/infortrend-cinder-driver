@@ -70,8 +70,8 @@ infortrend_esds_opts = [
                'By default, it is iqn.2002-10.com.infortrend.'),
     cfg.BoolOpt('infortrend_cli_cache',
                 default=False,
-                help='Enable Infortrend Raidcmd cache. '
-                'Do not set if Openstack HA controllers configured. '
+                help='Infortrend Raidcmd cache for show command. '
+                'Disable if Openstack HA controllers are configured. '
                 'By default, it is disabled.'),
 ]
 
@@ -130,6 +130,8 @@ CLI_RC_FILTER = {
     'ShowReplica': {'error': _('Failed to get replica info.')},
     'ShowWWN': {'error': _('Failed to get wwn info.')},
     'ShowIQN': {'error': _('Failed to get iqn info.')},
+    'CheckConnect': {'error': _('Failed to check connection info.')},
+    'ConnectRaid': {'error': _('Failed to connect to raid.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
     'ShellCommand': {'error': _('Failed to execute shell command.')},
 }
@@ -1119,6 +1121,7 @@ class InfortrendCommon(object):
 
     def _get_raidcmd_stat(self):
         rc, out = self._execute('CheckConnect')
+        LOG.debug('RETURN VALUE rc:[%s] out:[%s]' % (rc, out))
         if rc == 0:
             return 'Active'
         else:
@@ -1135,9 +1138,11 @@ class InfortrendCommon(object):
             provisioning = 'full'
             provisioning_support = False
 
-        rc, part_list = self._execute('ShowPartition', '-l')
         rc, pools_info = self._execute('ShowLV')
         pools = []
+
+        if provisioning_support:
+            rc, part_list = self._execute('ShowPartition', '-l')
 
         for pool in pools_info:
             if pool['Name'] in self.pool_list:
@@ -1146,11 +1151,6 @@ class InfortrendCommon(object):
 
                 total_capacity_gb = round(mi_to_gi(total_space), 2)
                 free_capacity_gb = round(mi_to_gi(available_space), 2)
-                provisioning_factor = self.configuration.safe_get(
-                    'max_over_subscription_ratio')
-                provisioned_space = self._get_provisioned_space(
-                    pool['ID'], part_list)
-                provisioned_capacity_gb = round(mi_to_gi(provisioned_space), 2)
 
                 new_pool = {
                     'pool_name': pool['Name'],
@@ -1159,13 +1159,22 @@ class InfortrendCommon(object):
                     'free_capacity_gb': free_capacity_gb,
                     'reserved_percentage': 0,
                     'QoS_support': False,
-                    'provisioned_capacity_gb': provisioned_capacity_gb,
-                    'max_over_subscription_ratio': provisioning_factor,
-                    'thin_provisioning_support': provisioning_support,
                     'thick_provisioning_support': True,
                     'infortrend_provisioning': provisioning,
                 }
+
+                if provisioning_support:
+                    provisioning_factor = self.configuration.safe_get(
+                        'max_over_subscription_ratio')
+                    provisioned_space = self._get_provisioned_space(
+                        pool['ID'], part_list)
+                    provisioned_capacity_gb = round(mi_to_gi(provisioned_space), 2)
+                    new_pool['provisioned_capacity_gb'] = provisioned_capacity_gb
+                    new_pool['max_over_subscription_ratio'] = provisioning_factor
+                    new_pool['thin_provisioning_support'] = provisioning_support
+
                 pools.append(new_pool)
+
         return pools
 
     def _get_provisioned_space(self, pool_id, part_list):
