@@ -68,6 +68,11 @@ infortrend_esds_opts = [
                default='iqn.2002-10.com.infortrend',
                help='Infortrend iqn prefix for iSCSI. '
                'By default, it is iqn.2002-10.com.infortrend.'),
+    cfg.BoolOpt('infortrend_cli_cache',
+                default=False,
+                help='Enable Infortrend Raidcmd cache. '
+                'Do not set if Openstack HA controllers configured. '
+                'By default, it is disabled.'),
 ]
 
 infortrend_esds_extra_opts = [
@@ -194,6 +199,7 @@ class InfortrendCommon(object):
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
         self.cli_timeout = self.configuration.infortrend_cli_timeout
+        self.cli_cache = self.configuration.infortrend_cli_cache
         self.iqn_prefix = self.configuration.infortrend_iqn_prefix
         self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
         self.unmanaged_prefix = 'cinder-unmanaged-%s'
@@ -239,6 +245,7 @@ class InfortrendCommon(object):
             'ip': self.ip,
             'cli_retry_time': int(self.cli_retry_time),
             'raidcmd_timeout': int(self._raidcmd_timeout),
+            'cli_cache': self.cli_cache,
             'pid': self.pid,
             'fd': self.fd,
         }
@@ -1111,18 +1118,12 @@ class InfortrendCommon(object):
         self._volume_stats = data
 
     def _get_raidcmd_stat(self):
-        rc, out = self._execute(
-            'ShellCommand',
-            'ps', 'aux', '|', 'grep', 'java',
-            '|', 'grep', str(self.pid),
-            run_as_root=True)
-        status = 'Active'
-        for process in out.splitlines():
-            if 'defunct' in process:
-                self._init_raidcmd()
-                self._init_raid_connection()
-                status = 'Reconnected'
-        return status
+        rc, out = self._execute('CheckConnect')
+        if rc == 0:
+            return 'Active'
+        else:
+            self._init_raid_connection()
+            return 'Reconnected'
 
     def _update_pools_stats(self):
         enable_specs_dict = self._get_enable_specs_on_array()

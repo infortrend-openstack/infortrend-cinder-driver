@@ -206,6 +206,7 @@ class CLIBaseCommand(BaseCommand):
         self.password = cli_conf.get('password')
         self.cli_retry_time = cli_conf.get('cli_retry_time')
         self.raidcmd_timeout = cli_conf.get('raidcmd_timeout')
+        self.cli_cache = cli_conf.get('cli_cache')
         self.pid = cli_conf.get('pid')
         self.fd = cli_conf.get('fd')
         self.command = ""
@@ -293,11 +294,20 @@ class CLIBaseCommand(BaseCommand):
 
 class ConnectRaid(CLIBaseCommand):
 
-    """The Create LD Command."""
+    """The Connect Raid Command."""
 
     def __init__(self, *args, **kwargs):
         super(ConnectRaid, self).__init__(*args, **kwargs)
         self.command = "connect %s" % self.ip
+
+
+class CheckConnect(CLIBaseCommand):
+
+    """The Check Connection Command."""
+
+    def __init__(self, *args, **kwargs):
+        super(CheckConnect, self).__init__(*args, **kwargs)
+        self.command = "lock"
 
 
 class CreateLD(CLIBaseCommand):
@@ -473,7 +483,8 @@ class ShowCommand(CLIBaseCommand):
         self.param_detail = "-l"
         self.default_type = "table"
         self.start_key = ""
-        self.show_noinit = ""
+        if self.cli_cache:
+            self.show_noinit = "-noinit"
 
     def _parser(self, content=None):
         """Parse Table or Detail format into dict.
