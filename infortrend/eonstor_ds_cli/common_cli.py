@@ -64,6 +64,10 @@ infortrend_esds_opts = [
                help='Infortrend raid channel ID list on Slot B '
                'for OpenStack usage. It is separated with comma. '
                'By default, it is the channel 0~7.'),
+    cfg.StrOpt('infortrend_iqn_prefix',
+               default='iqn.2002-10.com.infortrend',
+               help='Infortrend iqn prefix for iSCSI. '
+               'By default, it is iqn.2002-10.com.infortrend.'),
 ]
 
 infortrend_esds_extra_opts = [
@@ -168,7 +172,8 @@ class InfortrendCommon(object):
 
     constants = {
         'ISCSI_PORT': 3260,
-        'MAX_LUN_MAP_PER_CHL': 128
+        'MAX_LUN_MAP_PER_CHL': 128,
+        'JAVA_PATH': '/usr/bin/java',
     }
 
     provisioning_values = ['thin', 'full']
@@ -189,7 +194,8 @@ class InfortrendCommon(object):
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
         self.cli_timeout = self.configuration.infortrend_cli_timeout
-        self.iqn = 'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s'
+        self.iqn_prefix = self.configuration.infortrend_iqn_prefix
+        self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
         self.unmanaged_prefix = 'cinder-unmanaged-%s'
 
         if self.ip == '':
@@ -204,8 +210,8 @@ class InfortrendCommon(object):
         self.pid = None
         self.fd = None
         self._model_type = 'R'
-        self._replica_timeout = int(self.cli_timeout) * 60
-        self._raidcmd_timeout = int(self.cli_timeout) * 3
+        self._replica_timeout = self.cli_timeout * 60
+        self._raidcmd_timeout = self.cli_timeout * 2
 
         self.map_dict = {
             'slot_a': {},
@@ -267,23 +273,23 @@ class InfortrendCommon(object):
         )
 
     def _init_raidcmd(self):
-        java_path = '/usr/bin/java'
+        java_path = self.constants['JAVA_PATH']
         if not self.pid:
             self.pid, self.fd = os.forkpty()
             if self.pid == 0:
                 os.execv(java_path, [java_path, '-jar', self.path])
 
-            check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 15)
+            check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 10)
             if check_java_start == 'Raidcmd timeout.':
                 msg = _('Raidcmd failed to start. '
                         'Please check Java is installed.')
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
-        LOG.debug('Raidcmd has started.')
+        LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
 
     def _init_raid_connection(self):
         rc, _ = self._execute('ConnectRaid')
-        LOG.info(_LI('Raidcmd [%s:%s] start!' % (self.pid, self.fd)))
+        LOG.info(_LI('Raid [%s] is connected!' % self.ip))
 
     def _execute(self, cli_type, *args, **kwargs):
         LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
@@ -321,6 +327,12 @@ class InfortrendCommon(object):
             self._set_channel_id(channel_info, 'slot_a')
 
             self.map_dict_init = True
+
+        for controller in sorted(self.map_dict.keys()):
+            LOG.info(_LI('Controller: [%(controller)s] '
+                         'enable channels: %(ch)s'), {
+                             'controller': controller,
+                             'ch': sorted(self.map_dict[controller].keys())})
 
     @log_func
     def _update_map_info(self, multipath=False):
@@ -1104,12 +1116,13 @@ class InfortrendCommon(object):
             'ps', 'aux', '|', 'grep', 'java',
             '|', 'grep', str(self.pid),
             run_as_root=True)
-        if len(out) > 0:
-            return 'Active'
-        else:
-            self._init_raidcmd()
-            self._init_raid_connection()
-            return 'Reconnected'
+        status = 'Active'
+        for process in out.splitlines():
+            if 'defunct' in process:
+                self._init_raidcmd()
+                self._init_raid_connection()
+                status = 'Reconnected'
+        return status
 
     def _update_pools_stats(self):
         enable_specs_dict = self._get_enable_specs_on_array()
@@ -1361,12 +1374,6 @@ class InfortrendCommon(object):
     def _initialize_connection_fc(self, volume, connector):
         self._init_map_info()
         self._update_map_info(True)
-
-        for controller in sorted(self.map_dict.keys()):
-            LOG.info(_LI('Controller: [%(controller)s] '
-                         'enable channels: %(ch)s'), {
-                             'controller': controller,
-                             'ch': sorted(self.map_dict[controller].keys())})
 
         map_lun, target_wwpns, initiator_target_map = (
             self._do_fc_connection(volume, connector)
