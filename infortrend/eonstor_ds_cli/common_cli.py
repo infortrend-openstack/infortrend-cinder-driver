@@ -130,7 +130,6 @@ CLI_RC_FILTER = {
     'ShowReplica': {'error': _('Failed to get replica info.')},
     'ShowWWN': {'error': _('Failed to get wwn info.')},
     'ShowIQN': {'error': _('Failed to get iqn info.')},
-    'CheckConnect': {'error': _('Failed to check connection info.')},
     'ConnectRaid': {'error': _('Failed to connect to raid.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
     'ShellCommand': {'error': _('Failed to execute shell command.')},
@@ -314,6 +313,8 @@ class InfortrendCommon(object):
             if ('warning' in CLI_RC_FILTER[cli_type] and
                     rc in CLI_RC_FILTER[cli_type]['warning']):
                 LOG.warning(CLI_RC_FILTER[cli_type]['warning'][rc])
+            elif rc == 9:
+                self._init_raid_connection()
             else:
                 msg = CLI_RC_FILTER[cli_type]['error']
                 LOG.error(msg)
@@ -1097,7 +1098,6 @@ class InfortrendCommon(object):
             'vendor: %(vendor_name)s, '
             'model_type: %(model_type)s, '
             'system_id: %(system_id)s, '
-            'raidcmd: %(raidcmd_status)s, '
             'driver_version: %(driver_version)s, '
             'storage_protocol: %(storage_protocol)s.'), self._volume_stats)
 
@@ -1114,19 +1114,9 @@ class InfortrendCommon(object):
             'storage_protocol': self.protocol,
             'model_type': self._model_type,
             'system_id': self._get_system_id(self.ip),
-            'raidcmd_status': self._get_raidcmd_stat(),
             'pools': self._update_pools_stats(),
         }
         self._volume_stats = data
-
-    def _get_raidcmd_stat(self):
-        rc, out = self._execute('CheckConnect')
-        LOG.debug('RETURN VALUE rc:[%s] out:[%s]' % (rc, out))
-        if rc == 0:
-            return 'Active'
-        else:
-            self._init_raid_connection()
-            return 'Reconnected'
 
     def _update_pools_stats(self):
         enable_specs_dict = self._get_enable_specs_on_array()

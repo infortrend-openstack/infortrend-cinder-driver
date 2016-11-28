@@ -77,7 +77,7 @@ def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
             content += output
         if content.find(cmd_pattern) >= 0:
             break
-        if int(time.time()) - start_time > raidcmd_timeout:
+        elif int(time.time()) - start_time > raidcmd_timeout:
             content = 'Raidcmd timeout.'
             LOG.error(_LE('Raidcmd timeout.'))
             break
@@ -284,12 +284,12 @@ class CLIBaseCommand(BaseCommand):
     def _parse_return(self, content_lines):
         """Get the end of command line result."""
         rc = 0
-        if content_lines == 'Raidcmd timeout.':
-            rc = -1
+        if content_lines[0] == 'Raidcmd timeout.':
+            rc = -3
             return_cli_result = content_lines
         elif len(content_lines) < 4:
-            rc = -2
-            return_cli_result = 'Raidcmd output error.'
+            rc = -4
+            return_cli_result = 'Raidcmd output error: %s' % content_lines
         else:
             return_value = content_lines[-3].strip().split(' ', 1)[1]
             return_cli_result = content_lines[-4].strip().split(' ', 1)[1]
@@ -305,15 +305,6 @@ class ConnectRaid(CLIBaseCommand):
     def __init__(self, *args, **kwargs):
         super(ConnectRaid, self).__init__(*args, **kwargs)
         self.command = "connect %s" % self.ip
-
-
-class CheckConnect(CLIBaseCommand):
-
-    """The Check Connection Command."""
-
-    def __init__(self, *args, **kwargs):
-        super(CheckConnect, self).__init__(*args, **kwargs)
-        self.command = "lock"
 
 
 class CreateLD(CLIBaseCommand):
@@ -605,6 +596,7 @@ class ShowLV(ShowCommand):
         super(ShowLV, self).__init__(*args, **kwargs)
         self.command = "show lv"
         self.start_key = "ID"
+        self.show_noinit = ""
 
     def detect_table_start_index(self, content):
         if "tier" in self.parameters:
@@ -774,6 +766,7 @@ class ShowReplica(ShowCommand):
     def __init__(self, *args, **kwargs):
         super(ShowReplica, self).__init__(*args, **kwargs)
         self.command = 'show replica'
+        self.show_noinit = ""
 
 
 class ShowWWN(ShowCommand):
