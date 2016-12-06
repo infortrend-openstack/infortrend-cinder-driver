@@ -313,9 +313,9 @@ class InfortrendCommon(object):
             if ('warning' in CLI_RC_FILTER[cli_type] and
                     rc in CLI_RC_FILTER[cli_type]['warning']):
                 LOG.warning(CLI_RC_FILTER[cli_type]['warning'][rc])
-            elif rc == 9:
-                self._init_raid_connection()
             else:
+                if rc == 9:
+                    self._init_raid_connection()
                 msg = CLI_RC_FILTER[cli_type]['error']
                 LOG.error(msg)
                 raise exception.InfortrendCliException(
