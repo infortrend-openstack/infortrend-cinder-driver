@@ -194,7 +194,6 @@ class InfortrendCommon(object):
         self.configuration.append_config_values(infortrend_esds_opts)
         self.configuration.append_config_values(infortrend_esds_extra_opts)
 
-        self.iscsi_multipath = self.configuration.use_multipath_for_image_xfer
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
@@ -768,7 +767,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _get_mapping_info(self, multipath):
-        if self.iscsi_multipath or multipath:
+        if multipath:
             return self._get_mapping_info_with_mpio()
         else:
             return self._get_mapping_info_with_normal()
@@ -1642,7 +1641,7 @@ class InfortrendCommon(object):
             'volume_id': volume['id'],
         }
 
-        if self.iscsi_multipath or multipath:
+        if multipath:
             properties['target_iqns'] = iqns
             properties['target_portals'] = portals
             properties['target_luns'] = luns
