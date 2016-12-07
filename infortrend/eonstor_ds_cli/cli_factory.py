@@ -77,7 +77,7 @@ def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
             content += output
         if content.find(cmd_pattern) >= 0:
             break
-        elif int(time.time()) - start_time > raidcmd_timeout:
+        if int(time.time()) - start_time > raidcmd_timeout:
             content = 'Raidcmd timeout.'
             LOG.error(_LE('Raidcmd timeout.'))
             break

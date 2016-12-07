@@ -338,10 +338,10 @@ class InfortrendCommon(object):
             self.map_dict_init = True
 
         for controller in sorted(self.map_dict.keys()):
-            LOG.info(_LI('Controller: [%(controller)s] '
-                         'enable channels: %(ch)s'), {
-                             'controller': controller,
-                             'ch': sorted(self.map_dict[controller].keys())})
+            LOG.debug('Controller: [%(controller)s] '
+                      'enable channels: %(ch)s', {
+                          'controller': controller,
+                          'ch': sorted(self.map_dict[controller].keys())})
 
     @log_func
     def _update_map_info(self, multipath=False):
@@ -1141,7 +1141,7 @@ class InfortrendCommon(object):
                 total_capacity_gb = round(mi_to_gi(total_space), 2)
                 free_capacity_gb = round(mi_to_gi(available_space), 2)
 
-                new_pool = {
+                _pool = {
                     'pool_name': pool['Name'],
                     'pool_id': pool['ID'],
                     'total_capacity_gb': total_capacity_gb,
@@ -1157,12 +1157,13 @@ class InfortrendCommon(object):
                         'max_over_subscription_ratio')
                     provisioned_space = self._get_provisioned_space(
                         pool['ID'], part_list)
-                    provisioned_capacity_gb = round(mi_to_gi(provisioned_space), 2)
-                    new_pool['provisioned_capacity_gb'] = provisioned_capacity_gb
-                    new_pool['max_over_subscription_ratio'] = provisioning_factor
-                    new_pool['thin_provisioning_support'] = provisioning_support
+                    provisioned_capacity_gb = round(
+                        mi_to_gi(provisioned_space), 2)
+                    _pool['provisioned_capacity_gb'] = provisioned_capacity_gb
+                    _pool['max_over_subscription_ratio'] = provisioning_factor
+                    _pool['thin_provisioning_support'] = provisioning_support
 
-                pools.append(new_pool)
+                pools.append(_pool)
 
         return pools
 
@@ -1351,7 +1352,8 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
-        LOG.debug('Connector: %s' % connector)
+        LOG.debug('Connector_info: %s' % connector)
+
         @lockutils.synchronized(
             '%s-connection' % system_id, 'infortrend-', True)
         def lock_initialize_conn():
