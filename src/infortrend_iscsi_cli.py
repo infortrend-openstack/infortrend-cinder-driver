@@ -36,6 +36,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration bugs #1481968
+        1.0.5 - Improve driver speed
     """
 
     # ThirdPartySystems wiki page
