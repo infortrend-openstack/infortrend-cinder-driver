@@ -73,6 +73,10 @@ infortrend_esds_opts = [
                 help='Infortrend Raidcmd cache for show command. '
                 'Disable if Openstack HA controllers are configured. '
                 'By default, it is disabled.'),
+    cfg.StrOpt('java_path',
+               default='/usr/bin/java',
+               help='The java absolute path. '
+               'By default, it is at /usr/bin/java'),
 ]
 
 infortrend_esds_extra_opts = [
@@ -179,7 +183,6 @@ class InfortrendCommon(object):
     constants = {
         'ISCSI_PORT': 3260,
         'MAX_LUN_MAP_PER_CHL': 128,
-        'JAVA_PATH': '/usr/bin/java',
     }
 
     provisioning_values = ['thin', 'full']
@@ -203,6 +206,7 @@ class InfortrendCommon(object):
         self.iqn_prefix = self.configuration.infortrend_iqn_prefix
         self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
         self.unmanaged_prefix = 'cinder-unmanaged-%s'
+        self.java_path = self.configuration.java_path
 
         if self.ip == '':
             msg = _('san_ip is not set.')
@@ -280,11 +284,10 @@ class InfortrendCommon(object):
         )
 
     def _init_raidcmd(self):
-        java_path = self.constants['JAVA_PATH']
         if not self.pid:
             self.pid, self.fd = os.forkpty()
             if self.pid == 0:
-                os.execv(java_path, [java_path, '-jar', self.path])
+                os.execv(self.java_path, [self.java_path, '-jar', self.path])
 
             check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 10)
             if check_java_start == 'Raidcmd timeout.':
@@ -298,23 +301,24 @@ class InfortrendCommon(object):
         rc, _ = self._execute('ConnectRaid')
         LOG.info(_LI('Raid [%s] is connected!' % self.ip))
 
+    def _execute_command(self, cli_type, *args, **kwargs):
+        command = getattr(cli, cli_type)
+        return command(self.cli_conf).execute(*args, **kwargs)
+
     def _execute(self, cli_type, *args, **kwargs):
         LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
 
         @lockutils.synchronized('raidcmd-%s' % self.pid, 'infortrend-', False)
-        def _execute_command(cli_type, *args, **kwargs):
-            command = getattr(cli, cli_type)
-            return command(self.cli_conf).execute(*args, **kwargs)
+        def _lock_raidcmd(cli_type, *args, **kwargs):
+            return self._execute_command(cli_type, *args, **kwargs)
 
-        rc, out = _execute_command(cli_type, *args, **kwargs)
+        rc, out = _lock_raidcmd(cli_type, *args, **kwargs)
 
         if rc != 0:
             if ('warning' in CLI_RC_FILTER[cli_type] and
                     rc in CLI_RC_FILTER[cli_type]['warning']):
                 LOG.warning(CLI_RC_FILTER[cli_type]['warning'][rc])
             else:
-                if rc == 9:
-                    self._init_raid_connection()
                 msg = CLI_RC_FILTER[cli_type]['error']
                 LOG.error(msg)
                 raise exception.InfortrendCliException(
@@ -1149,6 +1153,7 @@ class InfortrendCommon(object):
                     'reserved_percentage': 0,
                     'QoS_support': False,
                     'thick_provisioning_support': True,
+                    'thin_provisioning_support': provisioning_support,
                     'infortrend_provisioning': provisioning,
                 }
 
@@ -1161,7 +1166,6 @@ class InfortrendCommon(object):
                         mi_to_gi(provisioned_space), 2)
                     _pool['provisioned_capacity_gb'] = provisioned_capacity_gb
                     _pool['max_over_subscription_ratio'] = provisioning_factor
-                    _pool['thin_provisioning_support'] = provisioning_support
 
                 pools.append(_pool)
 
