@@ -73,6 +73,10 @@ infortrend_esds_opts = [
                 help='Infortrend Raidcmd cache for show command. '
                 'Disable if Openstack HA controllers are configured. '
                 'By default, it is disabled.'),
+    cfg.StrOpt('java_path',
+               default='/usr/bin/java',
+               help='The java absolute path. '
+               'By default, it is at /usr/bin/java'),
 ]
 
 infortrend_esds_extra_opts = [
@@ -179,7 +183,6 @@ class InfortrendCommon(object):
     constants = {
         'ISCSI_PORT': 3260,
         'MAX_LUN_MAP_PER_CHL': 128,
-        'JAVA_PATH': '/usr/bin/java',
     }
 
     provisioning_values = ['thin', 'full']
@@ -203,6 +206,7 @@ class InfortrendCommon(object):
         self.iqn_prefix = self.configuration.infortrend_iqn_prefix
         self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
         self.unmanaged_prefix = 'cinder-unmanaged-%s'
+        self.java_path = self.configuration.java_path
 
         if self.ip == '':
             msg = _('san_ip is not set.')
@@ -280,11 +284,10 @@ class InfortrendCommon(object):
         )
 
     def _init_raidcmd(self):
-        java_path = self.constants['JAVA_PATH']
         if not self.pid:
             self.pid, self.fd = os.forkpty()
             if self.pid == 0:
-                os.execv(java_path, [java_path, '-jar', self.path])
+                os.execv(self.java_path, [self.java_path, '-jar', self.path])
 
             check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 10)
             if check_java_start == 'Raidcmd timeout.':
