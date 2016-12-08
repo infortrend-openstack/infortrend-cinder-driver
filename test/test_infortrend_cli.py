@@ -316,34 +316,56 @@ class InfortrendCLITestData(object):
         'thin_provisioning_support': False,
     }
 
-    test_pools = [{
+    test_pools_full = [{
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[0],
         'total_capacity_gb': round(857982.0 / 1024, 2),
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
-        'max_over_subscription_ratio': 20.0,
-        'thin_provisioning_support': False,
         'thick_provisioning_support': True,
-        'provisioned_capacity_gb':
-            round((400) / 1024, 2),
+        'thin_provisioning_support': False,
         'infortrend_provisioning': 'full',
     }]
 
-    test_volume_states = {
+    test_volume_states_full = {
         'volume_backend_name': 'infortrend_backend_1',
         'vendor_name': 'Infortrend',
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
         'model_type': 'R',
         'system_id': fake_system_id[0],
-        'pools': test_pools,
+        'pools': test_pools_full,
+    }
+
+    test_pools_thin = [{
+        'pool_name': 'LV-1',
+        'pool_id': fake_lv_id[0],
+        'total_capacity_gb': round(857982.0 / 1024, 2),
+        'free_capacity_gb': round(841978.0 / 1024, 2),
+        'reserved_percentage': 0,
+        'QoS_support': False,
+        'thick_provisioning_support': True,
+        'thin_provisioning_support': True,
+        'infortrend_provisioning': 'thin',
+        'provisioned_capacity_gb':
+            round((400) / 1024, 2),
+        'max_over_subscription_ratio': 20.0,
+    }]
+
+    test_volume_states_thin = {
+        'volume_backend_name': 'infortrend_backend_1',
+        'vendor_name': 'Infortrend',
+        'driver_version': '99.99',
+        'storage_protocol': 'iSCSI',
+        'model_type': 'R',
+        'system_id': fake_system_id[0],
+        'pools': test_pools_thin,
     }
 
     test_host = {
         'host': 'infortrend-server1@backend_1',
-        'capabilities': test_volume_states,
+        'capabilities': test_volume_states_thin,
     }
 
     test_migrate_volume_states = {
@@ -421,29 +443,29 @@ class InfortrendCLITestData(object):
 
     def get_fake_cli_failed(self):
         return """
-CLI: Failed
-Return: 0x0001
-
+ift cli command
 CLI: No selected device
 Return: 0x000c
+
+RAIDCmd:>
 """
 
     def get_fake_cli_failed_with_network(self):
         return """
-CLI: Failed
-Return: 0x0001
-
+ift cli command
 CLI: No network
 Return: 0x000b
+
+RAIDCmd:>
 """
 
     def get_fake_cli_succeed(self):
         return """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+ift cli command
 CLI: Successful: 0 mapping(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
 
     def get_test_show_empty_list(self):
@@ -478,8 +500,7 @@ Return: 0x0000
 
     def get_fake_show_snapshot(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
+show si
 \/\/\/-
 \
 /
@@ -495,6 +516,8 @@ Return: 0x0000
 
 CLI: Successful: 2 snapshot image(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_snapshot_id[0],
                       self.fake_partition_id[0],
@@ -539,9 +562,7 @@ Return: 0x0000
 
     def get_fake_show_snapshot_detail(self):
         msg = """
-CLI: Successful: Device(UID:25090, Name:, Model:DS 1016RE) selected.
-Return: 0x0000
-
+show si -l
  ID: %s
  Index: 1
  Name: ---
@@ -559,6 +580,8 @@ Return: 0x0000
 
 CLI: Successful: 1 snapshot image(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_snapshot_id[0],
                       self.fake_partition_id[0],
@@ -618,9 +641,7 @@ Return: 0x0000
 
     def get_fake_show_net(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show net
  ID  MAC           Mode  IPv4            Mode      IPv6  Slot
 ---------------------------------------------------------------
  1   10D02380DEEC  DHCP  %s              Disabled  ---   slotA
@@ -633,6 +654,8 @@ Return: 0x0000
 
 CLI: Successful: 2 record(s) found
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_data_port_ip[0], self.fake_data_port_ip[1],
                       self.fake_data_port_ip[2], self.fake_data_port_ip[3],
@@ -667,9 +690,7 @@ Return: 0x0000
 
     def get_fake_show_net_detail(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show net -l
  ID: 1
  MAC: 00D023877124
  IPv4-mode: DHCP
@@ -696,6 +717,8 @@ Return: 0x0000
 
 CLI: Successful: 3 record(s) found
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg
 
@@ -728,9 +751,7 @@ Return: 0x0000
 
     def get_fake_show_partition(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show part
  ID  Name         LV-ID  Size   Used   Min-reserve
 ---------------------------------------------------
  %s  %s           %s     200    200    200
@@ -738,6 +759,8 @@ Return: 0x0000
 
 CLI: Successful: 3 partition(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_partition_id[0],
                       self.fake_volume_id[0].replace('-', ''),
@@ -829,9 +852,7 @@ Return: 0x0000
 
     def get_fake_show_partition_detail(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show part -l
  ID: %s
  Name: %s
  LV-ID: %s
@@ -862,6 +883,8 @@ Return: 0x0000
 
 CLI: Successful: 3 partition(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_partition_id[0],
                       self.fake_volume_id[0].replace('-', ''),
@@ -1063,9 +1086,7 @@ Return: 0x0000
 
     def get_fake_show_replica_detail(self):
         msg = """
- CLI: Successful: Device(UID:deec, Name:, Model:DS S16F-R2852-6) selected.
-Return: 0x0000
-
+show replica -l
  Pair-ID: 4BF246E26966F015
  Name: Cinder-Snapshot
  Source-Device: DEEC
@@ -1155,6 +1176,8 @@ Return: 0x0000
 
 CLI: Successful: 3 replication job(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_partition_id[2],
                       self.fake_partition_id[3],
@@ -1182,15 +1205,15 @@ Return: 0x0000
 
     def get_fake_show_lv(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show lv
  ID  Name  LD-amount  Size       Available  Progress  Status
 --------------------------------------------------------------
  %s  LV-1  1          857982 MB  841978 MB  ---       On-line
 
 CLI: Successful: 1 Logical Volumes(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % self.fake_lv_id[0]
 
@@ -1209,9 +1232,7 @@ Return: 0x0000
 
     def get_fake_show_lv_detail(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show lv -l
  ID: %s
  Name: LV-1
  LD-amount: 1
@@ -1224,6 +1245,8 @@ Return: 0x0000
 
 CLI: Successful: 1 Logical Volumes(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % self.fake_lv_id[0]
 
@@ -1267,9 +1290,7 @@ Return: 0x0000
 
     def get_fake_show_lv_tier(self):
         msg = """
-CLI: Successful: Device(UID:deec, Name:, Model:DS S16F-R2852-6) selected.
-Return: 0x0000
-
+show lv tier
  LV-Name  LV-ID  Tier  Size       Used          Data Service   Reserved Ratio
 ------------------------------------------------------------------------------
  TierLV   %s     0     418.93 GB  10 GB(2.4%%)  0 MB(0.0%%)    10.0%%
@@ -1277,6 +1298,8 @@ Return: 0x0000
 
 CLI: Successful: 2 lv tiering(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_lv_id[0],
                       self.fake_lv_id[0])
@@ -1295,15 +1318,15 @@ Return: 0x0000
 
     def get_fake_show_device(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show device
  Index  ID     Model  Name  Connected-IP  JBOD-ID  Capacity  Service-ID
 ------------------------------------------------------------------------
  0*     %s     %s     ---   %s            N/A      1.22 TB   8445676
 
 CLI: Successful: 1 device(s) found
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_system_id[0],
                       self.fake_model[0],
@@ -1554,9 +1577,7 @@ Return: 0x0000
 
     def get_fake_show_channel(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show ch
  Ch  Mode   Type     defClock  curClock  Width  ID   MCS
 ---------------------------------------------------------
  0   Host   FIBRE    Auto      ---       ---    112  N/A
@@ -1568,6 +1589,8 @@ Return: 0x0000
 
 CLI: Successful: : 6 channel(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg
 
@@ -1699,9 +1722,7 @@ Return: 0x0000
 
     def get_fake_show_channel_r_model(self):
         msg = """
-CLI: Successful: Device(UID:deec, Name:, Model:DS S16F-R2852-6) selected.
-Return: 0x0000
-
+show ch
  Ch    Mode   Type     defClock  curClock  Width  AID  BID  MCS
 ----------------------------------------------------------------
  0     Host   FIBRE    Auto      ---       ---    112  113  N/A
@@ -1713,6 +1734,8 @@ Return: 0x0000
 
 CLI: Successful: : 9 channel(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg
 
@@ -1845,9 +1868,7 @@ Return: 0x0000
 
     def get_fake_show_map(self):
         msg = """
-CLI: Successful: Device(UID:77124, Name:, Model:DS S12F-G2852-6) selected.
-Return: 0x0000
-
+show map
  Ch  Target  LUN  Media  Name    ID  Host-ID
 -----------------------------------------------------------
  1   0       0    PART   Part-1  %s  %s
@@ -1856,6 +1877,8 @@ Return: 0x0000
 
 CLI: Successful: 3 mapping(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_partition_id[0],
                       self.fake_initiator_iqn[0],
@@ -1864,7 +1887,7 @@ Return: 0x0000
                       self.fake_partition_id[0],
                       self.fake_initiator_iqn[0])
 
-    def get_test_show_license(self):
+    def get_test_show_license_full(self):
         return (0, {
             'Local Volume Copy': {
                 'Support': False,
@@ -1916,11 +1939,61 @@ Return: 0x0000
             }
         })
 
+    def get_test_show_license_thin(self):
+        return (0, {
+            'Local Volume Copy': {
+                'Support': False,
+                'Amount': '8/256',
+            },
+            'Synchronous Remote Mirror': {
+                'Support': False,
+                'Amount': '8/256',
+            },
+            'Snapshot': {
+                'Support': False,
+                'Amount': '1024/16384',
+            },
+            'Self-Encryption Drives': {
+                'Support': False,
+                'Amount': '---',
+            },
+            'Compression': {
+                'Support': False,
+                'Amount': '---',
+            },
+            'Local volume Mirror': {
+                'Support': False,
+                'Amount': '8/256',
+            },
+            'Storage Tiering': {
+                'Support': False,
+                'Amount': '---',
+            },
+            'Asynchronous Remote Mirror': {
+                'Support': False,
+                'Amount': '8/256',
+            },
+            'Scale-out': {
+                'Support': False,
+                'Amount': 'Not Support',
+            },
+            'Thin Provisioning': {
+                'Support': True,
+                'Amount': '---',
+            },
+            'Max JBOD': {
+                'Support': False,
+                'Amount': '15',
+            },
+            'EonPath': {
+                'Support': False,
+                'Amount': '---',
+            }
+        })
+
     def get_fake_show_license(self):
         msg = """
-CLI: Successful: Device(UID:deec, Name:, Model:DS S16F-R2852-6) selected.
-Return: 0x0000
-
+show license
  License                     Amount(Partition/Subsystem)  Expired
 ------------------------------------------------------------------
  EonPath                     ---                          Expired
@@ -1938,6 +2011,8 @@ Return: 0x0000
 
 CLI: Successful
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg
 
@@ -2002,9 +2077,7 @@ Return: 0x0000
 
     def get_fake_show_wwn(self):
         msg = """
-CLI: Successful: Device(UID:deec, Name:, Model:DS S16F-R2852-6) selected.
-Return: 0x0000
-
+show wwn
 WWN entries in controller for host channels:
  CH  ID       WWNN  WWPN
 -------------------------------------------------
@@ -2015,6 +2088,8 @@ WWN entries in controller for host channels:
 
 CLI: Successful
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_target_wwnns[0], self.fake_target_wwpns[0],
                       self.fake_target_wwnns[1], self.fake_target_wwpns[2],
@@ -2035,9 +2110,7 @@ Return: 0x0000
 
     def get_fake_show_iqn(self):
         msg = """
-CLI: Successful: Device(UID:deec, Name:, Model:DS S16F-R2852-6) selected.
-Return: 0x0000
-
+show iqn
 Detected host IQN:
  IQN
 ----------------------------------------
@@ -2057,6 +2130,8 @@ List of initiator IQN(s):
 
 CLI: Successful: 1 initiator iqn(s) shown
 Return: 0x0000
+
+RAIDCmd:>
 """
         return msg % (self.fake_initiator_iqn[0],
                       self.fake_initiator_iqn[0][-16:],
@@ -2090,7 +2165,7 @@ class InfortrendCLITestCase(test.TestCase):
                    'ShowDisk', 'ShowMap',
                    'ShowNet', 'ShowLicense',
                    'ShowWWN', 'ShowReplica',
-                   'ShowIQN']
+                   'ShowIQN', 'ConnectRaid']
 
     def __init__(self, *args, **kwargs):
         super(InfortrendCLITestCase, self).__init__(*args, **kwargs)
@@ -2102,6 +2177,10 @@ class InfortrendCLITestCase(test.TestCase):
             'password': '',
             'ip': '',
             'cli_retry_time': 1,
+            'raidcmd_timeout': 60,
+            'cli_cache': False,
+            'pid': 12345,
+            'fd': 10,
         }
         cli = cli(cli_conf)
 
@@ -2115,6 +2194,10 @@ class InfortrendCLITestCase(test.TestCase):
             'password': '',
             'ip': '',
             'cli_retry_time': 5,
+            'raidcmd_timeout': 60,
+            'cli_cache': False,
+            'pid': 12345,
+            'fd': 10,
         }
         cli = cli(cli_conf)
 

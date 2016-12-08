@@ -298,23 +298,24 @@ class InfortrendCommon(object):
         rc, _ = self._execute('ConnectRaid')
         LOG.info(_LI('Raid [%s] is connected!' % self.ip))
 
+    def _execute_command(self, cli_type, *args, **kwargs):
+        command = getattr(cli, cli_type)
+        return command(self.cli_conf).execute(*args, **kwargs)
+
     def _execute(self, cli_type, *args, **kwargs):
         LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
 
         @lockutils.synchronized('raidcmd-%s' % self.pid, 'infortrend-', False)
-        def _execute_command(cli_type, *args, **kwargs):
-            command = getattr(cli, cli_type)
-            return command(self.cli_conf).execute(*args, **kwargs)
+        def _lock_raidcmd(cli_type, *args, **kwargs):
+            return self._execute_command(cli_type, *args, **kwargs)
 
-        rc, out = _execute_command(cli_type, *args, **kwargs)
+        rc, out = _lock_raidcmd(cli_type, *args, **kwargs)
 
         if rc != 0:
             if ('warning' in CLI_RC_FILTER[cli_type] and
                     rc in CLI_RC_FILTER[cli_type]['warning']):
                 LOG.warning(CLI_RC_FILTER[cli_type]['warning'][rc])
             else:
-                if rc == 9:
-                    self._init_raid_connection()
                 msg = CLI_RC_FILTER[cli_type]['error']
                 LOG.error(msg)
                 raise exception.InfortrendCliException(
@@ -1149,6 +1150,7 @@ class InfortrendCommon(object):
                     'reserved_percentage': 0,
                     'QoS_support': False,
                     'thick_provisioning_support': True,
+                    'thin_provisioning_support': provisioning_support,
                     'infortrend_provisioning': provisioning,
                 }
 
@@ -1161,7 +1163,6 @@ class InfortrendCommon(object):
                         mi_to_gi(provisioned_space), 2)
                     _pool['provisioned_capacity_gb'] = provisioned_capacity_gb
                     _pool['max_over_subscription_ratio'] = provisioning_factor
-                    _pool['thin_provisioning_support'] = provisioning_support
 
                 pools.append(_pool)
 

@@ -28,13 +28,13 @@ SUCCEED = (0, '')
 FAKE_ERROR_RETURN = (-1, '')
 
 
-class InfortrendTestCass(test.TestCase):
+class InfortrendTestCase(test.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(InfortrendTestCass, self).__init__(*args, **kwargs)
+        super(InfortrendTestCase, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        super(InfortrendTestCass, self).setUp()
+        super(InfortrendTestCase, self).setUp()
         self.cli_data = test_infortrend_cli.InfortrendCLITestData()
 
         self.configuration = configuration.Configuration(None)
@@ -85,7 +85,7 @@ class InfortrendTestCass(test.TestCase):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
 
 
-class InfortrendFCCommonTestCase(InfortrendTestCass):
+class InfortrendFCCommonTestCase(InfortrendTestCase):
 
     def __init__(self, *args, **kwargs):
         super(InfortrendFCCommonTestCase, self).__init__(*args, **kwargs)
@@ -103,6 +103,8 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.configuration.infortrend_slots_b_channels_id = '0,5'
         self.configuration.infortrend_cli_timeout = 30
 
+    @mock.patch.object(
+        common_cli.InfortrendCommon, '_init_raid_connection', mock.Mock())
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('FC', configuration=conf)
 
@@ -156,6 +158,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
@@ -177,6 +180,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -202,6 +206,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -234,6 +239,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
         properties = self.driver.initialize_connection(
@@ -276,6 +282,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
         self.driver.fc_lookup_service = mock.Mock()
@@ -326,6 +333,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
         self.driver.fc_lookup_service = mock.Mock()
@@ -377,6 +385,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': self.cli_data.get_test_show_map(),
             'CreateMap': SUCCEED,
             'ShowWWN': self.cli_data.get_test_show_wwn_with_diff_target_id(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
@@ -423,6 +432,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': [self.cli_data.get_test_show_map_fc(),
                         self.cli_data.get_test_show_empty_list()],
             'ShowWWN': SUCCEED,
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
@@ -453,6 +463,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
             'ShowMap': [self.cli_data.get_test_show_map_fc(),
                         self.cli_data.get_test_show_empty_list()],
             'ShowWWN': self.cli_data.get_test_show_wwn_with_g_model(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
         self.driver.map_dict = {
@@ -495,6 +506,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         mock_commands = {
             'DeleteMap': SUCCEED,
             'ShowMap': self.cli_data.get_show_map_with_lun_map_on_zoning(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
         self.driver.map_dict = {
@@ -523,7 +535,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCass):
         self.assertEqual(expect_conn_info, conn_info)
 
 
-class InfortrendiSCSICommonTestCase(InfortrendTestCass):
+class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
     def __init__(self, *args, **kwargs):
         super(InfortrendiSCSICommonTestCase, self).__init__(*args, **kwargs)
@@ -540,6 +552,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.configuration.infortrend_slots_a_channels_id = '1,2,4'
         self.configuration.infortrend_slots_b_channels_id = '1,2,4'
 
+    @mock.patch.object(
+        common_cli.InfortrendCommon, '_init_raid_connection', mock.Mock())
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('iSCSI', configuration=conf)
 
@@ -1066,14 +1080,33 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         self.assertDictMatch(test_model_update, model_update)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
-    def test_get_volume_stats(self):
+    def test_get_volume_stats_full(self):
 
-        test_volume_states = self.cli_data.test_volume_states
+        test_volume_states = self.cli_data.test_volume_states_full
 
         mock_commands = {
-            'ShowLicense': self.cli_data.get_test_show_license(),
+            'ShowLicense': self.cli_data.get_test_show_license_full(),
+            'ShowLV': self.cli_data.get_test_show_lv(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
+        }
+        self._driver_setup(mock_commands)
+        self.driver.VERSION = '99.99'
+        self.driver.system_id = self.cli_data.fake_system_id[0]
+
+        volume_states = self.driver.get_volume_stats(True)
+
+        self.assertDictMatch(test_volume_states, volume_states)
+
+    @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
+    def test_get_volume_stats_thin(self):
+
+        test_volume_states = self.cli_data.test_volume_states_thin
+
+        mock_commands = {
+            'ShowLicense': self.cli_data.get_test_show_license_thin(),
             'ShowLV': self.cli_data.get_test_show_lv(),
             'ShowPartition': self.cli_data.get_test_show_partition_detail(),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
         self.driver.VERSION = '99.99'
@@ -1086,7 +1119,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
     def test_get_volume_stats_fail(self):
 
         mock_commands = {
-            'ShowLicense': self.cli_data.get_test_show_license(),
+            'ShowLicense': self.cli_data.get_test_show_license_thin(),
             'ShowLV': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
@@ -1340,6 +1373,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
                 test_target_iqn, test_target_protal),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
@@ -1377,6 +1411,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
                 test_target_iqn, test_target_protal),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
@@ -1413,6 +1448,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
                 test_target_iqn, test_target_protal),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
@@ -1433,6 +1469,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowIQN': self.cli_data.get_test_show_iqn(),
             'CreateMap': FAKE_ERROR_RETURN,
             'ShowNet': SUCCEED,
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
@@ -1485,6 +1522,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
                 test_target_iqn, test_target_portal),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -1520,6 +1558,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowNet': self.cli_data.get_test_show_net(),
             'ExecuteCommand': self.cli_data.get_fake_discovery(
                 test_target_iqn, test_target_portal),
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands, configuration)
 
@@ -1598,6 +1637,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
             'ShowMap': [self.cli_data.get_test_show_map(),
                         self.cli_data.get_test_show_empty_list()],
             'DeleteIQN': SUCCEED,
+            'ShowDevice': self.cli_data.get_test_show_device(),
         }
         self._driver_setup(mock_commands)
 
