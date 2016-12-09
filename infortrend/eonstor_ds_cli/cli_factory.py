@@ -17,6 +17,8 @@ Infortrend basic CLI factory.
 """
 
 import abc
+import os
+import time
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
@@ -60,8 +62,25 @@ def retry_cli(func):
     return inner
 
 
-def util_execute(command_line):
-    content, err = utils.execute(command_line, shell=True)
+def os_execute(fd, raidcmd_timeout, command_line):
+    os.write(fd, command_line)
+    return os_read(fd, 8192, 'RAIDCmd:>', raidcmd_timeout)
+
+
+def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
+    content = ''
+    start_time = int(time.time())
+    while True:
+        time.sleep(0.5)
+        output = os.read(fd, buffer_size)
+        if len(output) > 0:
+            content += output
+        if content.find(cmd_pattern) >= 0:
+            break
+        if int(time.time()) - start_time > raidcmd_timeout:
+            content = 'Raidcmd timeout.'
+            LOG.error(_LE('Raidcmd timeout.'))
+            break
     return content
 
 
@@ -126,9 +145,35 @@ class BaseCommand(object):
         pass
 
 
+class ShellCommand(BaseCommand):
+
+    """The Common ShellCommand."""
+
+    def __init__(self, cli_conf):
+        super(ShellCommand, self).__init__()
+        self.cli_retry_time = cli_conf.get('cli_retry_time')
+
+    @retry_cli
+    def execute(self, *args, **kwargs):
+        commands = ' '.join(args)
+        result = None
+        rc = 0
+        try:
+            result, err = utils.execute(commands, shell=True)
+        except processutils.ProcessExecutionError as pe:
+            rc = pe.exit_code
+            result = pe.stdout
+            result = result.replace('\n', '\\n')
+            LOG.error(_LE(
+                'Error on execute command. '
+                'Error code: %(exit_code)d Error msg: %(result)s'), {
+                    'exit_code': pe.exit_code, 'result': result})
+        return rc, result
+
+
 class ExecuteCommand(BaseCommand):
 
-    """The Common ExecuteCommand."""
+    """The Cinder FilterCommand."""
 
     def __init__(self, cli_conf):
         super(ExecuteCommand, self).__init__()
@@ -157,13 +202,16 @@ class CLIBaseCommand(BaseCommand):
 
     def __init__(self, cli_conf):
         super(CLIBaseCommand, self).__init__()
-        self.java = "java -jar"
-        self.execute_file = cli_conf.get('path')
         self.ip = cli_conf.get('ip')
         self.password = cli_conf.get('password')
         self.cli_retry_time = cli_conf.get('cli_retry_time')
+        self.raidcmd_timeout = cli_conf.get('raidcmd_timeout')
+        self.cli_cache = cli_conf.get('cli_cache')
+        self.pid = cli_conf.get('pid')
+        self.fd = cli_conf.get('fd')
         self.command = ""
         self.parameters = ()
+        self.show_noinit = ""
         self.command_line = ""
 
     def _generate_command(self, parameters):
@@ -175,12 +223,10 @@ class CLIBaseCommand(BaseCommand):
             parameters_line = 'password=%s %s' % (
                 self.password, parameters_line)
 
-        self.command_line = "{0} {1} {2} {3} {4}".format(
-            self.java,
-            self.execute_file,
-            self.ip,
+        self.command_line = "{0} {1} {2}\n".format(
             self.command,
-            parameters_line)
+            parameters_line,
+            self.show_noinit)
 
         return self.command_line
 
@@ -228,7 +274,8 @@ class CLIBaseCommand(BaseCommand):
         return rc, result
 
     def _execute(self, command_line):
-        return util_execute(command_line)
+        return os_execute(
+            self.fd, self.raidcmd_timeout, command_line)
 
     def set_ip(self, ip):
         """Set the Raid's ip."""
@@ -237,12 +284,27 @@ class CLIBaseCommand(BaseCommand):
     def _parse_return(self, content_lines):
         """Get the end of command line result."""
         rc = 0
-        return_value = content_lines[-1].strip().split(' ', 1)[1]
-        return_cli_result = content_lines[-2].strip().split(' ', 1)[1]
-
-        rc = int(return_value, 16)
+        if content_lines[0] == 'Raidcmd timeout.':
+            rc = -3
+            return_cli_result = content_lines
+        elif len(content_lines) < 4:
+            rc = -4
+            return_cli_result = 'Raidcmd output error: %s' % content_lines
+        else:
+            return_value = content_lines[-3].strip().split(' ', 1)[1]
+            return_cli_result = content_lines[-4].strip().split(' ', 1)[1]
+            rc = int(return_value, 16)
 
         return rc, return_cli_result
+
+
+class ConnectRaid(CLIBaseCommand):
+
+    """The Connect Raid Command."""
+
+    def __init__(self, *args, **kwargs):
+        super(ConnectRaid, self).__init__(*args, **kwargs)
+        self.command = "connect %s" % self.ip
 
 
 class CreateLD(CLIBaseCommand):
@@ -293,13 +355,11 @@ class SetPartition(CLIBaseCommand):
 
     """Set Partition.
 
-    .. code-block:: bash
-
-        set part [partition-ID] [name={partition-name}]
-                 [min={minimal-reserve-size}]
-        set part expand [partition-ID] [size={expand-size}]
-        set part purge [partition-ID] [number] [rule-type]
-        set part reclaim [partition-ID]
+    set part [partition-ID] [name={partition-name}]
+             [min={minimal-reserve-size}]
+    set part expand [partition-ID] [size={expand-size}]
+    set part purge [partition-ID] [number] [rule-type]
+    set part reclaim [partition-ID]
     """
 
     def __init__(self, *args, **kwargs):
@@ -420,6 +480,8 @@ class ShowCommand(CLIBaseCommand):
         self.param_detail = "-l"
         self.default_type = "table"
         self.start_key = ""
+        if self.cli_cache:
+            self.show_noinit = "-noinit"
 
     def _parser(self, content=None):
         """Parse Table or Detail format into dict.
@@ -471,17 +533,19 @@ class ShowCommand(CLIBaseCommand):
         if detect_type == "list":
 
             start_id = self.detect_detail_start_index(out)
+
             if start_id < 0:
                 return rc, []
 
-            result = content_lines_to_dict(out[start_id:-2])
+            result = content_lines_to_dict(out[start_id:-3])
         else:
 
             start_id = self.detect_table_start_index(out)
+
             if start_id < 0:
                 return rc, []
 
-            result = table_to_dict(out[start_id:-3])
+            result = table_to_dict(out[start_id:-4])
 
         return rc, result
 
@@ -493,7 +557,7 @@ class ShowCommand(CLIBaseCommand):
         return detect_type
 
     def detect_table_start_index(self, content):
-        for i in range(3, len(content)):
+        for i in range(1, len(content)):
             key = content[i].strip().split('  ')
             if self.start_key in key[0].strip():
                 return i
@@ -501,7 +565,7 @@ class ShowCommand(CLIBaseCommand):
         return -1
 
     def detect_detail_start_index(self, content):
-        for i in range(3, len(content)):
+        for i in range(1, len(content)):
             split_entry = content[i].strip().split(' ')
             if len(split_entry) >= 2 and ':' in split_entry[0]:
                 return i
@@ -532,12 +596,13 @@ class ShowLV(ShowCommand):
         super(ShowLV, self).__init__(*args, **kwargs)
         self.command = "show lv"
         self.start_key = "ID"
+        self.show_noinit = ""
 
     def detect_table_start_index(self, content):
         if "tier" in self.parameters:
             self.start_key = "LV-Name"
 
-        for i in range(3, len(content)):
+        for i in range(1, len(content)):
             key = content[i].strip().split('  ')
             if self.start_key in key[0].strip():
                 return i
@@ -556,6 +621,7 @@ class ShowPartition(ShowCommand):
         super(ShowPartition, self).__init__(*args, **kwargs)
         self.command = "show part"
         self.start_key = "ID"
+        self.show_noinit = ""
 
 
 class ShowSnapshot(ShowCommand):
@@ -700,6 +766,7 @@ class ShowReplica(ShowCommand):
     def __init__(self, *args, **kwargs):
         super(ShowReplica, self).__init__(*args, **kwargs)
         self.command = 'show replica'
+        self.show_noinit = ""
 
 
 class ShowWWN(ShowCommand):
@@ -730,8 +797,27 @@ class ShowIQN(ShowCommand):
         self.default_type = "list"
 
     def detect_detail_start_index(self, content):
-        for i in range(3, len(content)):
+        for i in range(1, len(content)):
             if content[i].strip() == self.LIST_START_LINE:
                 return i + 2
 
+        return -1
+
+
+class ShowHost(ShowCommand):
+
+    """Show host settings.
+
+    show host
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(ShowHost, self).__init__(*args, **kwargs)
+        self.command = "show host"
+        self.default_type = "list"
+
+    def detect_detail_start_index(self, content):
+        for i in range(1, len(content)):
+            if ':' in content[i]:
+                return i
         return -1

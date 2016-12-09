@@ -17,6 +17,7 @@ Infortrend Common CLI.
 """
 import math
 import time
+import os
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -63,6 +64,19 @@ infortrend_esds_opts = [
                help='Infortrend raid channel ID list on Slot B '
                'for OpenStack usage. It is separated with comma. '
                'By default, it is the channel 0~7.'),
+    cfg.StrOpt('infortrend_iqn_prefix',
+               default='iqn.2002-10.com.infortrend',
+               help='Infortrend iqn prefix for iSCSI. '
+               'By default, it is iqn.2002-10.com.infortrend.'),
+    cfg.BoolOpt('infortrend_cli_cache',
+                default=False,
+                help='Infortrend Raidcmd cache for show command. '
+                'Disable if Openstack HA controllers are configured. '
+                'By default, it is disabled.'),
+    cfg.StrOpt('java_path',
+               default='/usr/bin/java',
+               help='The java absolute path. '
+               'By default, it is at /usr/bin/java'),
 ]
 
 infortrend_esds_extra_opts = [
@@ -120,7 +134,10 @@ CLI_RC_FILTER = {
     'ShowReplica': {'error': _('Failed to get replica info.')},
     'ShowWWN': {'error': _('Failed to get wwn info.')},
     'ShowIQN': {'error': _('Failed to get iqn info.')},
+    'ShowHost': {'error': _('Failed to get host info.')},
+    'ConnectRaid': {'error': _('Failed to connect to raid.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
+    'ShellCommand': {'error': _('Failed to execute shell command.')},
 }
 
 
@@ -159,13 +176,14 @@ class InfortrendCommon(object):
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration bugs #1481968
+        1.0.5 - Improve driver speed
     """
 
-    VERSION = '1.0.4'
+    VERSION = '1.0.5'
 
     constants = {
         'ISCSI_PORT': 3260,
-        'MAX_LUN_MAP_PER_CHL': 128
+        'MAX_LUN_MAP_PER_CHL': 128,
     }
 
     provisioning_values = ['thin', 'full']
@@ -180,14 +198,16 @@ class InfortrendCommon(object):
         self.configuration.append_config_values(infortrend_esds_opts)
         self.configuration.append_config_values(infortrend_esds_extra_opts)
 
-        self.iscsi_multipath = self.configuration.use_multipath_for_image_xfer
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
-        self.cli_timeout = self.configuration.infortrend_cli_timeout * 60
-        self.iqn = 'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s'
+        self.cli_timeout = self.configuration.infortrend_cli_timeout
+        self.cli_cache = self.configuration.infortrend_cli_cache
+        self.iqn_prefix = self.configuration.infortrend_iqn_prefix
+        self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
         self.unmanaged_prefix = 'cinder-unmanaged-%s'
+        self.java_path = self.configuration.java_path
 
         if self.ip == '':
             msg = _('san_ip is not set.')
@@ -198,8 +218,11 @@ class InfortrendCommon(object):
 
         self._volume_stats = None
         self.system_id = None
+        self.pid = None
+        self.fd = None
         self._model_type = 'R'
-        self._replica_timeout = self.cli_timeout
+        self._replica_timeout = self.cli_timeout * 60
+        self._raidcmd_timeout = self.cli_timeout * 2
 
         self.map_dict = {
             'slot_a': {},
@@ -220,13 +243,18 @@ class InfortrendCommon(object):
 
         self._init_pool_list()
         self._init_channel_list()
-
+        self._init_raidcmd()
         self.cli_conf = {
             'path': self.path,
             'password': self.password,
             'ip': self.ip,
             'cli_retry_time': int(self.cli_retry_time),
+            'raidcmd_timeout': int(self._raidcmd_timeout),
+            'cli_cache': self.cli_cache,
+            'pid': self.pid,
+            'fd': self.fd,
         }
+        self._init_raid_connection()
 
     def _init_pool_list(self):
         pools_name = self.configuration.infortrend_pools_name
@@ -256,6 +284,24 @@ class InfortrendCommon(object):
             [channel.strip() for channel in tmp_channel_list]
         )
 
+    def _init_raidcmd(self):
+        if not self.pid:
+            self.pid, self.fd = os.forkpty()
+            if self.pid == 0:
+                os.execv(self.java_path, [self.java_path, '-jar', self.path])
+
+            check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 10)
+            if check_java_start == 'Raidcmd timeout.':
+                msg = _('Raidcmd failed to start. '
+                        'Please check Java is installed.')
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+        LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
+
+    def _init_raid_connection(self):
+        rc, _ = self._execute('ConnectRaid')
+        LOG.info(_LI('Raid [%s] is connected!' % self.ip))
+
     def _execute_command(self, cli_type, *args, **kwargs):
         command = getattr(cli, cli_type)
         return command(self.cli_conf).execute(*args, **kwargs)
@@ -263,7 +309,11 @@ class InfortrendCommon(object):
     def _execute(self, cli_type, *args, **kwargs):
         LOG.debug('Executing command type: %(type)s.', {'type': cli_type})
 
-        rc, out = self._execute_command(cli_type, *args, **kwargs)
+        @lockutils.synchronized('raidcmd-%s' % self.pid, 'infortrend-', False)
+        def _lock_raidcmd(cli_type, *args, **kwargs):
+            return self._execute_command(cli_type, *args, **kwargs)
+
+        rc, out = _lock_raidcmd(cli_type, *args, **kwargs)
 
         if rc != 0:
             if ('warning' in CLI_RC_FILTER[cli_type] and
@@ -291,6 +341,12 @@ class InfortrendCommon(object):
             self._set_channel_id(channel_info, 'slot_a')
 
             self.map_dict_init = True
+
+        for controller in sorted(self.map_dict.keys()):
+            LOG.debug('Controller: [%(controller)s] '
+                      'enable channels: %(ch)s', {
+                          'controller': controller,
+                          'ch': sorted(self.map_dict[controller].keys())})
 
     @log_func
     def _update_map_info(self, multipath=False):
@@ -346,7 +402,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _set_channel_id(
-            self, channel_info, controller='slot_a'):
+            self, channel_info, controller):
 
         if self.protocol == 'iSCSI':
             check_channel_type = ('NETWORK', 'LAN')
@@ -475,9 +531,28 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
+    def _check_host_setup(self):
+        rc, host_info = self._execute('ShowHost')
+        max_lun = int(host_info[0]['Max LUN per ID'])
+        device_type = host_info[0]['Peripheral device type']
+
+        if 'No Device Present' not in device_type:
+            msg = _('Please set <Peripheral device type> to'
+                    '<No Device Present (Type=0x7f)> in advance!')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        self.constants['MAX_LUN_MAP_PER_CHL'] = max_lun
+        system_id = self._get_system_id(self.ip)
+        LOG.info(_LI('Device: [%(device)s] '
+                     'max LUN setting is: [%(luns)s]'), {
+                         'device': system_id,
+                         'luns': self.constants['MAX_LUN_MAP_PER_CHL']})
+
     def check_for_setup_error(self):
         self._check_pools_setup()
         self._check_tiers_setup()
+        self._check_host_setup()
 
     def create_volume(self, volume):
         """Create a Infortrend partition."""
@@ -716,7 +791,7 @@ class InfortrendCommon(object):
 
     @log_func
     def _get_mapping_info(self, multipath):
-        if self.iscsi_multipath or multipath:
+        if multipath:
             return self._get_mapping_info_with_mpio()
         else:
             return self._get_mapping_info_with_normal()
@@ -1076,9 +1151,11 @@ class InfortrendCommon(object):
             provisioning = 'full'
             provisioning_support = False
 
-        rc, part_list = self._execute('ShowPartition', '-l')
         rc, pools_info = self._execute('ShowLV')
         pools = []
+
+        if provisioning_support:
+            rc, part_list = self._execute('ShowPartition', '-l')
 
         for pool in pools_info:
             if pool['Name'] in self.pool_list:
@@ -1087,26 +1164,31 @@ class InfortrendCommon(object):
 
                 total_capacity_gb = round(mi_to_gi(total_space), 2)
                 free_capacity_gb = round(mi_to_gi(available_space), 2)
-                provisioning_factor = self.configuration.safe_get(
-                    'max_over_subscription_ratio')
-                provisioned_space = self._get_provisioned_space(
-                    pool['ID'], part_list)
-                provisioned_capacity_gb = round(mi_to_gi(provisioned_space), 2)
 
-                new_pool = {
+                _pool = {
                     'pool_name': pool['Name'],
                     'pool_id': pool['ID'],
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'reserved_percentage': 0,
                     'QoS_support': False,
-                    'provisioned_capacity_gb': provisioned_capacity_gb,
-                    'max_over_subscription_ratio': provisioning_factor,
-                    'thin_provisioning_support': provisioning_support,
                     'thick_provisioning_support': True,
+                    'thin_provisioning_support': provisioning_support,
                     'infortrend_provisioning': provisioning,
                 }
-                pools.append(new_pool)
+
+                if provisioning_support:
+                    provisioning_factor = self.configuration.safe_get(
+                        'max_over_subscription_ratio')
+                    provisioned_space = self._get_provisioned_space(
+                        pool['ID'], part_list)
+                    provisioned_capacity_gb = round(
+                        mi_to_gi(provisioned_space), 2)
+                    _pool['provisioned_capacity_gb'] = provisioned_capacity_gb
+                    _pool['max_over_subscription_ratio'] = provisioning_factor
+
+                pools.append(_pool)
+
         return pools
 
     def _get_provisioned_space(self, pool_id, part_list):
@@ -1292,20 +1374,27 @@ class InfortrendCommon(object):
 
         return model_update
 
-    @lockutils.synchronized('connection', 'infortrend-', True)
     def initialize_connection(self, volume, connector):
-        if self.protocol == 'iSCSI':
-            multipath = connector.get('multipath', False)
-            return self._initialize_connection_iscsi(
-                volume, connector, multipath)
-        elif self.protocol == 'FC':
-            return self._initialize_connection_fc(
-                volume, connector)
-        else:
-            msg = _('Unknown protocol: %(protocol)s.') % {
-                'protocol': self.protocol}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+        system_id = self._get_system_id(self.ip)
+        LOG.debug('Connector_info: %s' % connector)
+
+        @lockutils.synchronized(
+            '%s-connection' % system_id, 'infortrend-', True)
+        def lock_initialize_conn():
+            if self.protocol == 'iSCSI':
+                multipath = connector.get('multipath', False)
+                return self._initialize_connection_iscsi(
+                    volume, connector, multipath)
+            elif self.protocol == 'FC':
+                return self._initialize_connection_fc(
+                    volume, connector)
+            else:
+                msg = _('Unknown protocol: %(protocol)s.') % {
+                    'protocol': self.protocol}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
+        return lock_initialize_conn()
 
     def _initialize_connection_fc(self, volume, connector):
         self._init_map_info()
@@ -1578,7 +1667,7 @@ class InfortrendCommon(object):
             'volume_id': volume['id'],
         }
 
-        if self.iscsi_multipath or multipath:
+        if multipath:
             properties['target_iqns'] = iqns
             properties['target_portals'] = portals
             properties['target_luns'] = luns
@@ -1639,44 +1728,51 @@ class InfortrendCommon(object):
             'Successfully extended volume %(volume_id)s to size %(size)s.'), {
                 'volume_id': volume['id'], 'size': new_size})
 
-    @lockutils.synchronized('connection', 'infortrend-', True)
     def terminate_connection(self, volume, connector):
-        volume_id = volume['id'].replace('-', '')
-        conn_info = None
+        system_id = self._get_system_id(self.ip)
 
-        part_id = self._extract_specific_provider_location(
-            volume['provider_location'], 'partition_id')
+        @lockutils.synchronized(
+            '%s-connection' % system_id, 'infortrend-', True)
+        def lock_terminate_conn():
+            volume_id = volume['id'].replace('-', '')
+            conn_info = None
 
-        if part_id is None:
-            part_id = self._get_part_id(volume_id)
+            part_id = self._extract_specific_provider_location(
+                volume['provider_location'], 'partition_id')
 
-        self._delete_map(part_id, connector)
+            if part_id is None:
+                part_id = self._get_part_id(volume_id)
 
-        if self.protocol == 'iSCSI':
-            lun_map_exist = self._check_initiator_has_lun_map(
-                connector['initiator'])
-            if not lun_map_exist:
-                host_name = self._truncate_host_name(connector['initiator'])
-                self._execute('DeleteIQN', host_name)
+            self._delete_map(part_id, connector)
 
-        elif self.protocol == 'FC':
-            conn_info = {'driver_volume_type': 'fibre_channel',
-                         'data': {}}
+            if self.protocol == 'iSCSI':
+                lun_map_exist = self._check_initiator_has_lun_map(
+                    connector['initiator'])
+                if not lun_map_exist:
+                    host_name = self._truncate_host_name(
+                        connector['initiator'])
+                    self._execute('DeleteIQN', host_name)
 
-            lun_map_exist = self._check_initiator_has_lun_map(
-                connector['wwpns'])
-            if not lun_map_exist:
-                wwpn_list, wwpn_channel_info = self._get_wwpn_list()
-                init_target_map, target_wwpns = (
-                    self._build_initiator_target_map(connector, wwpn_list)
-                )
-                conn_info['data']['initiator_target_map'] = init_target_map
+            elif self.protocol == 'FC':
+                conn_info = {'driver_volume_type': 'fibre_channel',
+                             'data': {}}
 
-        LOG.info(_LI(
-            'Successfully terminated connection for volume: %(volume_id)s.'), {
-                'volume_id': volume['id']})
+                lun_map_exist = self._check_initiator_has_lun_map(
+                    connector['wwpns'])
+                if not lun_map_exist:
+                    wwpn_list, wwpn_channel_info = self._get_wwpn_list()
+                    init_target_map, target_wwpns = (
+                        self._build_initiator_target_map(connector, wwpn_list)
+                    )
+                    conn_info['data']['initiator_target_map'] = init_target_map
 
-        return conn_info
+            LOG.info(_LI(
+                'Successfully terminated connection '
+                'for volume: %(volume_id)s.'), {
+                    'volume_id': volume['id']})
+
+            return conn_info
+        return lock_terminate_conn()
 
     def _delete_map(self, part_id, connector):
         rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
