@@ -5,6 +5,8 @@ python:
 
 sudo: false
 
+install: pip install tox
+
 git:
   depth: 1
 
