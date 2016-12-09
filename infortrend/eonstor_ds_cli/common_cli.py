@@ -543,8 +543,11 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
         self.constants['MAX_LUN_MAP_PER_CHL'] = max_lun
-        LOG.info(_LI('Max LUN setting: [%(luns)s]'), {
-            'luns': self.constants['MAX_LUN_MAP_PER_CHL']})
+        system_id = self._get_system_id(self.ip)
+        LOG.info(_LI('Device: [%(device)s] '
+                     'max LUN setting is: [%(luns)s]'), {
+                         'device': system_id,
+                         'luns': self.constants['MAX_LUN_MAP_PER_CHL']})
 
     def check_for_setup_error(self):
         self._check_pools_setup()
