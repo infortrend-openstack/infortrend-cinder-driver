@@ -104,6 +104,8 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         self.configuration.infortrend_cli_timeout = 30
 
     @mock.patch.object(
+        common_cli.InfortrendCommon, '_init_raidcmd', mock.Mock())
+    @mock.patch.object(
         common_cli.InfortrendCommon, '_init_raid_connection', mock.Mock())
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('FC', configuration=conf)
@@ -552,6 +554,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.configuration.infortrend_slots_a_channels_id = '1,2,4'
         self.configuration.infortrend_slots_b_channels_id = '1,2,4'
 
+    @mock.patch.object(
+        common_cli.InfortrendCommon, '_init_raidcmd', mock.Mock())
     @mock.patch.object(
         common_cli.InfortrendCommon, '_init_raid_connection', mock.Mock())
     def _get_driver(self, conf):
