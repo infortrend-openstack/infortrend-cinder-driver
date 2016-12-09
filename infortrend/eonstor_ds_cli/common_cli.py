@@ -134,6 +134,7 @@ CLI_RC_FILTER = {
     'ShowReplica': {'error': _('Failed to get replica info.')},
     'ShowWWN': {'error': _('Failed to get wwn info.')},
     'ShowIQN': {'error': _('Failed to get iqn info.')},
+    'ShowHost': {'error': _('Failed to get host info.')},
     'ConnectRaid': {'error': _('Failed to connect to raid.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
     'ShellCommand': {'error': _('Failed to execute shell command.')},
@@ -530,9 +531,25 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
+    def _check_host_setup(self):
+        rc, host_info = self._execute('ShowHost')
+        max_lun = int(host_info[0]['Max LUN per ID'])
+        device_type = host_info[0]['Peripheral device type']
+
+        if 'No Device Present' not in device_type:
+            msg = _('Please set <Peripheral device type> to'
+                    '<No Device Present (Type=0x7f)> in advance!')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        self.constants['MAX_LUN_MAP_PER_CHL'] = max_lun
+        LOG.info(_LI('Max LUN setting: [%(luns)s]'), {
+            'luns': self.constants['MAX_LUN_MAP_PER_CHL']})
+
     def check_for_setup_error(self):
         self._check_pools_setup()
         self._check_tiers_setup()
+        self._check_host_setup()
 
     def create_volume(self, volume):
         """Create a Infortrend partition."""

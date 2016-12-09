@@ -802,3 +802,22 @@ class ShowIQN(ShowCommand):
                 return i + 2
 
         return -1
+
+
+class ShowHost(ShowCommand):
+
+    """Show host settings.
+
+    show host
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(ShowHost, self).__init__(*args, **kwargs)
+        self.command = "show host"
+        self.default_type = "list"
+
+    def detect_detail_start_index(self, content):
+        for i in range(1, len(content)):
+            if ':' in content[i]:
+                return i
+        return -1
