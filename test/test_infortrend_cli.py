@@ -2137,6 +2137,49 @@ RAIDCmd:>
                       self.fake_initiator_iqn[0][-16:],
                       self.fake_initiator_iqn[0])
 
+    def get_test_show_host(self):
+        return (0, [{
+            'Fibre connection option': 'Point to point only',
+            'Max queued count': '1024',
+            'Max LUN per ID': '64',
+            'CHAP': 'Disabled',
+            'Jumbo frame': 'Disabled',
+            'Max concurrent LUN connection': '4',
+            'LUN connection reserved tags': '4',
+            'Peripheral device type': 'No Device Present (Type=0x7f)',
+            'Peripheral device qualifier': 'Connected',
+            'Removable media support': 'Disabled',
+            'LUN applicability': 'First Undefined LUN',
+            'Supported CHS Cylinder': 'Variable',
+            'Supported CHS Head': 'Variable',
+            'Supported CHS Sector': 'Variable',
+        }])
+
+    def get_fake_show_host(self):
+        msg = """
+show host
+ Fibre connection option: Point to point only
+ Max queued count: 1024
+ Max LUN per ID: 64
+ CHAP: Disabled
+ Jumbo frame: Disabled
+ Max concurrent LUN connection: 4
+ LUN connection reserved tags: 4
+ Peripheral device type: No Device Present (Type=0x7f)
+ Peripheral device qualifier: Connected
+ Removable media support: Disabled
+ LUN applicability: First Undefined LUN
+ Supported CHS Cylinder: Variable
+ Supported CHS Head: Variable
+ Supported CHS Sector: Variable
+
+CLI: Successful
+Return: 0x0000
+
+RAIDCmd:>
+"""
+        return msg
+
     def get_fake_discovery(self, target_iqns, target_portals):
         template = '%s,1 %s'
 
@@ -2165,7 +2208,7 @@ class InfortrendCLITestCase(test.TestCase):
                    'ShowDisk', 'ShowMap',
                    'ShowNet', 'ShowLicense',
                    'ShowWWN', 'ShowReplica',
-                   'ShowIQN', 'ConnectRaid']
+                   'ShowIQN', 'ShowHost', 'ConnectRaid']
 
     def __init__(self, *args, **kwargs):
         super(InfortrendCLITestCase, self).__init__(*args, **kwargs)
@@ -2440,7 +2483,7 @@ class InfortrendCLITestCase(test.TestCase):
     def test_show_license(self):
         self._test_show_command(
             self.cli_data.get_fake_show_license(),
-            self.cli_data.get_test_show_license(),
+            self.cli_data.get_test_show_license_full(),
             cli.ShowLicense)
 
     @mock.patch.object(cli.LOG, 'debug', mock.Mock())
@@ -2463,3 +2506,10 @@ class InfortrendCLITestCase(test.TestCase):
             self.cli_data.get_fake_show_iqn(),
             self.cli_data.get_test_show_iqn(),
             cli.ShowIQN)
+
+    @mock.patch.object(cli.LOG, 'debug', mock.Mock())
+    def test_show_host(self):
+        self._test_show_command(
+            self.cli_data.get_fake_show_host(),
+            self.cli_data.get_test_show_host(),
+            cli.ShowHost)
