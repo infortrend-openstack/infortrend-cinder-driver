@@ -2,10 +2,13 @@ language: python
 
 python:
   - '2.7'
+  - '3.4'
 
 sudo: false
 
-install: pip install tox
+install:
+  - pip install tox
+  - pip install flake8
 
 git:
   depth: 1
