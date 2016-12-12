@@ -2,7 +2,7 @@
 
 export CINDER_DIR=./cinder
 export CINDER_REPO_URL=https://git.openstack.org/openstack/cinder
-export CINDER_TEST_DIR=cinder/tests/unit/volume/drivers/infortrend
+export INFORTREND_TEST_DIR=cinder/tests/unit/volume/drivers/infortrend
 export INFORTREND_DRIVER_DIR=cinder/volume/drivers/infortrend
 
 if [ -d "$CINDER_DIR" ]; then
@@ -16,14 +16,14 @@ if [ ! -d "$CINDER_DIR/$INFORTREND_DRIVER_DIR" ]; then
 fi
 
 cp ./src/* $CINDER_DIR/$INFORTREND_DRIVER_DIR/ -r
-cp ./test/* $CINDER_DIR/$CINDER_TEST_DIR/ -r
+cp ./test/* $CINDER_DIR/$INFORTREND_TEST_DIR/ -r
 
 cd $CINDER_DIR
 
 tox -e py27 test_infortrend_* -- --concurrency=4
 
 # flake8
-flake8 $CINDER_DIR/$INFORTREND_DRIVER_DIR/
-flake8 $CINDER_DIR/$CINDER_TEST_DIR/
+flake8 ./$INFORTREND_DRIVER_DIR/
+flake8 ./$INFORTREND_TEST_DIR/
 
 cd ..

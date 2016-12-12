@@ -16,8 +16,8 @@
 Infortrend Common CLI.
 """
 import math
-import time
 import os
+import time
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -300,7 +300,7 @@ class InfortrendCommon(object):
 
     def _init_raid_connection(self):
         rc, _ = self._execute('ConnectRaid')
-        LOG.info(_LI('Raid [%s] is connected!' % self.ip))
+        LOG.info(_LI('Raid [%s] is connected!') % self.ip)
 
     def _execute_command(self, cli_type, *args, **kwargs):
         command = getattr(cli, cli_type)
