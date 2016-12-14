@@ -316,7 +316,9 @@ class InfortrendCommon(object):
         rc, out = _lock_raidcmd(cli_type, *args, **kwargs)
 
         if rc != 0:
-            if ('warning' in CLI_RC_FILTER[cli_type] and
+            if cli_type == 'CheckConnection':
+                return rc, out
+            elif ('warning' in CLI_RC_FILTER[cli_type] and
                     rc in CLI_RC_FILTER[cli_type]['warning']):
                 LOG.warning(CLI_RC_FILTER[cli_type]['warning'][rc])
             else:
@@ -1121,6 +1123,7 @@ class InfortrendCommon(object):
             'vendor: %(vendor_name)s, '
             'model_type: %(model_type)s, '
             'system_id: %(system_id)s, '
+            'status: %(status)s, '
             'driver_version: %(driver_version)s, '
             'storage_protocol: %(storage_protocol)s.'), self._volume_stats)
 
@@ -1137,9 +1140,20 @@ class InfortrendCommon(object):
             'storage_protocol': self.protocol,
             'model_type': self._model_type,
             'system_id': self._get_system_id(self.ip),
+            'status': self._check_connection(),
             'pools': self._update_pools_stats(),
         }
         self._volume_stats = data
+
+    def _check_connection(self):
+        rc, out = self._execute('CheckConnection')
+        if rc == 0:
+            return 'Connected'
+        elif rc == 9:
+            self._init_raid_connection()
+            return 'Reconnected'
+        else:
+            return 'Error: %s' % out
 
     def _update_pools_stats(self):
         enable_specs_dict = self._get_enable_specs_on_array()

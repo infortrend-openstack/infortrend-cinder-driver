@@ -307,6 +307,15 @@ class ConnectRaid(CLIBaseCommand):
         self.command = "connect %s" % self.ip
 
 
+class CheckConnection(CLIBaseCommand):
+
+    """The Check Connection Command."""
+
+    def __init__(self, *args, **kwargs):
+        super(CheckConnection, self).__init__(*args, **kwargs)
+        self.command = "lock"
+
+
 class CreateLD(CLIBaseCommand):
 
     """The Create LD Command."""
