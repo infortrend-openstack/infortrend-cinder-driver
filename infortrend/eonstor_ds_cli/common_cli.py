@@ -135,6 +135,7 @@ CLI_RC_FILTER = {
     'ShowWWN': {'error': _('Failed to get wwn info.')},
     'ShowIQN': {'error': _('Failed to get iqn info.')},
     'ShowHost': {'error': _('Failed to get host info.')},
+    'SetIOTimeout': {'error': _('Failed to set IO timeout.')},
     'ConnectRaid': {'error': _('Failed to connect to raid.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
     'ShellCommand': {'error': _('Failed to execute shell command.')},
@@ -255,6 +256,7 @@ class InfortrendCommon(object):
             'fd': self.fd,
         }
         self._init_raid_connection()
+        self._set_raidcmd()
 
     def _init_pool_list(self):
         pools_name = self.configuration.infortrend_pools_name
@@ -297,6 +299,10 @@ class InfortrendCommon(object):
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
         LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
+
+    def _set_raidcmd(self):
+        rc, _ = self._execute('SetIOTimeout')
+        LOG.debug('Raidcmd timeout is [%s]' % self._raidcmd_timeout)
 
     def _init_raid_connection(self):
         rc, _ = self._execute('ConnectRaid')

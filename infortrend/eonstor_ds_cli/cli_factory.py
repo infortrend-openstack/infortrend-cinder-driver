@@ -480,6 +480,18 @@ class DeleteIQN(CLIBaseCommand):
         self.command = "delete iqn"
 
 
+class SetIOTimeout(CLIBaseCommand):
+
+    """Set CLI IO timeout.
+
+    utility set io-timeout [time]
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SetIOTimeout, self).__init__(*args, **kwargs)
+        self.command = "utility set io-timeout %s" % self.raidcmd_timeout
+
+
 class ShowCommand(CLIBaseCommand):
 
     """Basic Show Command."""
