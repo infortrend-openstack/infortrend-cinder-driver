@@ -642,7 +642,6 @@ class ShowPartition(ShowCommand):
         super(ShowPartition, self).__init__(*args, **kwargs)
         self.command = "show part"
         self.start_key = "ID"
-        self.show_noinit = ""
 
 
 class ShowSnapshot(ShowCommand):
