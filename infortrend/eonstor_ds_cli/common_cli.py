@@ -585,7 +585,7 @@ class InfortrendCommon(object):
         return model_update
 
     def _create_partition_by_default(self, volume):
-        pool_id = self._get_target_pool_id(volume)
+        pool_id = self._get_volume_pool_id(volume)
         self._create_partition_with_pool(volume, pool_id)
 
     def _create_partition_with_pool(
@@ -753,7 +753,7 @@ class InfortrendCommon(object):
                     dest_pool_id = lv['ID']
         return dest_pool_id
 
-    def _get_target_pool_id(self, volume):
+    def _get_volume_pool_id(self, volume):
 
         pool_name = volume['host'].split('#')[-1]
 
@@ -1186,6 +1186,7 @@ class InfortrendCommon(object):
 
         rc, pools_info = self._execute('ShowLV')
         pools = []
+        system_id = self._get_system_id(self.ip)
 
         if provisioning_support:
             rc, part_list = self._execute('ShowPartition', '-l')
@@ -1201,6 +1202,7 @@ class InfortrendCommon(object):
                 _pool = {
                     'pool_name': pool['Name'],
                     'pool_id': pool['ID'],
+                    'location_info': 'Infortrend:%s' % system_id,
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'reserved_percentage': 0,
@@ -1838,24 +1840,51 @@ class InfortrendCommon(object):
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
         is_valid, dst_pool_id = (
-            self._is_valid_for_storage_assisted_migration(host)
+            self._is_valid_for_storage_assisted_migration(host, volume)
         )
         if not is_valid:
             return (False, None)
 
-        model_dict = self._migrate_volume_with_pool(
-            volume, dst_pool_id, new_extraspecs)
+        src_pool_id = self._get_volume_pool_id(volume)
 
-        model_update = {
-            "provider_location": self._concat_provider_location(model_dict),
-        }
+        if src_pool_id != dst_pool_id:
 
-        LOG.info(_LI('Migrate Volume %(volume_id)s completed.'), {
-            'volume_id': volume['id']})
+            model_dict = self._migrate_volume_with_pool(
+                volume, dst_pool_id, new_extraspecs)
+
+            model_update = {
+                "provider_location": self._concat_provider_location(model_dict),
+            }
+
+            LOG.info(_LI('Migrate Volume %(volume_id)s completed.'), {
+                'volume_id': volume['id']})
+        else:
+            model_update = {
+                "provider_location": volume['provider_location'],
+            }
 
         return (True, model_update)
 
-    def _is_valid_for_storage_assisted_migration(self, host):
+    def _is_valid_for_storage_assisted_migration(self, host, volume):
+
+        vendor = host['capabilities']['location_info'].split(':')[0]
+        dst_system_id = host['capabilities']['location_info'].split(':')[-1]
+        if vendor != 'Infortrend':
+            LOG.warning(_LW('Vendor should be Infortrend for migration.'))
+            return (False, None)
+
+        # It should be the same raid for migration        
+        src_system_id = self._get_system_id(self.ip)
+        if dst_system_id != src_system_id:
+            LOG.warning(_LW('Migration must be performed '
+                            'on the same Infortrend array.'))
+            return (False, None)
+
+        # We don't support volume live migration
+        if volume['status'] != 'available':
+            LOG.warning(_LW('Volume status must be available for migration.'))
+            return (False, None)
+
         if 'pool_id' not in host['capabilities']:
             LOG.warning(_LW('Failed to get target pool id.'))
             return (False, None)
