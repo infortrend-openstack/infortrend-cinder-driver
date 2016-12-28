@@ -178,6 +178,7 @@ class InfortrendCommon(object):
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration bugs #1481968
         1.0.5 - Improve driver speed
+        1.0.6 - Select pool by Cinder scheduler
     """
 
     VERSION = '1.0.5'
@@ -545,7 +546,7 @@ class InfortrendCommon(object):
         device_type = host_info[0]['Peripheral device type']
 
         if 'No Device Present' not in device_type:
-            msg = _('Please set <Peripheral device type> to'
+            msg = _('Please set <Peripheral device type> to '
                     '<No Device Present (Type=0x7f)> in advance!')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -753,25 +754,37 @@ class InfortrendCommon(object):
         return dest_pool_id
 
     def _get_target_pool_id(self, volume):
-        extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
+
+        pool_name = volume['host'].split('#')[-1]
+
+        pool_id = self._find_pool_id_by_name(pool_name)
+
+        if not pool_id:
+            extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
+
+            rc, lv_info = self._execute('ShowLV')
+
+            if 'pool_name' in extraspecs.keys():
+                poolname = extraspecs['pool_name']
+                pool_id = self._find_pool_id_by_name(poolname)
+            else:
+                pool_id = self._select_most_free_capacity_pool_id(lv_info)
+
+            if pool_id is None:
+                msg = _('Failed to get pool id with volume %(volume_id)s.') % {
+                    'volume_id': volume['id']}
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        return pool_id
+
+    def _find_pool_id_by_name(self, pool_name):
         pool_id = None
         rc, lv_info = self._execute('ShowLV')
-
-        if 'pool_name' in extraspecs.keys():
-            poolname = extraspecs['pool_name']
-
-            for entry in lv_info:
-                if entry['Name'] == poolname:
-                    pool_id = entry['ID']
-        else:
-            pool_id = self._select_most_free_capacity_pool_id(lv_info)
-
-        if pool_id is None:
-            msg = _('Failed to get pool id with volume %(volume_id)s.') % {
-                'volume_id': volume['id']}
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
+        for entry in lv_info:
+            if entry['Name'] == pool_name:
+                pool_id = entry['ID']
+                break
         return pool_id
 
     def _get_system_id(self, system_ip):
