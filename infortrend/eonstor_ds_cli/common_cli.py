@@ -218,6 +218,7 @@ class InfortrendCommon(object):
 
         self.fc_lookup_service = fczm_utils.create_lookup_service()
 
+        self.backend_name = None
         self._volume_stats = None
         self.system_id = None
         self.pid = None
@@ -1150,10 +1151,10 @@ class InfortrendCommon(object):
 
     def _update_volume_stats(self):
 
-        backend_name = self.configuration.safe_get('volume_backend_name')
+        self.backend_name = self.configuration.safe_get('volume_backend_name')
 
         data = {
-            'volume_backend_name': backend_name,
+            'volume_backend_name': self.backend_name,
             'vendor_name': 'Infortrend',
             'driver_version': self.VERSION,
             'storage_protocol': self.protocol,
@@ -1988,41 +1989,43 @@ class InfortrendCommon(object):
     def manage_existing_get_size(self, volume, ref):
         """Return size of volume to be managed by manage_existing."""
 
-        volume_name = self._get_existing_volume_ref_name(ref)
-        part_entry = self._get_latter_volume_dict(volume_name)
+        volume_data = self._get_existing_volume_ref_data(ref)
+        volume_pool_id = self._get_volume_pool_id(volume)
 
-        if part_entry is None:
-            msg = _('Specified logical volume does not exist.')
+        if volume_data is None:
+            msg = _('Specified volume does not exist.')
             LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)
 
-        rc, map_info = self._execute('ShowMap', 'part=%s' % part_entry['ID'])
-
-        if len(map_info) != 0:
+        if volume_data['Mapped'] != 'false':
             msg = _('The specified volume is mapped to a host.')
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        return int(math.ceil(mi_to_gi(float(part_entry['Size']))))
+        if volume_data['LV-ID'] != volume_pool_id:
+            msg = _('The specified volume pool is wrong.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)            
+
+        return int(math.ceil(mi_to_gi(float(volume_data['Size']))))
 
     def manage_existing(self, volume, ref):
-        volume_name = self._get_existing_volume_ref_name(ref)
         volume_id = volume['id'].replace('-', '')
 
-        part_entry = self._get_latter_volume_dict(volume_name)
+        volume_data = self._get_existing_volume_ref_data(ref)
 
-        if part_entry is None:
+        if volume_data is None:
             msg = _('Specified logical volume does not exist.')
             LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)
 
-        self._execute('SetPartition', part_entry['ID'], 'name=%s' % volume_id)
+        self._execute('SetPartition', volume_data['ID'], 'name=%s' % volume_id)
 
         model_dict = {
             'system_id': self._get_system_id(self.ip),
-            'partition_id': part_entry['ID'],
+            'partition_id': volume_data['ID'],
         }
         model_update = {
             "provider_location": self._concat_provider_location(model_dict),
@@ -2033,20 +2036,28 @@ class InfortrendCommon(object):
 
         return model_update
 
-    def _get_existing_volume_ref_name(self, ref):
-        volume_name = None
+    def _get_existing_volume_ref_data(self, ref):
+        ref_dict = {}
+        rc, part_list = self._execute('ShowPartition', '-l')
+
         if 'source-name' in ref:
-            volume_name = ref['source-name']
+            key = 'Name'
+            find_key = ref['source-name']
         elif 'source-id' in ref:
-            volume_name = self._get_unmanaged_volume_name(
-                ref['source-id'].replace('-', ''))
+            key = 'ID'
+            find_key = ref['source-id']
         else:
             msg = _('Reference must contain source-id or source-name.')
             LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)
 
-        return volume_name
+        for entry in part_list:
+            if entry[key] == find_key:
+                ref_dict = entry
+                break
+
+        return ref_dict
 
     def unmanage(self, volume):
         volume_id = volume['id'].replace('-', '')
@@ -2064,44 +2075,6 @@ class InfortrendCommon(object):
 
     def _get_unmanaged_volume_name(self, volume_id):
         return self.unmanaged_prefix % volume_id[:-17]
-
-    def _get_specific_volume_dict(self, volume_id):
-        ref_dict = {}
-        rc, part_list = self._execute('ShowPartition')
-
-        for entry in part_list:
-            if entry['Name'] == volume_id:
-                ref_dict = entry
-                break
-
-        return ref_dict
-
-    def _get_latter_volume_dict(self, volume_name):
-        rc, part_list = self._execute('ShowPartition', '-l')
-
-        latest_timestamps = 0
-        ref_dict = None
-
-        for entry in part_list:
-            if entry['Name'] == volume_name:
-
-                timestamps = self._get_part_timestamps(
-                    entry['Creation-time'])
-
-                if timestamps > latest_timestamps:
-                    ref_dict = entry
-                    latest_timestamps = timestamps
-
-        return ref_dict
-
-    def _get_part_timestamps(self, time_string):
-        """Transform 'Sat, Jan 11 22:18:40 2020' into timestamps with sec."""
-
-        first, value = time_string.split(',')
-        timestamps = time.mktime(
-            time.strptime(value, " %b %d %H:%M:%S %Y"))
-
-        return timestamps
 
     def _check_volume_attachment(self, volume):
         if not volume['volume_attachment']:
