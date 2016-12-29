@@ -959,6 +959,12 @@ class InfortrendCommon(object):
     def delete_volume(self, volume):
         """Delete the specific volume."""
 
+        if not volume['provider_location']:
+            LOG.warning(_LW('Volume %(volume_name)s '
+                            'provider location not stored.'), {
+                                'volume_name': volume['name']})
+            return
+
         volume_id = volume['id'].replace('-', '')
         has_pair = False
         have_map = False
@@ -1103,6 +1109,11 @@ class InfortrendCommon(object):
         return model_update
 
     def _extract_specific_provider_location(self, provider_location, key):
+        if not provider_location:
+            msg = _('Failed to get provider location.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
         provider_location_dict = self._extract_all_provider_location(
             provider_location)
 
