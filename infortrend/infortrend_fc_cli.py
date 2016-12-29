@@ -221,10 +221,10 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         }
         """
         LOG.debug(
-            'manage_existing volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing(volume, existing_ref)
 
     def unmanage(self, volume):
@@ -244,10 +244,10 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         When calculating the size, round up to the next GB.
         """
         LOG.debug(
-            'manage_existing_get_size volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing_get_size volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing_get_size(volume, existing_ref)
 
     def retype(self, ctxt, volume, new_type, diff, host):
