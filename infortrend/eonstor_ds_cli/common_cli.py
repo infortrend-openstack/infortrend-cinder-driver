@@ -1883,23 +1883,23 @@ class InfortrendCommon(object):
         vendor = host['capabilities']['location_info'].split(':')[0]
         dst_system_id = host['capabilities']['location_info'].split(':')[-1]
         if vendor != 'Infortrend':
-            LOG.warning(_LW('Vendor should be Infortrend for migration.'))
+            LOG.error(_LE('Vendor should be Infortrend for migration.'))
             return (False, None)
 
         # It should be the same raid for migration        
         src_system_id = self._get_system_id(self.ip)
         if dst_system_id != src_system_id:
-            LOG.warning(_LW('Migration must be performed '
+            LOG.error(_LE('Migration must be performed '
                             'on the same Infortrend array.'))
             return (False, None)
 
         # We don't support volume live migration
         if volume['status'] != 'available':
-            LOG.warning(_LW('Volume status must be available for migration.'))
+            LOG.error(_LE('Volume status must be available for migration.'))
             return (False, None)
 
         if 'pool_id' not in host['capabilities']:
-            LOG.warning(_LW('Failed to get target pool id.'))
+            LOG.error(_LE('Failed to get target pool id.'))
             return (False, None)
 
         dst_pool_id = host['capabilities']['pool_id']
@@ -2108,14 +2108,14 @@ class InfortrendCommon(object):
 
         if volume['host'] != host['host']:
             if self._check_volume_attachment(volume):
-                LOG.warning(_LW(
+                LOG.error(_LE(
                     'Volume %(volume_id)s cannot be retyped '
                     'during attachment.'), {
                         'volume_id': volume['id']})
                 return False
 
             if self._check_volume_has_snapshot(volume):
-                LOG.warning(_LW(
+                LOG.error(_LE(
                     'Volume %(volume_id)s cannot be retyped '
                     'because it has snapshot.'), {
                         'volume_id': volume['id']})
@@ -2138,7 +2138,7 @@ class InfortrendCommon(object):
                     (diff['extra_specs']['infortrend_provisioning'][0] !=
                         diff['extra_specs']['infortrend_provisioning'][1])):
 
-                LOG.warning(_LW(
+                LOG.error(_LE(
                     'The provisioning: %(provisioning)s '
                     'is not valid.'), {
                         'provisioning':
