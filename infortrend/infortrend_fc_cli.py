@@ -35,8 +35,10 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
-        1.0.4 - Fix Nova live migration bugs. #1481968
+        1.0.4 - Fix Nova live migration (bug #1481968)
         1.0.5 - Improve driver speed
+        1.0.6 - Select pool by Cinder scheduler
+              - Fix migrate & manage_existing issues
     """
 
     def __init__(self, *args, **kwargs):
@@ -162,7 +164,6 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123']
                     }
@@ -177,7 +178,6 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123',
                                              '0987654321321']
@@ -222,10 +222,10 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         }
         """
         LOG.debug(
-            'manage_existing volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing(volume, existing_ref)
 
     def unmanage(self, volume):
@@ -245,10 +245,10 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         When calculating the size, round up to the next GB.
         """
         LOG.debug(
-            'manage_existing_get_size volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing_get_size volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing_get_size(volume, existing_ref)
 
     def retype(self, ctxt, volume, new_type, diff, host):
@@ -275,7 +275,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
-        :return model_update to update DB with any needed changes
+        :returns: model_update to update DB with any needed changes
         """
         LOG.debug(
             'update migrated volume original volume id= %(volume_id)s '
