@@ -35,8 +35,10 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         1.0.1 - Support DS4000
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
-        1.0.4 - Fix Nova live migration bugs #1481968
+        1.0.4 - Fix Nova live migration (bug #1481968)
         1.0.5 - Improve driver speed
+        1.0.6 - Select pool by Cinder scheduler
+              - Fix migrate & manage_existing issues
     """
 
     # ThirdPartySystems wiki page
@@ -194,17 +196,15 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        .. code-block:: json
-
-            existing_ref:{
-                'id':lun_id
-            }
+        existing_ref:{
+            'id':lun_id
+        }
         """
         LOG.debug(
-            'manage_existing volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing(volume, existing_ref)
 
     def unmanage(self, volume):
@@ -224,10 +224,10 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         When calculating the size, round up to the next GB.
         """
         LOG.debug(
-            'manage_existing_get_size volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing_get_size volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing_get_size(volume, existing_ref)
 
     def retype(self, ctxt, volume, new_type, diff, host):
