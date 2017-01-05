@@ -107,6 +107,8 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         common_cli.InfortrendCommon, '_init_raidcmd', mock.Mock())
     @mock.patch.object(
         common_cli.InfortrendCommon, '_init_raid_connection', mock.Mock())
+    @mock.patch.object(
+        common_cli.InfortrendCommon, '_set_raidcmd', mock.Mock())
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('FC', configuration=conf)
 
@@ -558,6 +560,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         common_cli.InfortrendCommon, '_init_raidcmd', mock.Mock())
     @mock.patch.object(
         common_cli.InfortrendCommon, '_init_raid_connection', mock.Mock())
+    @mock.patch.object(
+        common_cli.InfortrendCommon, '_set_raidcmd', mock.Mock())
     def _get_driver(self, conf):
         return common_cli.InfortrendCommon('iSCSI', configuration=conf)
 
@@ -1092,6 +1096,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowLicense': self.cli_data.get_test_show_license_full(),
             'ShowLV': self.cli_data.get_test_show_lv(),
             'ShowDevice': self.cli_data.get_test_show_device(),
+            'CheckConnection': SUCCEED,
         }
         self._driver_setup(mock_commands)
         self.driver.VERSION = '99.99'

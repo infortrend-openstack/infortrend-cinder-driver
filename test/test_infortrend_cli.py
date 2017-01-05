@@ -319,6 +319,7 @@ class InfortrendCLITestData(object):
     test_pools_full = [{
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[0],
+        'location_info': 'Infortrend:' + fake_system_id[0],
         'total_capacity_gb': round(857982.0 / 1024, 2),
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
@@ -334,6 +335,7 @@ class InfortrendCLITestData(object):
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
         'model_type': 'R',
+        'status': 'Connected',
         'system_id': fake_system_id[0],
         'pools': test_pools_full,
     }
