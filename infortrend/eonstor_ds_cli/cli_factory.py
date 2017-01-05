@@ -307,6 +307,15 @@ class ConnectRaid(CLIBaseCommand):
         self.command = "connect %s" % self.ip
 
 
+class CheckConnection(CLIBaseCommand):
+
+    """The Check Connection Command."""
+
+    def __init__(self, *args, **kwargs):
+        super(CheckConnection, self).__init__(*args, **kwargs)
+        self.command = "lock"
+
+
 class CreateLD(CLIBaseCommand):
 
     """The Create LD Command."""
@@ -469,6 +478,18 @@ class DeleteIQN(CLIBaseCommand):
     def __init__(self, *args, **kwargs):
         super(DeleteIQN, self).__init__(*args, **kwargs)
         self.command = "delete iqn"
+
+
+class SetIOTimeout(CLIBaseCommand):
+
+    """Set CLI IO timeout.
+
+    utility set io-timeout [time]
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SetIOTimeout, self).__init__(*args, **kwargs)
+        self.command = "utility set io-timeout %s" % self.raidcmd_timeout
 
 
 class ShowCommand(CLIBaseCommand):
