@@ -79,6 +79,7 @@ class InfortrendCLITestData(object):
         'display_name': None,
         'display_description': 'Part-1',
         'volume_type_id': None,
+        'status': 'available',
         'provider_location': test_provider_location[0],
         'volume_attachment': [],
     }
@@ -94,6 +95,7 @@ class InfortrendCLITestData(object):
         'display_name': None,
         'display_description': 'Part-1',
         'volume_type_id': None,
+        'status': 'in-use',
         'provider_location': test_provider_location[1],
         'volume_attachment': [],
     }
@@ -115,11 +117,16 @@ class InfortrendCLITestData(object):
     }
 
     test_ref_volume = {
+        'source-id': fake_partition_id[0],
+        'size': 1,
+    }
+
+    test_ref_volume_with_id = {
         'source-id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
         'size': 1,
     }
 
-    test_ref_volume_with_import = {
+    test_ref_volume_with_name = {
         'source-name': 'import_into_openstack',
         'size': 1,
     }
@@ -319,6 +326,7 @@ class InfortrendCLITestData(object):
     test_pools_full = [{
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[0],
+        'location_info': 'Infortrend:' + fake_system_id[0],
         'total_capacity_gb': round(857982.0 / 1024, 2),
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
@@ -334,6 +342,7 @@ class InfortrendCLITestData(object):
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
         'model_type': 'R',
+        'status': 'Connected',
         'system_id': fake_system_id[0],
         'pools': test_pools_full,
     }
@@ -341,6 +350,7 @@ class InfortrendCLITestData(object):
     test_pools_thin = [{
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[0],
+        'location_info': 'Infortrend:' + fake_system_id[0],
         'total_capacity_gb': round(857982.0 / 1024, 2),
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
@@ -359,6 +369,7 @@ class InfortrendCLITestData(object):
         'driver_version': '99.99',
         'storage_protocol': 'iSCSI',
         'model_type': 'R',
+        'status': 'Connected',
         'system_id': fake_system_id[0],
         'pools': test_pools_thin,
     }
@@ -375,6 +386,7 @@ class InfortrendCLITestData(object):
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
+        'location_info': 'Infortrend:' + fake_system_id[0],
         'total_capacity_gb': round(857982.0 / 1024, 2),
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
@@ -394,6 +406,7 @@ class InfortrendCLITestData(object):
         'storage_protocol': 'iSCSI',
         'pool_name': 'LV-1',
         'pool_id': fake_lv_id[1],
+        'location_info': 'Infortrend:' + fake_system_id[0],
         'total_capacity_gb': round(857982.0 / 1024, 2),
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
@@ -847,6 +860,20 @@ RAIDCmd:>
                 'Mapped': 'false',
                 'Total-filled-block': '100',
                 'Creation-time': 'Sat, Jan 15 22:18:40 2020',
+            }, {
+                'LV-ID': self.fake_lv_id[0],
+                'Mapping': '---',
+                'Used': '200',
+                'Size': '200',
+                'ID': '6bb119a8-d25b-45a7-8d1b-88e127885666',
+                'Progress': '---',
+                'Min-reserve': '200',
+                'Last-modification-time': 'Sat, Jan 16 22:18:40 2020',
+                'Valid-filled-block': '100',
+                'Name': volume_id,
+                'Mapped': 'false',
+                'Total-filled-block': '100',
+                'Creation-time': 'Sat, Jan 14 22:18:40 2020',
             }])
         return (0, result)
 
