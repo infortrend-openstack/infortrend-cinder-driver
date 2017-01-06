@@ -129,8 +129,8 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
 
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_map_dict, self.driver.map_dict)
-        self.assertDictMatch(test_target_dict, self.driver.target_dict)
+        self.assertDictEqual(test_map_dict, self.driver.map_dict)
+        self.assertDictEqual(test_target_dict, self.driver.target_dict)
 
     def test_normal_channel_with_r_model(self):
 
@@ -148,8 +148,8 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         self._driver_setup(mock_commands)
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_map_dict, self.driver.map_dict)
-        self.assertDictMatch(test_target_dict, self.driver.target_dict)
+        self.assertDictEqual(test_map_dict, self.driver.map_dict)
+        self.assertDictEqual(test_target_dict, self.driver.target_dict)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_initialize_connection(self):
@@ -169,7 +169,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(self.cli_data.test_fc_properties, properties)
+        self.assertDictEqual(self.cli_data.test_fc_properties, properties)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_initialize_connection_specific_channel(self):
@@ -191,7 +191,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_fc_properties_with_specific_channel, properties)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -229,7 +229,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_fc_properties_with_specific_channel, properties)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -249,7 +249,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_fc_properties_multipath_r_model, properties)
 
     def test_initialize_connection_with_get_wwn_fail(self):
@@ -317,7 +317,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_fc_properties_zoning, properties)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -368,7 +368,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_fc_properties_zoning_r_model, properties)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -421,7 +421,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_fc_properties_zoning_r_model, properties)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -497,7 +497,7 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_fc_terminate_conn_info, conn_info)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -641,8 +641,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self._driver_setup(mock_commands)
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_map_dict, self.driver.map_dict)
-        self.assertDictMatch(test_target_dict, self.driver.target_dict)
+        self.assertDictEqual(test_map_dict, self.driver.map_dict)
+        self.assertDictEqual(test_target_dict, self.driver.target_dict)
 
     def test_normal_channel_with_multipath(self):
 
@@ -661,8 +661,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_map_dict, self.driver.map_dict)
-        self.assertDictMatch(test_target_dict, self.driver.target_dict)
+        self.assertDictEqual(test_map_dict, self.driver.map_dict)
+        self.assertDictEqual(test_target_dict, self.driver.target_dict)
 
     def test_specific_channel(self):
 
@@ -683,8 +683,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self._driver_setup(mock_commands, configuration)
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_map_dict, self.driver.map_dict)
-        self.assertDictMatch(test_target_dict, self.driver.target_dict)
+        self.assertDictEqual(test_map_dict, self.driver.map_dict)
+        self.assertDictEqual(test_target_dict, self.driver.target_dict)
 
     def test_update_mcs_dict(self):
 
@@ -702,7 +702,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self._driver_setup(mock_commands, configuration)
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_mcs_dict, self.driver.mcs_dict)
+        self.assertDictEqual(test_mcs_dict, self.driver.mcs_dict)
 
     def test_mapping_info_with_mpio_no_mcs(self):
 
@@ -733,7 +733,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         map_chl['slot_a'].sort()
         map_chl['slot_b'].sort()
 
-        self.assertDictMatch(test_map_chl, map_chl)
+        self.assertDictEqual(test_map_chl, map_chl)
         self.assertEqual(test_map_lun, map_lun)
 
     def test_mapping_info_with_mcs(self):
@@ -765,7 +765,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         map_chl['slot_a'].sort()
         map_chl['slot_b'].sort()
 
-        self.assertDictMatch(test_map_chl, map_chl)
+        self.assertDictEqual(test_map_chl, map_chl)
         self.assertEqual(test_map_lun, map_lun)
 
     def test_mapping_info_with_mcs_multi_group(self):
@@ -806,7 +806,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         map_chl['slot_a'].sort()
         map_chl['slot_b'].sort()
 
-        self.assertDictMatch(test_map_chl, map_chl)
+        self.assertDictEqual(test_map_chl, map_chl)
         self.assertEqual(test_map_lun, map_lun)
 
     def test_specific_channel_with_multipath(self):
@@ -829,8 +829,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_map_dict, self.driver.map_dict)
-        self.assertDictMatch(test_target_dict, self.driver.target_dict)
+        self.assertDictEqual(test_map_dict, self.driver.map_dict)
+        self.assertDictEqual(test_target_dict, self.driver.target_dict)
 
     def test_specific_channel_with_multipath_r_model(self):
 
@@ -852,8 +852,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self._driver_setup(mock_commands, configuration)
         self.driver._init_map_info()
 
-        self.assertDictMatch(test_map_dict, self.driver.map_dict)
-        self.assertDictMatch(test_target_dict, self.driver.target_dict)
+        self.assertDictEqual(test_map_dict, self.driver.map_dict)
+        self.assertDictEqual(test_target_dict, self.driver.target_dict)
 
     @mock.patch.object(common_cli.LOG, 'info')
     def test_create_volume(self, log_info):
@@ -875,7 +875,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         model_update = self.driver.create_volume(test_volume)
 
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
         self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -1050,7 +1050,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         model_update = self.driver.create_cloned_volume(
             test_dst_volume, test_src_volume)
 
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
         self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -1085,7 +1085,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         model_update = self.driver.create_export(None, test_volume)
 
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_get_volume_stats_full(self):
@@ -1104,7 +1104,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         volume_states = self.driver.get_volume_stats(True)
 
-        self.assertDictMatch(test_volume_states, volume_states)
+        self.assertDictEqual(test_volume_states, volume_states)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_get_volume_stats_thin(self):
@@ -1124,7 +1124,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         volume_states = self.driver.get_volume_stats(True)
 
-        self.assertDictMatch(test_volume_states, volume_states)
+        self.assertDictEqual(test_volume_states, volume_states)
 
     def test_get_volume_stats_fail(self):
 
@@ -1306,7 +1306,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         model_update = self.driver.create_volume_from_snapshot(
             test_dst_volume, test_snapshot)
 
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
         self.assertEqual(1, log_info.call_count)
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
@@ -1345,7 +1345,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         model_update = self.driver.create_volume_from_snapshot(
             test_dst_volume, test_snapshot)
 
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
         self.assertEqual(1, log_info.call_count)
 
     def test_create_volume_from_snapshot_without_provider_location(
@@ -1390,7 +1390,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(test_iscsi_properties, properties)
+        self.assertDictEqual(test_iscsi_properties, properties)
 
         expect_cli_cmd = [
             mock.call('CreateMap', 'part', test_partition_id, '2', '0', '0',
@@ -1428,7 +1428,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(test_iscsi_properties, properties)
+        self.assertDictEqual(test_iscsi_properties, properties)
 
         expect_cli_cmd = [
             mock.call('CreateIQN', test_initiator, test_initiator[-16:]),
@@ -1465,7 +1465,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(
+        self.assertDictEqual(
             self.cli_data.test_iscsi_properties_empty_map, properties)
 
     def test_initialize_connection_with_create_map_fail(self):
@@ -1539,7 +1539,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(test_iscsi_properties, properties)
+        self.assertDictEqual(test_iscsi_properties, properties)
 
         expect_cli_cmd = [
             mock.call('CreateMap', 'part', test_partition_id, '4', '0', '1',
@@ -1575,7 +1575,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         properties = self.driver.initialize_connection(
             test_volume, test_connector)
 
-        self.assertDictMatch(test_iscsi_properties, properties)
+        self.assertDictEqual(test_iscsi_properties, properties)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_extend_volume(self):
@@ -1736,7 +1736,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertTrue(rc)
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
 
     @mock.patch.object(common_cli.LOG, 'error')
     def test_migrate_volume_with_invalid_storage(self, log_error):
@@ -1984,7 +1984,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, log_info.call_count)
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
 
     def test_manage_existing_rename_fail(self):
 
@@ -2054,7 +2054,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, log_info.call_count)
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
 
     @mock.patch.object(common_cli.LOG, 'info')
     def test_unmanage(self, log_info):
@@ -2178,7 +2178,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertTrue(rc)
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
 
     @mock.patch.object(common_cli.LOG, 'debug', mock.Mock())
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -2206,7 +2206,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
                       'name=%s' % src_volume['id'].replace('-', '')),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertDictMatch(test_model_update, model_update)
+        self.assertDictEqual(test_model_update, model_update)
 
     @mock.patch.object(common_cli.LOG, 'debug', mock.Mock())
     def test_update_migrated_volume_rename_fail(self):
