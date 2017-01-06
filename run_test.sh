@@ -9,7 +9,7 @@ if [ -d "$CINDER_DIR" ]; then
     rm -rf $CINDER_DIR
 fi
 
-git clone $CINDER_REPO_URL --depth=1
+git clone -b stable/mitaka $CINDER_REPO_URL --depth=1
 
 if [ ! -d "$CINDER_DIR/$INFORTREND_DRIVER_DIR" ]; then
     mkdir $CINDER_DIR/$INFORTREND_DRIVER_DIR
