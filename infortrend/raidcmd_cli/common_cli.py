@@ -1879,8 +1879,13 @@ class InfortrendCommon(object):
 
     def _is_valid_for_storage_assisted_migration(self, host, volume):
 
+        if 'location_info' not in host['capabilities']:
+            LOG.error(_LE('location_info not stored in pool.'))
+            return (False, None)
+
         vendor = host['capabilities']['location_info'].split(':')[0]
         dst_system_id = host['capabilities']['location_info'].split(':')[-1]
+
         if vendor != 'Infortrend':
             LOG.error(_LE('Vendor should be Infortrend for migration.'))
             return (False, None)
@@ -1893,7 +1898,7 @@ class InfortrendCommon(object):
             return (False, None)
 
         # We don't support volume live migration
-        if volume['status'] != 'available':
+        if volume['status'].lower() != 'available':
             LOG.error(_LE('Volume status must be available for migration.'))
             return (False, None)
 
@@ -2003,14 +2008,15 @@ class InfortrendCommon(object):
         volume_data = self._get_existing_volume_ref_data(ref)
         volume_pool_id = self._get_volume_pool_id(volume)
 
-        if volume_data is None:
+        if not volume_data:
             msg = _('Specified volume does not exist.')
             LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)
 
-        if volume_data['Mapped'] != 'false':
-            msg = _('The specified volume is mapped to a host.')
+        if volume_data['Mapped'].lower() != 'false':
+            msg = _('The specified volume is mapped. '
+                    'Please unmap first for Openstack using.')
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
@@ -2026,7 +2032,7 @@ class InfortrendCommon(object):
 
         volume_data = self._get_existing_volume_ref_data(ref)
 
-        if volume_data is None:
+        if not volume_data:
             msg = _('Specified logical volume does not exist.')
             LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
@@ -2048,8 +2054,6 @@ class InfortrendCommon(object):
         return model_update
 
     def _get_existing_volume_ref_data(self, ref):
-        ref_dict = {}
-        rc, part_list = self._execute('ShowPartition', '-l')
 
         if 'source-name' in ref:
             key = 'Name'
@@ -2062,6 +2066,9 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)
+
+        ref_dict = {}
+        rc, part_list = self._execute('ShowPartition', '-l')
 
         for entry in part_list:
             if entry[key] == find_key:

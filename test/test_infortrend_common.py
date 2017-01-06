@@ -1116,6 +1116,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowLV': self.cli_data.get_test_show_lv(),
             'ShowPartition': self.cli_data.get_test_show_partition_detail(),
             'ShowDevice': self.cli_data.get_test_show_device(),
+            'CheckConnection': SUCCEED,
         }
         self._driver_setup(mock_commands)
         self.driver.VERSION = '99.99'
@@ -1712,6 +1713,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'DeletePartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
+        self.driver.system_id = 'DEEC'
 
         rc, model_update = self.driver.migrate_volume(test_volume, test_host)
 
@@ -1736,8 +1738,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.assertTrue(rc)
         self.assertDictMatch(test_model_update, model_update)
 
-    @mock.patch.object(common_cli.LOG, 'warning')
-    def test_migrate_volume_with_invalid_storage(self, log_warning):
+    @mock.patch.object(common_cli.LOG, 'error')
+    def test_migrate_volume_with_invalid_storage(self, log_error):
 
         fake_host = self.cli_data.fake_host
         test_volume = self.cli_data.test_volume
@@ -1751,7 +1753,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         self.assertFalse(rc)
         self.assertIsNone(model_update)
-        self.assertEqual(1, log_warning.call_count)
+        self.assertEqual(1, log_error.call_count)
 
     def test_migrate_volume_with_get_part_id_fail(self):
 
@@ -1833,7 +1835,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_manage_existing_get_size(self):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_id
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
         test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
@@ -1842,6 +1844,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'ShowMap': SUCCEED,
+            'ShowLV': self.cli_data.get_test_show_lv(),
         }
 
         self._driver_setup(mock_commands)
@@ -1850,15 +1853,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume, test_ref_volume)
 
         expect_cli_cmd = [
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('ShowPartition', '-l'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, size)
 
-    def test_manage_existing_get_size_with_import(self):
+    def test_manage_existing_get_size_with_name(self):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume_with_import
+        test_ref_volume = self.cli_data.test_ref_volume_with_name
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
 
@@ -1866,6 +1869,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 test_ref_volume['source-name'], test_pool),
             'ShowMap': SUCCEED,
+            'ShowLV': self.cli_data.get_test_show_lv(),
         }
 
         self._driver_setup(mock_commands)
@@ -1874,7 +1878,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume, test_ref_volume)
 
         expect_cli_cmd = [
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('ShowPartition', '-l'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, size)
@@ -1890,6 +1894,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
             'ShowMap': self.cli_data.get_test_show_map(),
+            'ShowLV': self.cli_data.get_test_show_lv(),
         }
         self._driver_setup(mock_commands)
 
@@ -1914,7 +1919,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_manage_existing_get_size_show_part_fail(self):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_id
 
         mock_commands = {
             'ShowPartition': FAKE_ERROR_RETURN,
@@ -1931,7 +1936,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_manage_existing_get_size_show_map_fail(self):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_id
         test_pool = self.cli_data.fake_lv_id[0]
         test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
@@ -1952,9 +1957,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_manage_existing(self, log_info):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_id
         test_pool = self.cli_data.fake_lv_id[0]
-        test_partition_id = self.cli_data.fake_partition_id[2]
+        test_partition_id = self.cli_data.test_dst_volume['id']
         test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
         test_model_update = {
             'provider_location': 'system_id^%s@partition_id^%s' % (
@@ -1974,8 +1979,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume, test_ref_volume)
 
         expect_cli_cmd = [
+            mock.call('ShowPartition', '-l'),
             mock.call('SetPartition', test_partition_id,
                       'name=%s' % test_volume['id'].replace('-', '')),
+            mock.call('ShowDevice'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, log_info.call_count)
@@ -1984,7 +1991,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_manage_existing_rename_fail(self):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_id
         test_pool = self.cli_data.fake_lv_id[0]
         test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
@@ -2004,7 +2011,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_manage_existing_with_part_not_found(self):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume
+        test_ref_volume = self.cli_data.test_ref_volume_with_id
 
         mock_commands = {
             'ShowPartition':
@@ -2023,7 +2030,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_manage_existing_with_import(self, log_info):
 
         test_volume = self.cli_data.test_volume
-        test_ref_volume = self.cli_data.test_ref_volume_with_import
+        test_ref_volume = self.cli_data.test_ref_volume_with_name
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
         test_model_update = {
@@ -2090,8 +2097,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.assertTrue(rc)
         self.assertEqual(1, log_info.call_count)
 
-    @mock.patch.object(common_cli.LOG, 'warning')
-    def test_retype_with_change_provision(self, log_warning):
+    @mock.patch.object(common_cli.LOG, 'error')
+    def test_retype_with_change_provision(self, log_error):
 
         test_volume = self.cli_data.test_volume
         test_new_type = self.cli_data.test_new_type
@@ -2104,7 +2111,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             None, test_volume, test_new_type, test_diff, test_host)
 
         self.assertFalse(rc)
-        self.assertEqual(1, log_warning.call_count)
+        self.assertEqual(1, log_error.call_count)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_retype_with_migrate(self):
@@ -2139,6 +2146,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'DeletePartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
+        self.driver.system_id = 'DEEC'
 
         rc, model_update = self.driver.retype(
             None, test_volume, test_new_type, test_diff, test_host)
@@ -2147,8 +2155,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         create_params = {'init': 'disable', 'min': '%sMB' % min_size}
         create_params = ' '.join('%s=%s' % (key, value)
                                  for key, value in create_params.items())
-        expect_cli_cmd = [
+        expect_cli_cmd = [            
             mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
+            mock.call('ShowLV'),
             mock.call(
                 'CreatePartition',
                 fake_pool['pool_id'],
