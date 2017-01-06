@@ -1837,7 +1837,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_volume = self.cli_data.test_volume
         test_ref_volume = self.cli_data.test_ref_volume_with_id
         test_pool = self.cli_data.fake_lv_id[0]
-        test_partition_id = self.cli_data.fake_partition_id[2]
         test_ref_volume_id = test_ref_volume['source-id'].replace('-', '')
 
         mock_commands = {
@@ -1863,7 +1862,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_volume = self.cli_data.test_volume
         test_ref_volume = self.cli_data.test_ref_volume_with_name
         test_pool = self.cli_data.fake_lv_id[0]
-        test_partition_id = self.cli_data.fake_partition_id[2]
 
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
@@ -2155,7 +2153,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         create_params = {'init': 'disable', 'min': '%sMB' % min_size}
         create_params = ' '.join('%s=%s' % (key, value)
                                  for key, value in create_params.items())
-        expect_cli_cmd = [            
+        expect_cli_cmd = [
             mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
             mock.call('ShowLV'),
             mock.call(

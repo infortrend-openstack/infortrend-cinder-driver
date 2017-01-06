@@ -1865,7 +1865,8 @@ class InfortrendCommon(object):
                 volume, dst_pool_id, new_extraspecs)
 
             model_update = {
-                "provider_location": self._concat_provider_location(model_dict),
+                "provider_location":
+                    self._concat_provider_location(model_dict),
             }
 
             LOG.info(_LI('Migrate Volume %(volume_id)s completed.'), {
@@ -1890,11 +1891,11 @@ class InfortrendCommon(object):
             LOG.error(_LE('Vendor should be Infortrend for migration.'))
             return (False, None)
 
-        # It should be the same raid for migration        
+        # It should be the same raid for migration
         src_system_id = self._get_system_id(self.ip)
         if dst_system_id != src_system_id:
             LOG.error(_LE('Migration must be performed '
-                            'on the same Infortrend array.'))
+                          'on the same Infortrend array.'))
             return (False, None)
 
         # We don't support volume live migration
@@ -2023,7 +2024,7 @@ class InfortrendCommon(object):
         if volume_data['LV-ID'] != volume_pool_id:
             msg = _('The specified volume pool is wrong.')
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)            
+            raise exception.VolumeBackendAPIException(data=msg)
 
         return int(math.ceil(mi_to_gi(float(volume_data['Size']))))
 
