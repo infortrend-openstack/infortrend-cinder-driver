@@ -79,22 +79,8 @@ infortrend_esds_opts = [
                'By default, it is at /usr/bin/java'),
 ]
 
-infortrend_esds_extra_opts = [
-    cfg.StrOpt('infortrend_provisioning',
-               default='full',
-               help='Let the volume use specific provisioning. '
-               'By default, it is the full provisioning. '
-               'The supported options are full or thin.'),
-    cfg.StrOpt('infortrend_tiering',
-               default='0',
-               help='Let the volume use specific tiering level. '
-               'By default, it is the level 0. '
-               'The supported levels are 0,2,3,4.'),
-]
-
 CONF = cfg.CONF
 CONF.register_opts(infortrend_esds_opts)
-CONF.register_opts(infortrend_esds_extra_opts)
 
 CLI_RC_FILTER = {
     'CreatePartition': {'error': _('Failed to create partition.')},
@@ -189,9 +175,10 @@ class InfortrendCommon(object):
         'MAX_LUN_MAP_PER_CHL': 128,
     }
 
-    provisioning_values = ['thin', 'full']
+    PROVISIONING_KEY = 'infortrend:provisioning'
+    TIERING_SET_KEY = 'infortrend:tiering'
 
-    tiering_values = ['0', '2', '3', '4']
+    PROVISIONING_VALUES = ['thin', 'full']
 
     def __init__(self, protocol, configuration=None):
 
@@ -199,7 +186,6 @@ class InfortrendCommon(object):
         self.configuration = configuration
         self.configuration.append_config_values(san.san_opts)
         self.configuration.append_config_values(infortrend_esds_opts)
-        self.configuration.append_config_values(infortrend_esds_extra_opts)
 
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
@@ -244,6 +230,8 @@ class InfortrendCommon(object):
                 'slot_a': {},
                 'slot_b': {},
             }
+
+        self.tier_pools_dict = {}
 
         self._init_pool_list()
         self._init_channel_list()
@@ -499,32 +487,6 @@ class InfortrendCommon(object):
             self.mcs_dict[controller][mcs_id] = []
         self.mcs_dict[controller][mcs_id].append(channel_id)
 
-    def _check_tiers_setup(self):
-        tiering = self.configuration.infortrend_tiering
-        if tiering != '0':
-            self._check_extraspec_value(
-                tiering, self.tiering_values)
-            tier_levels_list = list(range(int(tiering)))
-            tier_levels_list = list(map(str, tier_levels_list))
-
-            rc, lv_info = self._execute('ShowLV', 'tier')
-
-            for pool in self.pool_list:
-                support_tier_levels = tier_levels_list[:]
-                for entry in lv_info:
-                    if (entry['LV-Name'] == pool and
-                            entry['Tier'] in support_tier_levels):
-                        support_tier_levels.remove(entry['Tier'])
-                    if len(support_tier_levels) == 0:
-                        break
-                if len(support_tier_levels) != 0:
-                    msg = _('Please create %(tier_levels)s '
-                            'tier in pool %(pool)s in advance!') % {
-                                'tier_levels': support_tier_levels,
-                                'pool': pool}
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
-
     def _check_pools_setup(self):
         pool_list = self.pool_list[:]
 
@@ -562,7 +524,6 @@ class InfortrendCommon(object):
 
     def check_for_setup_error(self):
         self._check_pools_setup()
-        self._check_tiers_setup()
         self._check_host_setup()
 
     def create_volume(self, volume):
@@ -1188,6 +1149,7 @@ class InfortrendCommon(object):
             return 'Error: %s' % out
 
     def _update_pools_stats(self):
+        self._update_pool_tiers()
         enable_specs_dict = self._get_enable_specs_on_array()
 
         if 'Thin Provisioning' in enable_specs_dict.keys():
@@ -1245,6 +1207,22 @@ class InfortrendCommon(object):
             if entry['LV-ID'] == pool_id:
                 provisioning_space += int(entry['Size'])
         return provisioning_space
+
+    def _update_pool_tiers(self):
+        """Setup the tier pools information.
+        tier_pools_dict = {
+            '12345678': [0, 1, 2, 3], # Pool 12345678 has 4 tiers: 0, 1, 2, 3
+            '87654321': [0, 1, 3]     # Pool 87654321 has 3 tiers: 0, 1, 3
+        }
+        """
+        rc, lv_info = self._execute('ShowLV', 'tier')
+
+        self.tier_pools_dict = {}
+        for entry in lv_info:
+            if entry['LV-Name'] in self.pool_list:
+                if entry['LV-ID'] not in self.tier_pools_dict.keys():
+                    self.tier_pools_dict[entry['LV-ID']] = []
+                self.tier_pools_dict[entry['LV-ID']].append(int(entry['Tier']))
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
