@@ -719,27 +719,46 @@ class InfortrendCommon(object):
     def _get_volume_pool_id(self, volume):
 
         pool_name = volume['host'].split('#')[-1]
-
         pool_id = self._find_pool_id_by_name(pool_name)
 
-        if not pool_id:
-            extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
+        extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
+        if extraspecs:
+            self._check_extraspecs_conflict_and_legality(extraspecs)
 
-            rc, lv_info = self._execute('ShowLV')
-
-            if 'pool_name' in extraspecs.keys():
-                poolname = extraspecs['pool_name']
-                pool_id = self._find_pool_id_by_name(poolname)
-            else:
-                pool_id = self._select_most_free_capacity_pool_id(lv_info)
-
-            if pool_id is None:
-                msg = _('Failed to get pool id with volume %(volume_id)s.') % {
-                    'volume_id': volume['id']}
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
+        if pool_id is None:
+            msg = _('Failed to get pool id with volume %(volume_id)s.') % {
+                'volume_id': volume['id']}
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
         return pool_id
+
+    def _check_extraspecs_conflict_and_legality(self, extraspecs):
+        """Example for Infortrend extraspecs settings:
+            infortrend:provisoioning: 'LV0:thin;LV1:full'
+            infortrend:tiering: 'LV0:0,1,3; LV1:1'
+        """
+        provisioning = extraspecs.get(self.PROVISIONING_KEY, None)
+        tiering_set = extraspecs.get(self.TIERING_SET_KEY, None)
+        #remove space in string
+        provisioning = provisioning.replace(' ', '')
+        tiering_set = tiering_set.replace(' ', '')
+
+        if tiering_set:
+            tier_levels_list = tiering_set.lower().split(',')
+
+        if provisioning:
+            provisioning = provisioning.lower()
+            self._check_extraspec_value(provisioning, self.PROVISIONING_VALUES)
+
+            if provisioning == 'full' and len(tier_levels_list) > 1:
+                msg = _('When provision is full, '
+                        'it must specify only one tier instead of '
+                        '%(tier_levels_list)s tiers.') % {
+                            'tier_levels_list': tier_levels_list}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+        return
 
     def _find_pool_id_by_name(self, pool_name):
         pool_id = None
