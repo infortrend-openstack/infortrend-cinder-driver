@@ -1217,12 +1217,14 @@ class InfortrendCommon(object):
         """
         rc, lv_info = self._execute('ShowLV', 'tier')
 
-        self.tier_pools_dict = {}
+        temp_tier_pools_dict = {}
         for entry in lv_info:
             if entry['LV-Name'] in self.pool_list:
-                if entry['LV-ID'] not in self.tier_pools_dict.keys():
-                    self.tier_pools_dict[entry['LV-ID']] = []
-                self.tier_pools_dict[entry['LV-ID']].append(int(entry['Tier']))
+                if entry['LV-ID'] not in self.temp_tier_pools_dict.keys():
+                    self.temp_tier_pools_dict[entry['LV-ID']] = []
+                self.temp_tier_pools_dict[entry['LV-ID']].append(int(entry['Tier']))
+
+        self.tier_pools_dict = temp_tier_pools_dict
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
