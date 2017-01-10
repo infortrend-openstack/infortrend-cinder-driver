@@ -556,9 +556,12 @@ class InfortrendCommon(object):
 
         volume_id = volume['id'].replace('-', '')
         volume_size = gi_to_mi(volume['size'])
+        pool_name = volume['host'].split('#')[-1]
 
         if extraspecs is None:
-            extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
+            extraspecs = self._get_volume_type_extraspecs(volume)
+
+        pool_extraspecs = self._get_pool_extraspecs(pool_name, extraspecs)
 
         provisioning = self._get_extraspecs_value(extraspecs, 'provisioning')
         tiering = self._get_extraspecs_value(extraspecs, 'tiering')
@@ -728,40 +731,69 @@ class InfortrendCommon(object):
 
         return pool_id
 
-    def _get_volume_type_extraspecs(self):
+    def _get_volume_type_extraspecs(self, volume):
         """Example for Infortrend extraspecs settings:
-            infortrend:provisoioning: 'LV0:thin;LV1:full'
-            infortrend:tiering: 'LV0:0,1,3; LV1:1'
+
+            Using a global setting:
+                infortrend:provisoioning: 'thin'
+                infortrend:tiering: '0,1,2'
+
+            Using an individual setting:
+                infortrend:provisoioning: 'LV0:thin;LV1:full'
+                infortrend:tiering: 'LV0:0,1,3; LV1:1'
         """
+        extraspecs_set = {}
         extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
         if extraspecs:
             extraspecs_set = self._get_extraspecs_set(extraspecs)
-            self._check_extraspecs_conflict(extraspecs_set)
         return extraspecs_set
 
-    def _check_extraspecs_conflict(self, extraspecs_set):
-        for pool in extraspecs_set.keys():
-            if 'provisioning' in extraspecs_set[pool]:
-                provisioning = extraspecs_set[pool]['provisioning']
+    def _get_pool_extraspecs(self, pool, all_extraspecs):
+        pool_extraspecs = {}
+        if pool in all_extraspecs.keys():
+            if 'provisioning' in all_extraspecs[pool]:
+                provisioning = all_extraspecs[pool]['provisioning']
             else:
                 provisioning = ''
 
-            if 'tiering' in extraspecs_set[pool]:
-                tiering = extraspecs_set[pool]['tiering']
+            if 'tiering' in all_extraspecs[pool]:
+                tiering = all_extraspecs[pool]['tiering']
             else:
                 tiering = []
 
-            if len(tiering) > 1 and provisioning = 'full':
-                msg = _('When provision is full, '
-                        'it must specify only one tier instead of '
-                        '%(tiering)s tiers.') % {
-                            'tiering': tiering}
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
+            self._check_extraspecs_conflict(tiering, provisioning)
+
+            if tiering or provisioning:
+                pool_extraspecs['provisioning'] = provisioning
+                pool_extraspecs['tiering'] = tiering
+
+        return pool_extraspecs
+
+    def _check_extraspecs_conflict(self, tiering, provisioning):
+        if len(tiering) > 1 and provisioning == 'full':
+            msg = _('When provision is full, '
+                    'it must specify only one tier instead of '
+                    '%(tiering)s tiers.') % {
+                        'tiering': tiering}
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
 
     def _get_extraspecs_set(self, extraspecs):
         """Return extraspecs settings dictionary
+        Legal values:
+            provisioning: 'thin', 'full'
+            tiering: 'all' or combination of 0,1,2,3
+
+        Only global settings example:
         extraspecs_set = {
+            'global_provisioning': 'thin',
+            'global_tiering': '[0, 1]',
+        }
+
+        All individual settings example:
+        extraspecs_set = {
+            'global_provisioning': 'full',
+            'global_tiering': 'all',
             'LV0': {
                 'provisioning': 'thin',
                 'tiering': [0, 1, 3],
@@ -771,55 +803,116 @@ class InfortrendCommon(object):
                 'tiering': [1],
             }
         }
+
+        Mixed settings example:
+        extraspecs_set = {
+            'global_provisioning': 'thin',
+            'global_tiering': 'all',
+            'LV0': {
+                'tiering': [0, 1, 3],
+            },
+            'LV1': {
+                'provisioning': 'full',
+                'tiering': [1],
+            }
+        }
+
+        Use global settings if a pool has no individual settings.
         """
-        extraspecs_set = {}
+        # extraspecs default setting
+        extraspecs_set = {
+            'global_provisioning': 'full',
+            'global_tiering': 'all',
+        }
         provisionings = extraspecs.get(self.PROVISIONING_KEY, None)
         tiering_sets = extraspecs.get(self.TIERING_SET_KEY, None)
-        # get data from extraspecs string
-        provisionings = provisionings.replace(' ', '')
-        tiering_sets = tiering_sets.replace(' ', '')
-        provisionings = provisionings.split(';')
-        tiering_sets = tiering_sets.split(';')
 
-        for provisioning in provisionings:
-            pool, value = provisioning.split(':', 1)
+        # provisionings individual setting
+        if provisionings and ':' in provisionings:
+            provisionings = provisionings.replace(' ', '')
+            provisionings = provisionings.split(';')
 
-            if pool not in self.pool_list:
-                LOG.warning(_LW('Infortrend:provisioning pool '
-                                '[%(pool)s] not recognized'), {
-                                    'pool': pool})
-            else:
-                if pool not in extraspecs_set.keys():
-                    extraspecs_set[pool] = {}
+            for provisioning in provisionings:
+                pool, value = provisioning.split(':', 1)
 
-                if value.lower() in self.PROVISIONING_VALUES:
-                    extraspecs_set[pool]['provisioning'] = value.lower()
-                else:
-                    LOG.warning(_LW('Infortrend:provisioning value: '
-                                    '[%(value)s] not recognized'), {
+                if pool not in self.pool_list:
+                    LOG.warning(_LW('Infortrend:provisioning '
+                                    'this setting %(pool)s:%(value)s '
+                                    '[%(pool)s] not set in config.'), {
+                                        'pool': pool,
                                         'value': value})
-
-        for tiering_set in tiering_sets:
-            pool, value = tiering_set.split(':', 1)
-
-            if pool not in self.pool_list:
-                LOG.warning(_LW('Infortrend:tiering pool '
-                                '[%(pool)s] not recognized'), {
-                                    'pool': pool})
-            else:
-                if pool not in extraspecs_set.keys():
-                    extraspecs_set[pool] = {}
-
-                value = value.split(',')
-                value = [int(i) for i in value]
-                value = list(set(value))
-
-                if value[-1] in range(4):
-                    extraspecs_set[pool]['tiering'] = value
                 else:
-                    LOG.warning(_LW('Infortrend:tiering value: '
-                                    '%(value)s is illegal'), {
+                    if pool not in extraspecs_set.keys():
+                        extraspecs_set[pool] = {}
+
+                    if value.lower() in self.PROVISIONING_VALUES:
+                        extraspecs_set[pool]['provisioning'] = value.lower()
+                    else:
+                        LOG.warning(_LW('Infortrend:provisioning '
+                                        'this setting %(pool)s:%(value)s '
+                                        '[%(value)s] is illegal'), {
+                                            'pool': pool,
+                                            'value': value})
+        # provisionings global setting
+        elif provisionings:
+            provisioning = provisionings.replace(' ', '').lower()
+            if provisioning in self.PROVISIONING_VALUES:
+                extraspecs_set['global_provisioning'] = provisioning
+            else:
+                LOG.warning(_LW('Infortrend:provisioning '
+                                '[%(value)s] is illegal'), {
+                                    'value': provisionings})
+
+        # tiering_sets individual setting
+        if tiering_sets and ':' in tiering_sets:
+            tiering_sets = tiering_sets.replace(' ', '')
+            tiering_sets = tiering_sets.split(';')
+
+            for tiering_set in tiering_sets:
+                pool, value = tiering_set.split(':', 1)
+
+                if pool not in self.pool_list:
+                    LOG.warning(_LW('Infortrend:tiering '
+                                    'this setting %(pool)s:%(value)s '
+                                    '[%(pool)s] not set in config.'), {
+                                        'pool': pool,
                                         'value': value})
+                else:
+                    if pool not in extraspecs_set.keys():
+                        extraspecs_set[pool] = {}
+
+                    if value.lower() == 'all':
+                        extraspecs_set[pool]['tiering'] = 'all'
+                    else:
+                        value = value.split(',')
+                        value = [int(i) for i in value]
+                        value = list(set(value))
+
+                        if value[-1] in range(4):
+                            extraspecs_set[pool]['tiering'] = value
+                        else:
+                            LOG.warning(_LW('Infortrend:tiering '
+                                            'this setting %(pool)s:%(value)s '
+                                            '[%(err_value)s] is illegal'), {
+                                                'pool': pool,
+                                                'value': value,
+                                                'err_value': value[-1]})
+        # tiering_sets global setting
+        elif tiering_sets:
+            tiering_set = tiering_sets.replace(' ', '').lower()
+            if tiering_set == 'all':
+                extraspecs_set['global_tiering'] = 'all'
+            else:
+                tiering_set = tiering_set.split(',')
+                tiering_set = [int(i) for i in tiering_set]
+                tiering_set = list(set(tiering_set))
+
+                if tiering_set[-1] in range(4):
+                    extraspecs_set['global_tiering'] = tiering_set
+                else:
+                    LOG.warning(_LW('Infortrend:tiering '
+                                    '%(err_value)s is illegal'), {
+                                        'err_value': tiering_set[-1]})
 
         return extraspecs_set
 
@@ -1299,14 +1392,14 @@ class InfortrendCommon(object):
         """
         rc, lv_info = self._execute('ShowLV', 'tier')
 
-        temp_tier_pools_dict = {}
+        temp_dict = {}
         for entry in lv_info:
             if entry['LV-Name'] in self.pool_list:
-                if entry['LV-ID'] not in self.temp_tier_pools_dict.keys():
-                    self.temp_tier_pools_dict[entry['LV-ID']] = []
-                self.temp_tier_pools_dict[entry['LV-ID']].append(int(entry['Tier']))
+                if entry['LV-ID'] not in self.temp_dict.keys():
+                    self.temp_dict[entry['LV-ID']] = []
+                self.temp_dict[entry['LV-ID']].append(int(entry['Tier']))
 
-        self.tier_pools_dict = temp_tier_pools_dict
+        self.tier_pools_dict = temp_dict
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
