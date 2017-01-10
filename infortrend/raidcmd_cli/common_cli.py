@@ -563,8 +563,8 @@ class InfortrendCommon(object):
 
         pool_extraspecs = self._get_pool_extraspecs(pool_name, extraspecs)
 
-        provisioning = self._get_extraspecs_value(extraspecs, 'provisioning')
-        tiering = self._get_extraspecs_value(extraspecs, 'tiering')
+        provisioning = pool_extraspecs['provisioning']
+        tiering = pool_extraspecs['tiering']
 
         extraspecs_dict = {}
         cmd = ''
@@ -741,6 +741,10 @@ class InfortrendCommon(object):
             Using an individual setting:
                 infortrend:provisoioning: 'LV0:thin;LV1:full'
                 infortrend:tiering: 'LV0:0,1,3; LV1:1'
+
+            Using a mixed setting:
+                infortrend:provisoioning: 'LV0:thin;LV1:full'
+                infortrend:tiering: 'all'
         """
         extraspecs_set = {}
         extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
@@ -750,22 +754,27 @@ class InfortrendCommon(object):
 
     def _get_pool_extraspecs(self, pool, all_extraspecs):
         pool_extraspecs = {}
+        provisioning = None
+        tiering = None
+
+        # check individual setting
         if pool in all_extraspecs.keys():
             if 'provisioning' in all_extraspecs[pool]:
                 provisioning = all_extraspecs[pool]['provisioning']
-            else:
-                provisioning = ''
-
             if 'tiering' in all_extraspecs[pool]:
                 tiering = all_extraspecs[pool]['tiering']
-            else:
-                tiering = []
 
+        # use global setting
+        if not provisioning:
+            provisioning = all_extraspecs['global_provisioning']
+        if not tiering:
+            tiering = all_extraspecs['global_tiering']
+
+        if tiering != 'all':
             self._check_extraspecs_conflict(tiering, provisioning)
 
-            if tiering or provisioning:
-                pool_extraspecs['provisioning'] = provisioning
-                pool_extraspecs['tiering'] = tiering
+        pool_extraspecs['provisioning'] = provisioning
+        pool_extraspecs['tiering'] = tiering
 
         return pool_extraspecs
 
