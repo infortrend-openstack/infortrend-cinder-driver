@@ -562,34 +562,55 @@ class InfortrendCommon(object):
             extraspecs = self._get_volume_type_extraspecs(volume)
 
         pool_extraspecs = self._get_pool_extraspecs(pool_name, extraspecs)
-
         provisioning = pool_extraspecs['provisioning']
         tiering = pool_extraspecs['tiering']
 
         extraspecs_dict = {}
-        cmd = ''
-        if provisioning == 'thin':
-            provisioning = int(volume_size * 0.2)
-            extraspecs_dict['provisioning'] = provisioning
-            extraspecs_dict['init'] = 'disable'
+        # Normal pool
+        if pool_id not in self.tier_pools_dict.keys():
+            if provisioning == 'thin':
+                extraspecs_dict['provisioning'] = int(volume_size * 0.2)
+                extraspecs_dict['init'] = 'disable'
+        # Tier pool
         else:
-            self._check_extraspec_value(
-                provisioning, self.provisioning_values)
+            if tiering == 'all':
+                # thin provisioning reside on all tiers
+                if provisioning == 'thin':
+                    extraspecs_dict['provisioning'] = 0
+                    extraspecs_dict['init'] = 'disable'
+                # full provisioning reside on the top tier
+                else:
+                    top_tier = self.tier_pools_dict.get(pool_id)[0]
+                    extraspecs_dict['tiering'] = top_tier
+            else:
+                pool_tiers = self.tier_pools_dict[pool_id]
+                # check extraspecs fit the real pool tiers
+                if not self._check_pool_tiering(pool_tiers, tiering):
+                    msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
+                            'can not fit in %(pool_tiers)s.') % {
+                                'pool_name': pool_name,
+                                'tiering': tiering,
+                                'pool_tiers': pool_tiers}
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                # User specific tier levels
+                if provisioning == 'thin':
+                    extraspecs_dict['provisioning'] = 0
+                    tiering_set = ','.join(str(i) for i in tiering)
+                    extraspecs_dict['tiering'] = tiering_set
+                    extraspecs_dict['init'] = 'disable'
+                else:
+                    extraspecs_dict['tiering'] = str(tiering[0])
 
-        if tiering != '0':
-            self._check_extraspec_value(
-                tiering, self.tiering_values)
-            tier_levels_list = list(range(int(tiering)))
-            tier_levels_list = list(map(str, tier_levels_list))
-            self._check_tiering_existing(tier_levels_list, pool_id)
-            extraspecs_dict['provisioning'] = 0
-            extraspecs_dict['init'] = 'disable'
-
+        cmd = ''
         if extraspecs_dict:
             cmd = self._create_part_parameters_str(extraspecs_dict)
 
         commands = (pool_id, volume_id, 'size=%s' % int(volume_size), cmd)
         self._execute('CreatePartition', *commands)
+
+    def _check_pool_tiering(self, pool_tiers, extra_specs_tiers):
+        return set(extra_specs_tiers).issubset(pool_tiers)
 
     def _create_part_parameters_str(self, extraspecs_dict):
         parameters_list = []
@@ -693,18 +714,6 @@ class InfortrendCommon(object):
                 volume_type_id)
 
         return extraspecs
-
-    def _get_extraspecs_value(self, extraspecs, key):
-        value = None
-        if key == 'provisioning':
-            if (extraspecs and
-                    'infortrend_provisioning' in extraspecs.keys()):
-                value = extraspecs['infortrend_provisioning'].lower()
-            else:
-                value = self.configuration.infortrend_provisioning.lower()
-        elif key == 'tiering':
-            value = self.configuration.infortrend_tiering
-        return value
 
     def _select_most_free_capacity_pool_id(self, lv_info):
         largest_free_capacity_gb = 0.0
@@ -909,9 +918,8 @@ class InfortrendCommon(object):
         # tiering_sets global setting
         elif tiering_sets:
             tiering_set = tiering_sets.replace(' ', '').lower()
-            if tiering_set == 'all':
-                extraspecs_set['global_tiering'] = 'all'
-            else:
+
+            if tiering_set != 'all':
                 tiering_set = tiering_set.split(',')
                 tiering_set = [int(i) for i in tiering_set]
                 tiering_set = list(set(tiering_set))
@@ -1461,7 +1469,6 @@ class InfortrendCommon(object):
         raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
 
         if raid_snapshot_id:
-
             rc, replica_list = self._execute('ShowReplica', '-l')
 
             has_pair = self._delete_pair_with_snapshot(
@@ -1479,20 +1486,14 @@ class InfortrendCommon(object):
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
         else:
-            msg = _(
-                'Failed to get Raid Snapshot ID '
-                'from Snapshot %(snapshot_id)s.') % {
-                    'snapshot_id': snapshot_id}
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            LOG.warning(_LW('Snapshot %(snapshot_id)s '
+                            'provider_location not stored.'), {
+                                'snapshot_id': snapshot['id']})
 
     def _get_raid_snapshot_id(self, snapshot):
-        if 'provider_location' not in snapshot:
-            LOG.warning(_LW(
-                'Failed to get Raid Snapshot ID and '
-                'did not store in snapshot.'))
-            return
-        return snapshot['provider_location']
+        if 'provider_location' in snapshot:
+            return snapshot['provider_location']
+        return
 
     def _delete_pair_with_snapshot(self, snapshot_id, replica_list):
         has_pair = False
@@ -2148,15 +2149,6 @@ class InfortrendCommon(object):
 
         timer = loopingcall.FixedIntervalLoopingCall(_inner)
         timer.start(interval=10).wait()
-
-    def _check_extraspec_value(self, extraspec, validvalues):
-        if not extraspec:
-            LOG.debug("The given extraspec is None.")
-        elif extraspec not in validvalues:
-            msg = _("The extraspec: %(extraspec)s is not valid.") % {
-                'extraspec': extraspec}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
 
     def _get_enable_specs_on_array(self):
         enable_specs = {}
