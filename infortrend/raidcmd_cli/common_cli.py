@@ -1207,6 +1207,14 @@ class InfortrendCommon(object):
                 (replica['Type'] == 'Mirror' and
                     replica['Status'] == 'Mirror')):
             return True
+        # show the progress percentage
+        status = replica['Progress'].lower()
+        index = status.find('%')
+        LOG.info(_LI('Replica from %(source_type)s: [%(source_name)s] '
+                     'progess [%(progess)s].'), {
+                         'source_type': replica['Source-Type'],
+                         'source_name': replica['Source-Name'],
+                         'progess': status[index-3:index+1]})
         return False
 
     def _check_volume_exist(self, volume_id, part_id):
@@ -2133,6 +2141,39 @@ class InfortrendCommon(object):
 
         return model_dict
 
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        """Return model update for migrated volume."""
+
+        src_volume_id = volume['id'].replace('-', '')
+        dst_volume_id = new_volume['id'].replace('-', '')
+        part_id = self._extract_specific_provider_location(
+            new_volume['provider_location'], 'partition_id')
+
+        if part_id is None:
+            part_id = self._get_part_id(dst_volume_id)
+
+        LOG.debug(
+            'Rename partition %(part_id)s '
+            'into new volume %(new_volume)s.', {
+                'part_id': part_id, 'new_volume': dst_volume_id})
+        try:
+            self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
+        except exception.InfortrendCliException:
+            LOG.exception(_LE('Failed to rename %(new_volume)s into '
+                              '%(volume)s.'), {'new_volume': new_volume['id'],
+                                               'volume': volume['id']})
+            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+
+        LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
+            'new_volume': new_volume['id']})
+
+        model_update = {
+            '_name_id': None,
+            'provider_location': new_volume['provider_location'],
+        }
+        return model_update
+
     def _wait_replica_complete(self, part_id):
         start_time = int(time.time())
         timeout = self._replica_timeout
@@ -2159,7 +2200,7 @@ class InfortrendCommon(object):
                 raise exception.VolumeDriverException(message=msg)
 
         timer = loopingcall.FixedIntervalLoopingCall(_inner)
-        timer.start(interval=10).wait()
+        timer.start(interval=15).wait()
 
     def _get_enable_specs_on_array(self):
         enable_specs = {}
@@ -2324,6 +2365,7 @@ class InfortrendCommon(object):
 
             LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
                 'volume_id': volume['id']})
+
             return True
 
     def _check_volume_type_diff(self, diff, key):
@@ -2369,36 +2411,44 @@ class InfortrendCommon(object):
 
         rc, out = self._execute(
             'SetPartition', 'tier-resided', part_id, 'tier=%s' % tiering)
+        rc, out = self._execute(
+            'SetLV', 'tier-migrate', pool_id, 'part=%s' % part_id)
+        self._wait_tier_migrate_complete(part_id)
 
-    def update_migrated_volume(self, ctxt, volume, new_volume,
-                               original_volume_status):
-        """Return model update for migrated volume."""
+    def _wait_tier_migrate_complete(self, part_id):
+        start_time = int(time.time())
+        timeout = self._replica_timeout
 
-        src_volume_id = volume['id'].replace('-', '')
-        dst_volume_id = new_volume['id'].replace('-', '')
-        part_id = self._extract_specific_provider_location(
-            new_volume['provider_location'], 'partition_id')
+        def _inner():
+            check_done = False
+            try:
+                rc, part_list = self._execute('ShowPartition', '-l')
+                for entry in part_list:
+                    if (entry['ID'] == part_id and
+                            self._check_tier_migrate_completed(entry)):
+                        check_done = True
+            except Exception:
+                check_done = False
+                LOG.exception(_LE('Cannot detect replica status.'))
 
-        if part_id is None:
-            part_id = self._get_part_id(dst_volume_id)
+            if check_done:
+                raise loopingcall.LoopingCallDone()
 
-        LOG.debug(
-            'Rename partition %(part_id)s '
-            'into new volume %(new_volume)s.', {
-                'part_id': part_id, 'new_volume': dst_volume_id})
-        try:
-            self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
-        except exception.InfortrendCliException:
-            LOG.exception(_LE('Failed to rename %(new_volume)s into '
-                              '%(volume)s.'), {'new_volume': new_volume['id'],
-                                               'volume': volume['id']})
-            return {'_name_id': new_volume['_name_id'] or new_volume['id']}
+            if int(time.time()) - start_time > timeout:
+                msg = _('Retype volume timeout while tier migrating.')
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
-        LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
-            'new_volume': new_volume['id']})
+        timer = loopingcall.FixedIntervalLoopingCall(_inner)
+        timer.start(interval=15).wait()
 
-        model_update = {
-            '_name_id': None,
-            'provider_location': new_volume['provider_location'],
-        }
-        return model_update
+    def _check_tier_migrate_completed(self, part_info):
+        status = part_info['Progress'].lower()
+        if 'migrating' in status:
+            index = status.find('%')
+            LOG.info(_LI('Retype volume [%(volume_name)s] '
+                         'progess [%(progess)s].'), {
+                             'volume_name': part_info['Name'],
+                             'progess': status[index-3:index+1]})
+            return False
+        return True
