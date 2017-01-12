@@ -573,17 +573,19 @@ class InfortrendCommon(object):
                 extraspecs_dict['init'] = 'disable'
         # Tier pool
         else:
+            pool_tiers = self.tier_pools_dict[pool_id]
             if tiering == 'all':
                 # thin provisioning reside on all tiers
                 if provisioning == 'thin':
                     extraspecs_dict['provisioning'] = 0
+                    tiering_set = ','.join(str(i) for i in pool_tiers)
+                    extraspecs_dict['tiering'] = tiering_set
                     extraspecs_dict['init'] = 'disable'
                 # full provisioning reside on the top tier
                 else:
                     top_tier = self.tier_pools_dict.get(pool_id)[0]
                     extraspecs_dict['tiering'] = top_tier
             else:
-                pool_tiers = self.tier_pools_dict[pool_id]
                 # check extraspecs fit the real pool tiers
                 if not self._check_pool_tiering(pool_tiers, tiering):
                     msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
@@ -623,8 +625,7 @@ class InfortrendCommon(object):
             value = parameters[extraspec] % (extraspecs_dict[extraspec])
             parameters_list.append(value)
 
-        cmd = ' '.join(parameters_list)
-        return cmd
+        return ' '.join(parameters_list)
 
     def _check_tiering_existing(self, tier_levels, pool_id):
         rc, lv_info = self._execute('ShowLV', 'tier')
@@ -842,15 +843,25 @@ class InfortrendCommon(object):
             'global_provisioning': 'full',
             'global_tiering': 'all',
         }
-        provisionings = extraspecs.get(self.PROVISIONING_KEY, None)
-        tiering_sets = extraspecs.get(self.TIERING_SET_KEY, None)
 
-        # provisionings individual setting
-        if provisionings and ':' in provisionings:
-            provisionings = provisionings.replace(' ', '')
-            provisionings = provisionings.split(';')
+        provisioning_string = extraspecs.get(self.PROVISIONING_KEY, None)
+        tiering_string = extraspecs.get(self.TIERING_SET_KEY, None)
 
-            for provisioning in provisionings:
+        extraspecs_set = self._get_provisioning_setting(
+            extraspecs_set, provisioning_string)
+
+        extraspecs_set = self._get_tiering_setting(
+            extraspecs_set, tiering_string)
+
+        return extraspecs_set
+
+    def _get_provisioning_setting(self, extraspecs_set, provisioning_string):
+        # provisioning individual setting
+        if provisioning_string and ':' in provisioning_string:
+            provisioning_string = provisioning_string.replace(' ', '')
+            provisioning_string = provisioning_string.split(';')
+
+            for provisioning in provisioning_string:
                 pool, value = provisioning.split(':', 1)
 
                 if pool not in self.pool_list:
@@ -871,22 +882,24 @@ class InfortrendCommon(object):
                                         '[%(value)s] is illegal'), {
                                             'pool': pool,
                                             'value': value})
-        # provisionings global setting
-        elif provisionings:
-            provisioning = provisionings.replace(' ', '').lower()
+        # provisioning global setting
+        elif provisioning_string:
+            provisioning = provisioning_string.replace(' ', '').lower()
             if provisioning in self.PROVISIONING_VALUES:
                 extraspecs_set['global_provisioning'] = provisioning
             else:
                 LOG.warning(_LW('Infortrend:provisioning '
                                 '[%(value)s] is illegal'), {
-                                    'value': provisionings})
+                                    'value': provisioning_string})
+        return extraspecs_set
 
-        # tiering_sets individual setting
-        if tiering_sets and ':' in tiering_sets:
-            tiering_sets = tiering_sets.replace(' ', '')
-            tiering_sets = tiering_sets.split(';')
+    def _get_tiering_setting(self, extraspecs_set, tiering_string):
+        # tiering individual setting
+        if tiering_string and ':' in tiering_string:
+            tiering_string = tiering_string.replace(' ', '')
+            tiering_string = tiering_string.split(';')
 
-            for tiering_set in tiering_sets:
+            for tiering_set in tiering_string:
                 pool, value = tiering_set.split(':', 1)
 
                 if pool not in self.pool_list:
@@ -915,9 +928,9 @@ class InfortrendCommon(object):
                                                 'pool': pool,
                                                 'value': value,
                                                 'err_value': value[-1]})
-        # tiering_sets global setting
-        elif tiering_sets:
-            tiering_set = tiering_sets.replace(' ', '').lower()
+        # tiering global setting
+        elif tiering_string:
+            tiering_set = tiering_string.replace(' ', '').lower()
 
             if tiering_set != 'all':
                 tiering_set = tiering_set.split(',')
@@ -930,7 +943,6 @@ class InfortrendCommon(object):
                     LOG.warning(_LW('Infortrend:tiering '
                                     '%(err_value)s is illegal'), {
                                         'err_value': tiering_set[-1]})
-
         return extraspecs_set
 
     def _find_pool_id_by_name(self, pool_name):
@@ -1195,7 +1207,6 @@ class InfortrendCommon(object):
                 (replica['Type'] == 'Mirror' and
                     replica['Status'] == 'Mirror')):
             return True
-
         return False
 
     def _check_volume_exist(self, volume_id, part_id):
@@ -2268,9 +2279,11 @@ class InfortrendCommon(object):
         return False
 
     def retype(self, ctxt, volume, new_type, diff, host):
-        """Convert the volume to be of the new type."""
+        """Convert the volume to the new volume type."""
+        src_pool_name = volume['host'].split('#')[-1]
+        dst_pool_name = host['host'].split('#')[-1]
 
-        if volume['host'] != host['host']:
+        if src_pool_name != dst_pool_name:
             if self._check_volume_attachment(volume):
                 LOG.error(_LE(
                     'Volume %(volume_id)s cannot be retyped '
@@ -2298,20 +2311,64 @@ class InfortrendCommon(object):
 
             return (rc, model_update)
         else:
-            if ('infortrend_provisioning' in diff['extra_specs'] and
-                    (diff['extra_specs']['infortrend_provisioning'][0] !=
-                        diff['extra_specs']['infortrend_provisioning'][1])):
-
-                LOG.error(_LE(
+            if self._check_volume_type_diff(diff, self.PROVISIONING_KEY):
+                LOG.warning(_LW(
                     'The provisioning: %(provisioning)s '
                     'is not valid.'), {
                         'provisioning':
-                            diff['extra_specs']['infortrend_provisioning'][1]})
+                            diff['extra_specs'][self.PROVISIONING_KEY][1]})
                 return False
+
+            if self._check_volume_type_diff(diff, self.TIERING_SET_KEY):
+                self._execute_retype_tiering(new_type, volume)
 
             LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
                 'volume_id': volume['id']})
             return True
+
+    def _check_volume_type_diff(self, diff, key):
+        diff_extra_specs = diff['extra_specs'].get(key, None)
+        if diff_extra_specs and diff_extra_specs[0] != diff_extra_specs[1]:
+            return True
+        return False
+
+    def _execute_retype_tiering(self, new_type, volume):
+        volume_id = volume['id'].replace('-', '')
+        part_id = self._extract_specific_provider_location(
+            volume['provider_location'], 'partition_id')
+
+        if part_id is None:
+            part_id = self._get_part_id(volume_id)
+
+        pool_id = self._get_volume_pool_id(volume)
+        pool_name = volume['host'].split('#')[-1]
+        pool_tiers = self.tier_pools_dict[pool_id]
+
+        new_extraspecs = new_type['extra_specs']
+        new_extraspecs_set = self._get_extraspecs_set(new_extraspecs)
+        pool_extraspecs = self._get_pool_extraspecs(
+            pool_name, new_extraspecs_set)
+        provisioning = pool_extraspecs['provisioning']
+        new_tiering = pool_extraspecs['tiering']
+
+        if new_tiering == 'all':
+            tiering = ','.join(str(i) for i in pool_tiers)
+        else:
+            if not self._check_pool_tiering(pool_tiers, new_tiering):
+                msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
+                        'can not fit in %(pool_tiers)s.') % {
+                            'pool_name': pool_name,
+                            'tiering': tiering,
+                            'pool_tiers': pool_tiers}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+            if provisioning == 'thin':
+                tiering = ','.join(str(i) for i in new_tiering)
+            else:
+                tiering = str(new_tiering[0])
+
+        rc, out = self._execute(
+            'SetPartition', 'tier-resided', part_id, 'tier=%s' % tiering)
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):

@@ -242,8 +242,8 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
                      dictionary of its reported capabilities.
         """
         LOG.debug(
-            'retype volume id=%(volume_id)s new_type id=%(type_id)s', {
-                'volume_id': volume['id'], 'type_id': new_type['id']})
+            'retype _volume %(volume)s _new_type %(type)s _host %(host)s', {
+                'volume': volume, 'type': new_type, 'host': host})
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
