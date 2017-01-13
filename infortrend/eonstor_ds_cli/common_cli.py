@@ -589,10 +589,10 @@ class InfortrendCommon(object):
                 # check extraspecs fit the real pool tiers
                 if not self._check_pool_tiering(pool_tiers, tiering):
                     msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
-                            'can not fit in %(pool_tiers)s.') % {
+                            'can not fit in the real tiers %(pool_tier)s.') % {
                                 'pool_name': pool_name,
                                 'tiering': tiering,
-                                'pool_tiers': pool_tiers}
+                                'pool_tier': pool_tiers}
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
                 # User specific tier levels
@@ -762,17 +762,17 @@ class InfortrendCommon(object):
             extraspecs_set = self._get_extraspecs_set(extraspecs)
         return extraspecs_set
 
-    def _get_pool_extraspecs(self, pool, all_extraspecs):
+    def _get_pool_extraspecs(self, pool_name, all_extraspecs):
         pool_extraspecs = {}
         provisioning = None
         tiering = None
 
         # check individual setting
-        if pool in all_extraspecs.keys():
-            if 'provisioning' in all_extraspecs[pool]:
-                provisioning = all_extraspecs[pool]['provisioning']
-            if 'tiering' in all_extraspecs[pool]:
-                tiering = all_extraspecs[pool]['tiering']
+        if pool_name in all_extraspecs.keys():
+            if 'provisioning' in all_extraspecs[pool_name]:
+                provisioning = all_extraspecs[pool_name]['provisioning']
+            if 'tiering' in all_extraspecs[pool_name]:
+                tiering = all_extraspecs[pool_name]['tiering']
 
         # use global setting
         if not provisioning:
@@ -785,6 +785,18 @@ class InfortrendCommon(object):
 
         pool_extraspecs['provisioning'] = provisioning
         pool_extraspecs['tiering'] = tiering
+
+        for key, value in pool_extraspecs.items():
+            if 'Err' in value:
+                err, user_setting = value.split(':', 1)
+                msg = _('Extraspecs Error, '
+                        'pool: [%(pool)s], %(key)s: %(setting)s '
+                        'is invalid, please check.') % {
+                            'pool': pool_name,
+                            'key': key,
+                            'setting': user_setting}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
         return pool_extraspecs
 
@@ -866,8 +878,8 @@ class InfortrendCommon(object):
 
                 if pool not in self.pool_list:
                     LOG.warning(_LW('Infortrend:provisioning '
-                                    'this setting %(pool)s:%(value)s '
-                                    '[%(pool)s] not set in config.'), {
+                                    'this setting %(pool)s:%(value)s, '
+                                    'pool [%(pool)s] not set in config.'), {
                                         'pool': pool,
                                         'value': value})
                 else:
@@ -877,8 +889,9 @@ class InfortrendCommon(object):
                     if value.lower() in self.PROVISIONING_VALUES:
                         extraspecs_set[pool]['provisioning'] = value.lower()
                     else:
+                        extraspecs_set[pool]['provisioning'] = 'Err:%s' % value
                         LOG.warning(_LW('Infortrend:provisioning '
-                                        'this setting %(pool)s:%(value)s '
+                                        'this setting %(pool)s:%(value)s, '
                                         '[%(value)s] is illegal'), {
                                             'pool': pool,
                                             'value': value})
@@ -888,6 +901,7 @@ class InfortrendCommon(object):
             if provisioning in self.PROVISIONING_VALUES:
                 extraspecs_set['global_provisioning'] = provisioning
             else:
+                extraspecs_set['global_provisioning'] = 'Err:%s' % provisioning
                 LOG.warning(_LW('Infortrend:provisioning '
                                 '[%(value)s] is illegal'), {
                                     'value': provisioning_string})
@@ -904,8 +918,8 @@ class InfortrendCommon(object):
 
                 if pool not in self.pool_list:
                     LOG.warning(_LW('Infortrend:tiering '
-                                    'this setting %(pool)s:%(value)s '
-                                    '[%(pool)s] not set in config.'), {
+                                    'this setting %(pool)s:%(value)s, '
+                                    'pool [%(pool)s] not set in config.'), {
                                         'pool': pool,
                                         'value': value})
                 else:
@@ -922,8 +936,9 @@ class InfortrendCommon(object):
                         if value[-1] in range(4):
                             extraspecs_set[pool]['tiering'] = value
                         else:
+                            extraspecs_set[pool]['tiering'] = 'Err:%s' % value
                             LOG.warning(_LW('Infortrend:tiering '
-                                            'this setting %(pool)s:%(value)s '
+                                            'this setting %(pool)s:%(value)s, '
                                             '[%(err_value)s] is illegal'), {
                                                 'pool': pool,
                                                 'value': value,
@@ -940,8 +955,9 @@ class InfortrendCommon(object):
                 if tiering_set[-1] in range(4):
                     extraspecs_set['global_tiering'] = tiering_set
                 else:
+                    extraspecs_set['global_tiering'] = 'Err:%s' % tiering_set
                     LOG.warning(_LW('Infortrend:tiering '
-                                    '%(err_value)s is illegal'), {
+                                    '[%(err_value)s] is illegal'), {
                                         'err_value': tiering_set[-1]})
         return extraspecs_set
 
@@ -2398,10 +2414,10 @@ class InfortrendCommon(object):
         else:
             if not self._check_pool_tiering(pool_tiers, new_tiering):
                 msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
-                        'can not fit in %(pool_tiers)s.') % {
+                        'can not fit in the real tiers %(pool_tier)s.') % {
                             'pool_name': pool_name,
                             'tiering': tiering,
-                            'pool_tiers': pool_tiers}
+                            'pool_tier': pool_tiers}
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
             if provisioning == 'thin':
