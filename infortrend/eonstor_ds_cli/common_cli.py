@@ -1431,9 +1431,9 @@ class InfortrendCommon(object):
         temp_dict = {}
         for entry in lv_info:
             if entry['LV-Name'] in self.pool_list:
-                if entry['LV-ID'] not in self.temp_dict.keys():
-                    self.temp_dict[entry['LV-ID']] = []
-                self.temp_dict[entry['LV-ID']].append(int(entry['Tier']))
+                if entry['LV-ID'] not in temp_dict.keys():
+                    temp_dict[entry['LV-ID']] = []
+                temp_dict[entry['LV-ID']].append(int(entry['Tier']))
 
         self.tier_pools_dict = temp_dict
 
