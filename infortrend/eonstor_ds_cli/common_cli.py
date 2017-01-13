@@ -584,7 +584,8 @@ class InfortrendCommon(object):
                 # full provisioning reside on the top tier
                 else:
                     top_tier = self.tier_pools_dict.get(pool_id)[0]
-                    extraspecs_dict['tiering'] = top_tier
+                    self._check_tier_space(top_tier, pool_id, volume_size)
+                    extraspecs_dict['tiering'] = str(top_tier)
             else:
                 # check extraspecs fit the real pool tiers
                 if not self._check_pool_tiering(pool_tiers, tiering):
@@ -602,6 +603,7 @@ class InfortrendCommon(object):
                     extraspecs_dict['tiering'] = tiering_set
                     extraspecs_dict['init'] = 'disable'
                 else:
+                    self._check_tier_space(tiering[0], pool_id, volume_size)
                     extraspecs_dict['tiering'] = str(tiering[0])
 
         cmd = ''
@@ -613,6 +615,34 @@ class InfortrendCommon(object):
 
     def _check_pool_tiering(self, pool_tiers, extra_specs_tiers):
         return set(extra_specs_tiers).issubset(pool_tiers)
+
+    def _check_tier_space(self, tier_level, pool_id, volume_size):
+        rc, lv_info = self._execute('ShowLV', 'tier')
+        for entry in lv_info:
+            if (entry['LV-ID'] == pool_id and
+                    int(entry['Tier']) == tier_level):
+                total_space = self._parse_size(entry['Size'], 'MB')
+                used_space = self._parse_size(entry['Used'], 'MB')
+                if volume_size > (total_space - used_space):
+                    LOG.warning(_LW('Tiering pool [%(pool_id)s] '
+                                    'has already run out of space in '
+                                    'tier level [%(tier_level)s].'), {
+                                        'pool_id': pool_id,
+                                        'tier_level': tier_level})
+
+    def _parse_size(self, size_string, return_unit):
+        size = float(size_string.split(' ', 1)[0])
+        if 'GB' in size_string:
+            if return_unit == 'GB':
+                return round(size, 2)
+            elif return_unit == 'MB':
+                return round(gi_to_mi(size))
+        elif 'MB' in size_string:
+            if return_unit == 'GB':
+                return round(mi_to_gi(size), 2)
+            elif return_unit == 'MB':
+                return round(size)
+        return
 
     def _create_part_parameters_str(self, extraspecs_dict):
         parameters_list = []
@@ -626,20 +656,6 @@ class InfortrendCommon(object):
             parameters_list.append(value)
 
         return ' '.join(parameters_list)
-
-    def _check_tiering_existing(self, tier_levels, pool_id):
-        rc, lv_info = self._execute('ShowLV', 'tier')
-
-        for entry in lv_info:
-            if entry['LV-ID'] == pool_id and entry['Tier'] in tier_levels:
-                tier_levels.remove(entry['Tier'])
-                if len(tier_levels) == 0:
-                    break
-        if len(tier_levels) != 0:
-            msg = _('Have not created %(tier_levels)s tier(s).') % {
-                'tier_levels': tier_levels}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
 
     @log_func
     def _iscsi_create_map(
