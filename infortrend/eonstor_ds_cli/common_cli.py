@@ -763,6 +763,7 @@ class InfortrendCommon(object):
         return extraspecs_set
 
     def _get_pool_extraspecs(self, pool_name, all_extraspecs):
+        LOG.debug('_Extraspecs_dict: %s' % all_extraspecs)
         pool_extraspecs = {}
         provisioning = None
         tiering = None
