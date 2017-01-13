@@ -2427,7 +2427,12 @@ class InfortrendCommon(object):
         new_tiering = pool_extraspecs['tiering']
 
         if new_tiering == 'all':
-            tiering = ','.join(str(i) for i in pool_tiers)
+            if provisioning == 'thin':
+                tiering = ','.join(str(i) for i in pool_tiers)
+            else:
+                volume_size = gi_to_mi(volume['size'])
+                self._check_tier_space(pool_tiers[0], pool_id, volume_size)
+                tiering = str(pool_tiers[0])
         else:
             if not self._check_pool_tiering(pool_tiers, new_tiering):
                 msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
@@ -2440,6 +2445,8 @@ class InfortrendCommon(object):
             if provisioning == 'thin':
                 tiering = ','.join(str(i) for i in new_tiering)
             else:
+                volume_size = gi_to_mi(volume['size'])
+                self._check_tier_space(new_tiering[0], pool_id, volume_size)
                 tiering = str(new_tiering[0])
 
         rc, out = self._execute(
