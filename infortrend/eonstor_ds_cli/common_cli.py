@@ -2385,29 +2385,50 @@ class InfortrendCommon(object):
 
             return (rc, model_update)
         else:
-            if self._check_volume_type_diff(diff, self.PROVISIONING_KEY):
-                LOG.warning(_LW(
-                    'The provisioning: %(provisioning)s '
-                    'is not valid.'), {
-                        'provisioning':
-                            diff['extra_specs'][self.PROVISIONING_KEY][1]})
-                return False
+            # extract extraspecs for pool
+            src_extraspec = new_type['extra_specs']
 
-            if self._check_volume_type_diff(diff, self.TIERING_SET_KEY):
-                self._execute_retype_tiering(new_type, volume)
+            if self.PROVISIONING_KEY in diff['extra_specs']:
+                src_extraspec[self.PROVISIONING_KEY] = \
+                    diff['extra_specs'][self.PROVISIONING_KEY][0]
+            if self.TIERING_SET_KEY in diff['extra_specs']:
+                src_extraspec[self.TIERING_SET_KEY] = \
+                    diff['extra_specs'][self.TIERING_SET_KEY][0]
+
+            if src_extraspec != new_type['extra_specs']:
+                src_extraspec_set = self._get_extraspecs_set(
+                                            src_extraspec)
+                new_extraspec_set = self._get_extraspecs_set(
+                                            new_type['extra_specs'])
+                src_extraspecs = self._get_pool_extraspecs(
+                                            src_pool_name, src_extraspec_set)
+                new_extraspecs = self._get_pool_extraspecs(
+                                            dst_pool_name, new_extraspec_set)
+
+                if not self._check_volume_type_diff(
+                        src_extraspecs, new_extraspecs, 'provisioning'):
+                    LOG.warning(_LW(
+                        'The provisioning: [%(src)s] to [%(new)s] '
+                        'is unable to retype.'), {
+                            'src': src_extraspecs['provisioning'],
+                            'new': new_extraspecs['provisioning']})
+                    return False
+
+                elif not self._check_volume_type_diff(
+                        src_extraspecs, new_extraspecs, 'tiering'):
+                    self._execute_retype_tiering(new_extraspecs, volume)
 
             LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
                 'volume_id': volume['id']})
 
             return True
 
-    def _check_volume_type_diff(self, diff, key):
-        diff_extra_specs = diff['extra_specs'].get(key, None)
-        if diff_extra_specs and diff_extra_specs[0] != diff_extra_specs[1]:
-            return True
-        return False
+    def _check_volume_type_diff(self, src_extraspecs, new_extraspecs, key):
+        if src_extraspecs[key] != new_extraspecs[key]:
+            return False
+        return True
 
-    def _execute_retype_tiering(self, new_type, volume):
+    def _execute_retype_tiering(self, new_pool_extraspecs, volume):
         volume_id = volume['id'].replace('-', '')
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
@@ -2419,12 +2440,8 @@ class InfortrendCommon(object):
         pool_name = volume['host'].split('#')[-1]
         pool_tiers = self.tier_pools_dict[pool_id]
 
-        new_extraspecs = new_type['extra_specs']
-        new_extraspecs_set = self._get_extraspecs_set(new_extraspecs)
-        pool_extraspecs = self._get_pool_extraspecs(
-            pool_name, new_extraspecs_set)
-        provisioning = pool_extraspecs['provisioning']
-        new_tiering = pool_extraspecs['tiering']
+        provisioning = new_pool_extraspecs['provisioning']
+        new_tiering = new_pool_extraspecs['tiering']
 
         if new_tiering == 'all':
             if provisioning == 'thin':
