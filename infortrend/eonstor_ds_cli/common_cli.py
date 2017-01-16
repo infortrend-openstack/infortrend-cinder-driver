@@ -163,12 +163,13 @@ class InfortrendCommon(object):
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
-        1.0.5 - Improve driver speed
-        1.0.6 - Select pool by Cinder scheduler
+        1.1.0 - Improve driver speed
+        1.1.1 - Select pool by Cinder scheduler
               - Fix migrate & manage_existing issues
+        2.0.0 - Enhance extraspecs & retype
     """
 
-    VERSION = '1.0.6'
+    VERSION = '2.0.0'
 
     constants = {
         'ISCSI_PORT': 3260,
