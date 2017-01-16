@@ -2387,7 +2387,7 @@ class InfortrendCommon(object):
             return (rc, model_update)
         else:
             # extract extraspecs for pool
-            src_extraspec = new_type['extra_specs']
+            src_extraspec = new_type['extra_specs'].copy()
 
             if self.PROVISIONING_KEY in diff['extra_specs']:
                 src_extraspec[self.PROVISIONING_KEY] = \
