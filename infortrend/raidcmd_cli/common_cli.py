@@ -1248,12 +1248,11 @@ class InfortrendCommon(object):
             return True
         # show the progress percentage
         status = replica['Progress'].lower()
-        index = status.find('%')
         LOG.info(_LI('Replica from %(source_type)s: [%(source_name)s] '
                      'progess [%(progess)s].'), {
                          'source_type': replica['Source-Type'],
                          'source_name': replica['Source-Name'],
-                         'progess': status[index-3:index+1]})
+                         'progess': status})
         return False
 
     def _check_volume_exist(self, volume_id, part_id):
@@ -2516,10 +2515,9 @@ class InfortrendCommon(object):
     def _check_tier_migrate_completed(self, part_info):
         status = part_info['Progress'].lower()
         if 'migrating' in status:
-            index = status.find('%')
             LOG.info(_LI('Retype volume [%(volume_name)s] '
                          'progess [%(progess)s].'), {
                              'volume_name': part_info['Name'],
-                             'progess': status[index-3:index+1]})
+                             'progess': status})
             return False
         return True
