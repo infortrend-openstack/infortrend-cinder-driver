@@ -26,20 +26,6 @@ LOG = logging.getLogger(__name__)
 
 class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
-    """Infortrend iSCSI Driver for Eonstor DS using CLI.
-
-    Version history:
-        1.0.0 - Initial driver
-        1.0.1 - Support DS4000
-        1.0.2 - Support GS Series
-        1.0.3 - Add iSCSI MPIO support
-        1.0.4 - Fix Nova live migration (bug #1481968)
-        1.1.0 - Improve driver speed
-        1.1.1 - Select pool by Cinder scheduler
-              - Fix migrate & manage_existing issues
-        2.0.0 - Enhance extraspecs & retype
-    """
-
     def __init__(self, *args, **kwargs):
         super(InfortrendCLIISCSIDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(
