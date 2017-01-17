@@ -617,6 +617,11 @@ class InfortrendCommon(object):
     def _check_pool_tiering(self, pool_tiers, extra_specs_tiers):
         return set(extra_specs_tiers).issubset(pool_tiers)
 
+    def _check_tier_pool_or_not(self, pool_id):
+        if pool_id in self.tier_pools_dict.keys():
+            return True
+        return False
+
     def _check_tier_space(self, tier_level, pool_id, volume_size):
         rc, lv_info = self._execute('ShowLV', 'tier')
         for entry in lv_info:
@@ -2430,19 +2435,27 @@ class InfortrendCommon(object):
         return True
 
     def _execute_retype_tiering(self, new_pool_extraspecs, volume):
-        volume_id = volume['id'].replace('-', '')
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
         if part_id is None:
+            volume_id = volume['id'].replace('-', '')
             part_id = self._get_part_id(volume_id)
 
-        pool_id = self._get_volume_pool_id(volume)
         pool_name = volume['host'].split('#')[-1]
-        pool_tiers = self.tier_pools_dict[pool_id]
-
+        pool_id = self._get_volume_pool_id(volume)
         provisioning = new_pool_extraspecs['provisioning']
         new_tiering = new_pool_extraspecs['tiering']
+
+        if not self._check_tier_pool_or_not(pool_id):
+            msg = _('[%(pool_name)s] is not a tier Pool. '
+                    'Can not retype volume to tier %(tier)s.') % {
+                        'pool_name': pool_name,
+                        'tier': new_tiering}
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        pool_tiers = self.tier_pools_dict[pool_id]
 
         if new_tiering == 'all':
             if provisioning == 'thin':
