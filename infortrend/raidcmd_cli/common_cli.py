@@ -163,12 +163,13 @@ class InfortrendCommon(object):
         1.0.2 - Support GS Series
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
-        1.0.5 - Improve driver speed
-        1.0.6 - Select pool by Cinder scheduler
+        1.1.0 - Improve driver speed
+        1.1.1 - Select pool by Cinder scheduler
               - Fix migrate & manage_existing issues
+        2.0.0 - Enhance extraspecs & retype
     """
 
-    VERSION = '1.0.6'
+    VERSION = '2.0.0'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -584,15 +585,16 @@ class InfortrendCommon(object):
                 # full provisioning reside on the top tier
                 else:
                     top_tier = self.tier_pools_dict.get(pool_id)[0]
-                    extraspecs_dict['tiering'] = top_tier
+                    self._check_tier_space(top_tier, pool_id, volume_size)
+                    extraspecs_dict['tiering'] = str(top_tier)
             else:
                 # check extraspecs fit the real pool tiers
                 if not self._check_pool_tiering(pool_tiers, tiering):
                     msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
-                            'can not fit in %(pool_tiers)s.') % {
+                            'can not fit in the real tiers %(pool_tier)s.') % {
                                 'pool_name': pool_name,
                                 'tiering': tiering,
-                                'pool_tiers': pool_tiers}
+                                'pool_tier': pool_tiers}
                     LOG.error(msg)
                     raise exception.VolumeDriverException(message=msg)
                 # User specific tier levels
@@ -602,6 +604,7 @@ class InfortrendCommon(object):
                     extraspecs_dict['tiering'] = tiering_set
                     extraspecs_dict['init'] = 'disable'
                 else:
+                    self._check_tier_space(tiering[0], pool_id, volume_size)
                     extraspecs_dict['tiering'] = str(tiering[0])
 
         cmd = ''
@@ -613,6 +616,39 @@ class InfortrendCommon(object):
 
     def _check_pool_tiering(self, pool_tiers, extra_specs_tiers):
         return set(extra_specs_tiers).issubset(pool_tiers)
+
+    def _check_tier_pool_or_not(self, pool_id):
+        if pool_id in self.tier_pools_dict.keys():
+            return True
+        return False
+
+    def _check_tier_space(self, tier_level, pool_id, volume_size):
+        rc, lv_info = self._execute('ShowLV', 'tier')
+        for entry in lv_info:
+            if (entry['LV-ID'] == pool_id and
+                    int(entry['Tier']) == tier_level):
+                total_space = self._parse_size(entry['Size'], 'MB')
+                used_space = self._parse_size(entry['Used'], 'MB')
+                if volume_size > (total_space - used_space):
+                    LOG.warning(_LW('Tiering pool [%(pool_id)s] '
+                                    'has already run out of space in '
+                                    'tier level [%(tier_level)s].'), {
+                                        'pool_id': pool_id,
+                                        'tier_level': tier_level})
+
+    def _parse_size(self, size_string, return_unit):
+        size = float(size_string.split(' ', 1)[0])
+        if 'GB' in size_string:
+            if return_unit == 'GB':
+                return round(size, 2)
+            elif return_unit == 'MB':
+                return round(gi_to_mi(size))
+        elif 'MB' in size_string:
+            if return_unit == 'GB':
+                return round(mi_to_gi(size), 2)
+            elif return_unit == 'MB':
+                return round(size)
+        return
 
     def _create_part_parameters_str(self, extraspecs_dict):
         parameters_list = []
@@ -626,20 +662,6 @@ class InfortrendCommon(object):
             parameters_list.append(value)
 
         return ' '.join(parameters_list)
-
-    def _check_tiering_existing(self, tier_levels, pool_id):
-        rc, lv_info = self._execute('ShowLV', 'tier')
-
-        for entry in lv_info:
-            if entry['LV-ID'] == pool_id and entry['Tier'] in tier_levels:
-                tier_levels.remove(entry['Tier'])
-                if len(tier_levels) == 0:
-                    break
-        if len(tier_levels) != 0:
-            msg = _('Have not created %(tier_levels)s tier(s).') % {
-                'tier_levels': tier_levels}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
 
     @log_func
     def _iscsi_create_map(
@@ -762,17 +784,18 @@ class InfortrendCommon(object):
             extraspecs_set = self._get_extraspecs_set(extraspecs)
         return extraspecs_set
 
-    def _get_pool_extraspecs(self, pool, all_extraspecs):
+    def _get_pool_extraspecs(self, pool_name, all_extraspecs):
+        LOG.debug('_Extraspecs_dict: %s' % all_extraspecs)
         pool_extraspecs = {}
         provisioning = None
         tiering = None
 
         # check individual setting
-        if pool in all_extraspecs.keys():
-            if 'provisioning' in all_extraspecs[pool]:
-                provisioning = all_extraspecs[pool]['provisioning']
-            if 'tiering' in all_extraspecs[pool]:
-                tiering = all_extraspecs[pool]['tiering']
+        if pool_name in all_extraspecs.keys():
+            if 'provisioning' in all_extraspecs[pool_name]:
+                provisioning = all_extraspecs[pool_name]['provisioning']
+            if 'tiering' in all_extraspecs[pool_name]:
+                tiering = all_extraspecs[pool_name]['tiering']
 
         # use global setting
         if not provisioning:
@@ -785,6 +808,18 @@ class InfortrendCommon(object):
 
         pool_extraspecs['provisioning'] = provisioning
         pool_extraspecs['tiering'] = tiering
+
+        for key, value in pool_extraspecs.items():
+            if 'Err' in value:
+                err, user_setting = value.split(':', 1)
+                msg = _('Extraspecs Error, '
+                        'pool: [%(pool)s], %(key)s: %(setting)s '
+                        'is invalid, please check.') % {
+                            'pool': pool_name,
+                            'key': key,
+                            'setting': user_setting}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
         return pool_extraspecs
 
@@ -866,8 +901,8 @@ class InfortrendCommon(object):
 
                 if pool not in self.pool_list:
                     LOG.warning(_LW('Infortrend:provisioning '
-                                    'this setting %(pool)s:%(value)s '
-                                    '[%(pool)s] not set in config.'), {
+                                    'this setting %(pool)s:%(value)s, '
+                                    'pool [%(pool)s] not set in config.'), {
                                         'pool': pool,
                                         'value': value})
                 else:
@@ -877,8 +912,9 @@ class InfortrendCommon(object):
                     if value.lower() in self.PROVISIONING_VALUES:
                         extraspecs_set[pool]['provisioning'] = value.lower()
                     else:
+                        extraspecs_set[pool]['provisioning'] = 'Err:%s' % value
                         LOG.warning(_LW('Infortrend:provisioning '
-                                        'this setting %(pool)s:%(value)s '
+                                        'this setting %(pool)s:%(value)s, '
                                         '[%(value)s] is illegal'), {
                                             'pool': pool,
                                             'value': value})
@@ -888,6 +924,7 @@ class InfortrendCommon(object):
             if provisioning in self.PROVISIONING_VALUES:
                 extraspecs_set['global_provisioning'] = provisioning
             else:
+                extraspecs_set['global_provisioning'] = 'Err:%s' % provisioning
                 LOG.warning(_LW('Infortrend:provisioning '
                                 '[%(value)s] is illegal'), {
                                     'value': provisioning_string})
@@ -904,8 +941,8 @@ class InfortrendCommon(object):
 
                 if pool not in self.pool_list:
                     LOG.warning(_LW('Infortrend:tiering '
-                                    'this setting %(pool)s:%(value)s '
-                                    '[%(pool)s] not set in config.'), {
+                                    'this setting %(pool)s:%(value)s, '
+                                    'pool [%(pool)s] not set in config.'), {
                                         'pool': pool,
                                         'value': value})
                 else:
@@ -922,8 +959,9 @@ class InfortrendCommon(object):
                         if value[-1] in range(4):
                             extraspecs_set[pool]['tiering'] = value
                         else:
+                            extraspecs_set[pool]['tiering'] = 'Err:%s' % value
                             LOG.warning(_LW('Infortrend:tiering '
-                                            'this setting %(pool)s:%(value)s '
+                                            'this setting %(pool)s:%(value)s, '
                                             '[%(err_value)s] is illegal'), {
                                                 'pool': pool,
                                                 'value': value,
@@ -940,8 +978,9 @@ class InfortrendCommon(object):
                 if tiering_set[-1] in range(4):
                     extraspecs_set['global_tiering'] = tiering_set
                 else:
+                    extraspecs_set['global_tiering'] = 'Err:%s' % tiering_set
                     LOG.warning(_LW('Infortrend:tiering '
-                                    '%(err_value)s is illegal'), {
+                                    '[%(err_value)s] is illegal'), {
                                         'err_value': tiering_set[-1]})
         return extraspecs_set
 
@@ -2352,61 +2391,93 @@ class InfortrendCommon(object):
 
             return (rc, model_update)
         else:
-            if self._check_volume_type_diff(diff, self.PROVISIONING_KEY):
-                LOG.warning(_LW(
-                    'The provisioning: %(provisioning)s '
-                    'is not valid.'), {
-                        'provisioning':
-                            diff['extra_specs'][self.PROVISIONING_KEY][1]})
-                return False
+            # extract extraspecs for pool
+            src_extraspec = new_type['extra_specs'].copy()
 
-            if self._check_volume_type_diff(diff, self.TIERING_SET_KEY):
-                self._execute_retype_tiering(new_type, volume)
+            if self.PROVISIONING_KEY in diff['extra_specs']:
+                src_extraspec[self.PROVISIONING_KEY] = \
+                    diff['extra_specs'][self.PROVISIONING_KEY][0]
+            if self.TIERING_SET_KEY in diff['extra_specs']:
+                src_extraspec[self.TIERING_SET_KEY] = \
+                    diff['extra_specs'][self.TIERING_SET_KEY][0]
+
+            if src_extraspec != new_type['extra_specs']:
+                src_extraspec_set = self._get_extraspecs_set(
+                                            src_extraspec)
+                new_extraspec_set = self._get_extraspecs_set(
+                                            new_type['extra_specs'])
+                src_extraspecs = self._get_pool_extraspecs(
+                                            src_pool_name, src_extraspec_set)
+                new_extraspecs = self._get_pool_extraspecs(
+                                            dst_pool_name, new_extraspec_set)
+
+                if not self._check_volume_type_diff(
+                        src_extraspecs, new_extraspecs, 'provisioning'):
+                    LOG.warning(_LW(
+                        'The provisioning: [%(src)s] to [%(new)s] '
+                        'is unable to retype.'), {
+                            'src': src_extraspecs['provisioning'],
+                            'new': new_extraspecs['provisioning']})
+                    return False
+
+                elif not self._check_volume_type_diff(
+                        src_extraspecs, new_extraspecs, 'tiering'):
+                    self._execute_retype_tiering(new_extraspecs, volume)
 
             LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
                 'volume_id': volume['id']})
 
             return True
 
-    def _check_volume_type_diff(self, diff, key):
-        diff_extra_specs = diff['extra_specs'].get(key, None)
-        if diff_extra_specs and diff_extra_specs[0] != diff_extra_specs[1]:
-            return True
-        return False
+    def _check_volume_type_diff(self, src_extraspecs, new_extraspecs, key):
+        if src_extraspecs[key] != new_extraspecs[key]:
+            return False
+        return True
 
-    def _execute_retype_tiering(self, new_type, volume):
-        volume_id = volume['id'].replace('-', '')
+    def _execute_retype_tiering(self, new_pool_extraspecs, volume):
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
         if part_id is None:
+            volume_id = volume['id'].replace('-', '')
             part_id = self._get_part_id(volume_id)
 
-        pool_id = self._get_volume_pool_id(volume)
         pool_name = volume['host'].split('#')[-1]
+        pool_id = self._get_volume_pool_id(volume)
+        provisioning = new_pool_extraspecs['provisioning']
+        new_tiering = new_pool_extraspecs['tiering']
+
+        if not self._check_tier_pool_or_not(pool_id):
+            msg = _('[%(pool_name)s] is not a tier Pool. '
+                    'Can not retype volume to tier %(tier)s.') % {
+                        'pool_name': pool_name,
+                        'tier': new_tiering}
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
         pool_tiers = self.tier_pools_dict[pool_id]
 
-        new_extraspecs = new_type['extra_specs']
-        new_extraspecs_set = self._get_extraspecs_set(new_extraspecs)
-        pool_extraspecs = self._get_pool_extraspecs(
-            pool_name, new_extraspecs_set)
-        provisioning = pool_extraspecs['provisioning']
-        new_tiering = pool_extraspecs['tiering']
-
         if new_tiering == 'all':
-            tiering = ','.join(str(i) for i in pool_tiers)
+            if provisioning == 'thin':
+                tiering = ','.join(str(i) for i in pool_tiers)
+            else:
+                volume_size = gi_to_mi(volume['size'])
+                self._check_tier_space(pool_tiers[0], pool_id, volume_size)
+                tiering = str(pool_tiers[0])
         else:
             if not self._check_pool_tiering(pool_tiers, new_tiering):
                 msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
-                        'can not fit in %(pool_tiers)s.') % {
+                        'can not fit in the real tiers %(pool_tier)s.') % {
                             'pool_name': pool_name,
                             'tiering': tiering,
-                            'pool_tiers': pool_tiers}
+                            'pool_tier': pool_tiers}
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
             if provisioning == 'thin':
                 tiering = ','.join(str(i) for i in new_tiering)
             else:
+                volume_size = gi_to_mi(volume['size'])
+                self._check_tier_space(new_tiering[0], pool_id, volume_size)
                 tiering = str(new_tiering[0])
 
         rc, out = self._execute(
