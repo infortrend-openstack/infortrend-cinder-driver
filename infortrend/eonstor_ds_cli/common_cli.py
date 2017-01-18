@@ -160,7 +160,7 @@ class InfortrendCommon(object):
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
-        1.0.2 - Support GS Series
+        1.0.2 - Support GS/GSe Family
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
         1.1.0 - Improve driver speed
@@ -2407,13 +2407,13 @@ class InfortrendCommon(object):
 
             if src_extraspec != new_type['extra_specs']:
                 src_extraspec_set = self._get_extraspecs_set(
-                                            src_extraspec)
+                                        src_extraspec)
                 new_extraspec_set = self._get_extraspecs_set(
-                                            new_type['extra_specs'])
+                                        new_type['extra_specs'])
                 src_extraspecs = self._get_pool_extraspecs(
-                                            src_pool_name, src_extraspec_set)
+                                        src_pool_name, src_extraspec_set)
                 new_extraspecs = self._get_pool_extraspecs(
-                                            dst_pool_name, new_extraspec_set)
+                                        dst_pool_name, new_extraspec_set)
 
                 if not self._check_volume_type_diff(
                         src_extraspecs, new_extraspecs, 'provisioning'):
