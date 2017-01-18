@@ -30,19 +30,6 @@ LOG = logging.getLogger(__name__)
 @interface.volumedriver
 class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
-    """Infortrend Fibre Channel Driver for Eonstor DS using CLI.
-
-    Version history:
-        1.0.0 - Initial driver
-        1.0.1 - Support DS4000
-        1.0.2 - Support GS Series
-        1.0.3 - Add iSCSI MPIO support
-        1.0.4 - Fix Nova live migration (bug #1481968)
-        1.0.5 - Improve driver speed
-        1.0.6 - Select pool by Cinder scheduler
-              - Fix migrate & manage_existing issues
-    """
-
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Infortrend_Storage_CI"
     VERSION = common_cli.InfortrendCommon.VERSION
@@ -269,8 +256,10 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                      dictionary of its reported capabilities.
         """
         LOG.debug(
-            'retype volume id=%(volume_id)s new_type id=%(type_id)s', {
-                'volume_id': volume['id'], 'type_id': new_type['id']})
+            'retype _volume %(volume)s, _new_type %(type)s, '
+            '_diff %(diff)s, _host %(host)s', {
+                'volume': volume, 'type': new_type,
+                'diff': diff, 'host': host})
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
