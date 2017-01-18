@@ -160,7 +160,7 @@ class InfortrendCommon(object):
     Version history:
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
-        1.0.2 - Support GS Series
+        1.0.2 - Support GS/GSe Family
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
         1.1.0 - Improve driver speed
