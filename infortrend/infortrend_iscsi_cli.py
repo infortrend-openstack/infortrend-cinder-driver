@@ -26,19 +26,6 @@ LOG = logging.getLogger(__name__)
 
 class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
-    """Infortrend iSCSI Driver for Eonstor DS using CLI.
-
-    Version history:
-        1.0.0 - Initial driver
-        1.0.1 - Support DS4000
-        1.0.2 - Support GS Series
-        1.0.3 - Add iSCSI MPIO support
-        1.0.4 - Fix Nova live migration bugs. #1481968
-        1.0.5 - Improve driver speed
-        1.0.6 - Select pool by Cinder scheduler
-              - Fix migrate & manage_existing issues
-    """
-
     def __init__(self, *args, **kwargs):
         super(InfortrendCLIISCSIDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(
@@ -156,7 +143,6 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
                     'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
                     'target_portal': '127.0.0.0.1:3260',
                     'volume_id': 1,
-                    'access_mode': 'rw'
                 }
             }
         """
@@ -196,10 +182,10 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         }
         """
         LOG.debug(
-            'manage_existing volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing(volume, existing_ref)
 
     def unmanage(self, volume):
@@ -219,10 +205,10 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         When calculating the size, round up to the next GB.
         """
         LOG.debug(
-            'manage_existing_get_size volume id=%(volume_id)s '
-            'existing_ref source id=%(source_id)s', {
-                'volume_id': volume['id'],
-                'source_id': existing_ref['source-id']})
+            'manage_existing_get_size volume: %(volume)s '
+            'existing_ref source: %(source)s', {
+                'volume': volume,
+                'source': existing_ref})
         return self.common.manage_existing_get_size(volume, existing_ref)
 
     def retype(self, ctxt, volume, new_type, diff, host):
@@ -237,8 +223,10 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
                      dictionary of its reported capabilities.
         """
         LOG.debug(
-            'retype volume id=%(volume_id)s new_type id=%(type_id)s', {
-                'volume_id': volume['id'], 'type_id': new_type['id']})
+            'retype _volume %(volume)s, _new_type %(type)s, '
+            '_diff %(diff)s, _host %(host)s', {
+                'volume': volume, 'type': new_type,
+                'diff': diff, 'host': host})
         return self.common.retype(ctxt, volume, new_type, diff, host)
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
@@ -249,7 +237,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         :param new_volume: The migration volume object that was created on
                            this backend as part of the migration process
         :param original_volume_status: The status of the original volume
-        :return model_update to update DB with any needed changes
+        :returns: model_update to update DB with any needed changes
         """
         LOG.debug(
             'update migrated volume original volume id= %(volume_id)s '
