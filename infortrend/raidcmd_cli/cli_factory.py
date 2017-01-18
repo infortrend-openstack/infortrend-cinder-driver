@@ -43,8 +43,8 @@ def retry_cli(func):
         while retry_time < total_retry_time:
             rc, out = func(self, *args, **kwargs)
             retry_time += 1
-            # rc == 11 means Not exist
-            if rc == 0 or 11:
+
+            if rc == 0:
                 break
 
             LOG.error(_LE(
@@ -54,6 +54,11 @@ def retry_cli(func):
                     'method': self.__class__.__name__,
                     'rc': rc,
                     'reason': out})
+            # rc == 11 means not exist
+            # show error log, not retrying
+            if rc == 11:
+                break
+
         LOG.debug(
             'Method: %(method)s Return Code: %(rc)s '
             'Output: %(out)s', {

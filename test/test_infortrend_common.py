@@ -84,6 +84,20 @@ class InfortrendTestCase(test.TestCase):
     def _assert_cli_has_calls(self, expect_cli_cmd):
         self.driver._execute_command.assert_has_calls(expect_cli_cmd)
 
+    def _mock_fake_tier_pools_dict(self):
+        return {
+            self.cli_data.fake_lv_id[0]: [0],
+            self.cli_data.fake_lv_id[1]: [0, 1, 2],
+            self.cli_data.fake_lv_id[2]: [0, 1, 2, 3],
+        }
+
+    def _mock_fake_tier_pools_rand(self):
+        # fake_lv_id[0] is a none tier pool
+        return {
+            self.cli_data.fake_lv_id[1]: [0, 3],
+            self.cli_data.fake_lv_id[2]: [0, 1, 3],
+        }
+
 
 class InfortrendFCCommonTestCase(InfortrendTestCase):
 
@@ -1094,7 +1108,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         mock_commands = {
             'ShowLicense': self.cli_data.get_test_show_license_full(),
-            'ShowLV': self.cli_data.get_test_show_lv(),
+            'ShowLV': [self.cli_data.get_test_show_lv_tier(),
+                       self.cli_data.get_test_show_lv()],
             'ShowDevice': self.cli_data.get_test_show_device(),
             'CheckConnection': SUCCEED,
         }
@@ -1113,7 +1128,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         mock_commands = {
             'ShowLicense': self.cli_data.get_test_show_license_thin(),
-            'ShowLV': self.cli_data.get_test_show_lv(),
+            'ShowLV': [self.cli_data.get_test_show_lv_tier(),
+                       self.cli_data.get_test_show_lv()],
             'ShowPartition': self.cli_data.get_test_show_partition_detail(),
             'ShowDevice': self.cli_data.get_test_show_device(),
             'CheckConnection': SUCCEED,
@@ -1229,17 +1245,17 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         self.assertEqual(1, log_info.call_count)
 
-    def test_delete_snapshot_without_provider_location(self):
+    @mock.patch.object(common_cli.LOG, 'warning')
+    def test_delete_snapshot_without_provider_location(self, log_warning):
 
         test_snapshot = self.cli_data.test_snapshot
 
         self.driver = self._get_driver(self.configuration)
         self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.driver.delete_snapshot,
-            test_snapshot)
+        self.driver.delete_snapshot(test_snapshot)
+
+        self.assertEqual(1, log_warning.call_count)
 
     def test_delete_snapshot_with_fail(self):
 
@@ -2095,8 +2111,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.assertTrue(rc)
         self.assertEqual(1, log_info.call_count)
 
-    @mock.patch.object(common_cli.LOG, 'error')
-    def test_retype_with_change_provision(self, log_error):
+    @mock.patch.object(common_cli.LOG, 'warning')
+    def test_retype_with_change_provision(self, log_warning):
 
         test_volume = self.cli_data.test_volume
         test_new_type = self.cli_data.test_new_type
@@ -2109,7 +2125,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             None, test_volume, test_new_type, test_diff, test_host)
 
         self.assertFalse(rc)
-        self.assertEqual(1, log_error.call_count)
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_retype_with_migrate(self):
@@ -2224,3 +2240,58 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         model_update = self.driver.update_migrated_volume(
             None, src_volume, dst_volume, 'available')
         self.assertEqual({'_name_id': 'fake_name_id'}, model_update)
+
+    def test_get_extraspecs_set_with_default_setting(self):
+        test_extraspecs = {}
+        test_result = {
+            'global_provisioning': 'full',
+            'global_tiering': 'all',
+        }
+
+        self.driver = self._get_driver(self.configuration)
+        result = self.driver._get_extraspecs_set(test_extraspecs)
+
+        self.assertEqual(test_result, result)
+
+    def test_check_extraspecs_global_settings(self):
+        test_extraspecs = {
+            'infortrend:tiering': '1,2',
+            'infortrend:provisioning': 'thin',
+        }
+        test_result = {
+            'global_provisioning': 'thin',
+            'global_tiering': [1, 2],
+        }
+        self.driver = self._get_driver(self.configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+        result = self.driver._get_extraspecs_set(test_extraspecs)
+
+        self.assertEqual(test_result, result)
+
+    def test_check_extraspecs_tier_global_settings(self):
+        test_extraspecs = {
+            'infortrend:tiering': '1,2',
+        }
+        test_result = {
+            'global_provisioning': 'full',
+            'global_tiering': [1, 2],
+        }
+        self.driver = self._get_driver(self.configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+        result = self.driver._get_extraspecs_set(test_extraspecs)
+
+        self.assertEqual(test_result, result)
+
+    def test_check_extraspecs_provisioning_global_settings(self):
+        test_extraspecs = {
+            'infortrend:provisioning': 'thin',
+        }
+        test_result = {
+            'global_provisioning': 'thin',
+            'global_tiering': 'all',
+        }
+        self.driver = self._get_driver(self.configuration)
+        self.driver.tier_pools_dict = self._mock_fake_tier_pools_dict()
+        result = self.driver._get_extraspecs_set(test_extraspecs)
+
+        self.assertEqual(test_result, result)
