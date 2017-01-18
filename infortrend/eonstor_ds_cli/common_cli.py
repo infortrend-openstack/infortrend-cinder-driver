@@ -559,7 +559,9 @@ class InfortrendCommon(object):
         volume_size = gi_to_mi(volume['size'])
         pool_name = volume['host'].split('#')[-1]
 
-        if extraspecs is None:
+        if extraspecs:
+            extraspecs = self._get_extraspecs_set(extraspecs)
+        else:
             extraspecs = self._get_volume_type_extraspecs(volume)
 
         pool_extraspecs = self._get_pool_extraspecs(pool_name, extraspecs)
@@ -778,7 +780,11 @@ class InfortrendCommon(object):
                 infortrend:provisoioning: 'LV0:thin;LV1:full'
                 infortrend:tiering: 'all'
         """
-        extraspecs_set = {}
+        # extraspecs default setting
+        extraspecs_set = {
+            'global_provisioning': 'full',
+            'global_tiering': 'all',
+        }
         extraspecs = self._get_extraspecs_dict(volume['volume_type_id'])
         if extraspecs:
             extraspecs_set = self._get_extraspecs_set(extraspecs)
@@ -1402,10 +1408,8 @@ class InfortrendCommon(object):
         enable_specs_dict = self._get_enable_specs_on_array()
 
         if 'Thin Provisioning' in enable_specs_dict.keys():
-            provisioning = 'thin'
             provisioning_support = True
         else:
-            provisioning = 'full'
             provisioning_support = False
 
         rc, pools_info = self._execute('ShowLV')
@@ -1433,7 +1437,6 @@ class InfortrendCommon(object):
                     'QoS_support': False,
                     'thick_provisioning_support': True,
                     'thin_provisioning_support': provisioning_support,
-                    'infortrend_provisioning': provisioning,
                 }
 
                 if provisioning_support:
