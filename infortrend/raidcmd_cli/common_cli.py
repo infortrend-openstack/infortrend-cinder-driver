@@ -2404,14 +2404,14 @@ class InfortrendCommon(object):
                     diff['extra_specs'][self.TIERING_SET_KEY][0]
 
             if src_extraspec != new_type['extra_specs']:
-                src_extraspec_set = self._get_extraspecs_set(
-                                        src_extraspec)
-                new_extraspec_set = self._get_extraspecs_set(
-                                        new_type['extra_specs'])
-                src_extraspecs = self._get_pool_extraspecs(
-                                        src_pool_name, src_extraspec_set)
-                new_extraspecs = self._get_pool_extraspecs(
-                                        dst_pool_name, new_extraspec_set)
+                src_extraspec_set = \
+                    self._get_extraspecs_set(src_extraspec)
+                new_extraspec_set = \
+                    self._get_extraspecs_set(new_type['extra_specs'])
+                src_extraspecs = \
+                    self._get_pool_extraspecs(src_pool_name, src_extraspec_set)
+                new_extraspecs = \
+                    self._get_pool_extraspecs(dst_pool_name, new_extraspec_set)
 
                 if not self._check_volume_type_diff(
                         src_extraspecs, new_extraspecs, 'provisioning'):
