@@ -163,10 +163,11 @@ class InfortrendCommon(object):
         1.0.2 - Support GS/GSe Family
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
-        1.1.0 - Improve driver speed
+        1.1.0 - Improve driver performance
         1.1.1 - Select pool by Cinder scheduler
-              - Fix migrate & manage_existing issues
-        2.0.0 - Enhance extraspecs & retype
+              - Fix manage_existing issues
+        1.1.2 - Add volume migration check
+        2.0.0 - Enhance Infortrend extraspecs & retype
     """
 
     VERSION = '2.0.0'
