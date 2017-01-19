@@ -164,10 +164,10 @@ class InfortrendCommon(object):
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
         1.1.0 - Improve driver performance
-        1.1.1 - Select pool by Cinder scheduler
-              - Fix manage_existing issues
+        1.1.1 - Fix creating volume on the wrong pool
+              - Fix manage-existing issues
         1.1.2 - Add volume migration check
-        2.0.0 - Enhance Infortrend extraspecs & retype
+        2.0.0 - Enhance extraspecs usage and refactor retype
     """
 
     VERSION = '2.0.0'
@@ -740,19 +740,6 @@ class InfortrendCommon(object):
                 volume_type_id)
 
         return extraspecs
-
-    def _select_most_free_capacity_pool_id(self, lv_info):
-        largest_free_capacity_gb = 0.0
-        dest_pool_id = None
-
-        for lv in lv_info:
-            if lv['Name'] in self.pool_list:
-                available_space = float(lv['Available'].split(' ', 1)[0])
-                free_capacity_gb = round(mi_to_gi(available_space))
-                if free_capacity_gb > largest_free_capacity_gb:
-                    largest_free_capacity_gb = free_capacity_gb
-                    dest_pool_id = lv['ID']
-        return dest_pool_id
 
     def _get_volume_pool_id(self, volume):
         pool_name = volume['host'].split('#')[-1]
