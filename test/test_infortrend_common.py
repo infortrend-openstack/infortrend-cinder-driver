@@ -1771,6 +1771,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowLV': self._mock_show_lv_for_migrate,
         }
         self._driver_setup(mock_commands)
+        self.driver.system_id = 'DEEC'
 
         self.assertRaises(
             exception.VolumeDriverException,
@@ -1827,6 +1828,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
                     'Copy'),
         }
         self._driver_setup(mock_commands, configuration)
+        self.driver.system_id = 'DEEC'
 
         self.assertRaises(
             exception.VolumeDriverException,
