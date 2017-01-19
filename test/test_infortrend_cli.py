@@ -2220,7 +2220,7 @@ RAIDCmd:>
 class InfortrendCLITestCase(test.TestCase):
 
     CommandList = ['CreateLD', 'CreateLV',
-                   'CreatePartition', 'DeletePartition', 'SetPartition',
+                   'CreatePartition', 'DeletePartition',
                    'CreateMap', 'DeleteMap',
                    'CreateSnapshot', 'DeleteSnapshot',
                    'CreateReplica', 'DeleteReplica',
@@ -2231,7 +2231,8 @@ class InfortrendCLITestCase(test.TestCase):
                    'ShowDisk', 'ShowMap',
                    'ShowNet', 'ShowLicense',
                    'ShowWWN', 'ShowReplica',
-                   'ShowIQN', 'ShowHost', 'ConnectRaid']
+                   'ShowIQN', 'ShowHost', 'ConnectRaid',
+                   'SetPartition', 'SetLV']
 
     def __init__(self, *args, **kwargs):
         super(InfortrendCLITestCase, self).__init__(*args, **kwargs)

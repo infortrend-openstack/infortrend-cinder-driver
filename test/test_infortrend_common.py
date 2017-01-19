@@ -2098,7 +2098,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.assertEqual(1, log_info.call_count)
 
     @mock.patch.object(common_cli.LOG, 'warning')
-    def test_retype_with_change_provision(self, log_warning):
+    def test_retype_with_change_global_provision(self, log_warning):
 
         test_volume = self.cli_data.test_volume
         test_new_type = self.cli_data.test_new_type
@@ -2112,6 +2112,264 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         self.assertFalse(rc)
         self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(common_cli.LOG, 'warning')
+    def test_retype_with_change_individual_provision(self, log_warning):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'LV-1:thin',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:provisioning': ('LV-2:thin;LV-1:full', 'LV-1:thin')
+            }
+        }
+
+        self.driver = self._get_driver(self.configuration)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertFalse(rc)
+        self.assertEqual(1, log_warning.call_count)
+
+    @mock.patch.object(common_cli.LOG, 'warning')
+    def test_retype_with_change_mixed_provision(self, log_warning):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'LV-1:thin',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:provisioning': ('full', 'LV-1:thin')
+            }
+        }
+
+        self.driver = self._get_driver(self.configuration)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertFalse(rc)
+        self.assertEqual(1, log_warning.call_count)
+
+    def test_retype_with_change_same_provision(self):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'LV-1:thin',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:provisioning': ('thin', 'LV-1:thin')
+            }
+        }
+
+        self.driver = self._get_driver(self.configuration)
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertTrue(rc)
+
+    def test_retype_with_change_global_tier(self):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'thin',
+                'infortrend:tiering': '2,3',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:tiering': ('0,1', '2,3')
+            }
+        }
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+            'SetPartition': SUCCEED,
+            'SetLV': SUCCEED,
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(),
+        }
+        self._driver_setup(mock_commands)
+        self.driver.tier_pools_dict = {
+            self.cli_data.fake_lv_id[0]: [0, 1, 2, 3],
+        }
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertTrue(rc)
+
+    def test_retype_with_change_individual_tier(self):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'thin',
+                'infortrend:tiering': 'LV-1:2,3',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:tiering': ('LV-1:0,1', 'LV-1:2,3')
+            }
+        }
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+            'SetPartition': SUCCEED,
+            'SetLV': SUCCEED,
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(),
+        }
+        self._driver_setup(mock_commands)
+        self.driver.tier_pools_dict = {
+            self.cli_data.fake_lv_id[0]: [0, 1, 2, 3],
+        }
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertTrue(rc)
+
+    def test_retype_change_tier_with_multi_settings(self):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'thin',
+                'infortrend:tiering': 'LV-2:0;LV-1:2,3',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:tiering': ('LV-1:0,1', 'LV-2:0;LV-1:2,3')
+            }
+        }
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+            'SetPartition': SUCCEED,
+            'SetLV': SUCCEED,
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(),
+        }
+        self._driver_setup(mock_commands)
+        self.driver.tier_pools_dict = {
+            self.cli_data.fake_lv_id[0]: [0, 1, 2, 3],
+        }
+
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertTrue(rc)
+
+    def test_retype_change_with_tier_not_exist(self):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'thin',
+                'infortrend:tiering': 'LV-2:0;LV-1:2,3',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:tiering': ('LV-1:0,1', 'LV-2:0;LV-1:2,3')
+            }
+        }
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+        }
+        self._driver_setup(mock_commands)
+        self.driver.tier_pools_dict = {
+            self.cli_data.fake_lv_id[0]: [0, 1, 2],
+        }
+
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.retype,
+            None, test_volume, test_new_type,
+            test_diff, test_host)
+
+    def test_retype_change_with_not_a_tier_pool(self):
+
+        test_volume = self.cli_data.test_volume
+        test_host = self.cli_data.test_migrate_host_2
+        test_new_type = {
+            'name': 'type1',
+            'qos_specs_id': None,
+            'deleted': False,
+            'extra_specs': {
+                'infortrend:provisioning': 'full',
+                'infortrend:tiering': 'LV-1:2',
+            },
+            'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
+        }
+        test_diff = {
+            'extra_specs': {
+                'infortrend:tiering': ('', 'LV-1:2')
+            }
+        }
+
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+        }
+        self._driver_setup(mock_commands)
+        self.driver.tier_pools_dict = {
+            self.cli_data.fake_lv_id[2]: [0, 1, 2],
+        }
+
+        self.assertRaises(
+            exception.VolumeDriverException,
+            self.driver.retype,
+            None, test_volume, test_new_type,
+            test_diff, test_host)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_retype_with_migrate(self):

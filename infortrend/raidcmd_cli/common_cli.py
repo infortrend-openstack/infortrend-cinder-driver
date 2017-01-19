@@ -1464,7 +1464,7 @@ class InfortrendCommon(object):
         """Setup the tier pools information.
         tier_pools_dict = {
             '12345678': [0, 1, 2, 3], # Pool 12345678 has 4 tiers: 0, 1, 2, 3
-            '87654321': [0, 1, 3]     # Pool 87654321 has 3 tiers: 0, 1, 3
+            '87654321': [0, 1, 3],    # Pool 87654321 has 3 tiers: 0, 1, 3
         }
         """
         rc, lv_info = self._execute('ShowLV', 'tier')
@@ -2471,7 +2471,7 @@ class InfortrendCommon(object):
                 msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
                         'can not fit in the real tiers %(pool_tier)s.') % {
                             'pool_name': pool_name,
-                            'tiering': tiering,
+                            'tiering': new_tiering,
                             'pool_tier': pool_tiers}
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
