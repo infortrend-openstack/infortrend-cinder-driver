@@ -163,10 +163,11 @@ class InfortrendCommon(object):
         1.0.2 - Support GS/GSe Family
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
-        1.1.0 - Improve driver speed
-        1.1.1 - Select pool by Cinder scheduler
-              - Fix migrate & manage_existing issues
-        2.0.0 - Enhance extraspecs & retype
+        1.1.0 - Improve driver performance
+        1.1.1 - Fix creating volume on the wrong pool
+              - Fix manage-existing issues
+        1.1.2 - Add volume migration check
+        2.0.0 - Enhance extraspecs usage and refactor retype
     """
 
     VERSION = '2.0.0'
@@ -739,19 +740,6 @@ class InfortrendCommon(object):
                 volume_type_id)
 
         return extraspecs
-
-    def _select_most_free_capacity_pool_id(self, lv_info):
-        largest_free_capacity_gb = 0.0
-        dest_pool_id = None
-
-        for lv in lv_info:
-            if lv['Name'] in self.pool_list:
-                available_space = float(lv['Available'].split(' ', 1)[0])
-                free_capacity_gb = round(mi_to_gi(available_space))
-                if free_capacity_gb > largest_free_capacity_gb:
-                    largest_free_capacity_gb = free_capacity_gb
-                    dest_pool_id = lv['ID']
-        return dest_pool_id
 
     def _get_volume_pool_id(self, volume):
         pool_name = volume['host'].split('#')[-1]
@@ -1464,7 +1452,7 @@ class InfortrendCommon(object):
         """Setup the tier pools information.
         tier_pools_dict = {
             '12345678': [0, 1, 2, 3], # Pool 12345678 has 4 tiers: 0, 1, 2, 3
-            '87654321': [0, 1, 3]     # Pool 87654321 has 3 tiers: 0, 1, 3
+            '87654321': [0, 1, 3],    # Pool 87654321 has 3 tiers: 0, 1, 3
         }
         """
         rc, lv_info = self._execute('ShowLV', 'tier')
@@ -2404,14 +2392,14 @@ class InfortrendCommon(object):
                     diff['extra_specs'][self.TIERING_SET_KEY][0]
 
             if src_extraspec != new_type['extra_specs']:
-                src_extraspec_set = self._get_extraspecs_set(
-                                        src_extraspec)
-                new_extraspec_set = self._get_extraspecs_set(
-                                        new_type['extra_specs'])
-                src_extraspecs = self._get_pool_extraspecs(
-                                        src_pool_name, src_extraspec_set)
-                new_extraspecs = self._get_pool_extraspecs(
-                                        dst_pool_name, new_extraspec_set)
+                src_extraspec_set = \
+                    self._get_extraspecs_set(src_extraspec)
+                new_extraspec_set = \
+                    self._get_extraspecs_set(new_type['extra_specs'])
+                src_extraspecs = \
+                    self._get_pool_extraspecs(src_pool_name, src_extraspec_set)
+                new_extraspecs = \
+                    self._get_pool_extraspecs(dst_pool_name, new_extraspec_set)
 
                 if not self._check_volume_type_diff(
                         src_extraspecs, new_extraspecs, 'provisioning'):
@@ -2471,7 +2459,7 @@ class InfortrendCommon(object):
                 msg = _('Tiering extraspecs %(pool_name)s:%(tiering)s '
                         'can not fit in the real tiers %(pool_tier)s.') % {
                             'pool_name': pool_name,
-                            'tiering': tiering,
+                            'tiering': new_tiering,
                             'pool_tier': pool_tiers}
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
