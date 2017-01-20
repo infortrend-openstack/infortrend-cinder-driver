@@ -828,6 +828,7 @@ class InfortrendCommon(object):
 
     def _get_extraspecs_set(self, extraspecs):
         """Return extraspecs settings dictionary
+
         Legal values:
             provisioning: 'thin', 'full'
             tiering: 'all' or combination of 0,1,2,3
@@ -1450,6 +1451,7 @@ class InfortrendCommon(object):
 
     def _update_pool_tiers(self):
         """Setup the tier pools information.
+
         tier_pools_dict = {
             '12345678': [0, 1, 2, 3], # Pool 12345678 has 4 tiers: 0, 1, 2, 3
             '87654321': [0, 1, 3],    # Pool 87654321 has 3 tiers: 0, 1, 3
