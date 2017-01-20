@@ -27,7 +27,10 @@ from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _
+from cinder.i18n import _LE
+from cinder.i18n import _LI
+from cinder.i18n import _LW
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
