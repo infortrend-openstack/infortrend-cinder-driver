@@ -58,15 +58,13 @@ infortrend_esds_opts = [
                'create volume from snapshot. '
                'By Default, it is 30 minutes.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
-               default='0,1,2,3,4,5,6,7',
+               default='',
                help='Infortrend raid channel ID list on Slot A '
-               'for OpenStack usage. It is separated with comma. '
-               'By default, it is the channel 0~7.'),
+               'for OpenStack usage. It is separated with comma.'),
     cfg.StrOpt('infortrend_slots_b_channels_id',
-               default='0,1,2,3,4,5,6,7',
+               default='',
                help='Infortrend raid channel ID list on Slot B '
-               'for OpenStack usage. It is separated with comma. '
-               'By default, it is the channel 0~7.'),
+               'for OpenStack usage. It is separated with comma.'),
     cfg.StrOpt('infortrend_iqn_prefix',
                default='iqn.2002-10.com.infortrend',
                help='Infortrend iqn prefix for iSCSI. '
