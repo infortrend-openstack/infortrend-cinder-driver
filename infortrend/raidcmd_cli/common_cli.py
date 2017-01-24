@@ -298,11 +298,11 @@ class InfortrendCommon(object):
 
     def _set_raidcmd(self):
         rc, _ = self._execute('SetIOTimeout')
-        LOG.debug('Raidcmd timeout is [%s]' % self._raidcmd_timeout)
+        LOG.debug('Raidcmd timeout is [%s]', self._raidcmd_timeout)
 
     def _init_raid_connection(self):
         rc, _ = self._execute('ConnectRaid')
-        LOG.info(_LI('Raid [%s] is connected!') % self.ip)
+        LOG.info(_LI('Raid [%s] is connected!'), self.ip)
 
     def _execute_command(self, cli_type, *args, **kwargs):
         command = getattr(cli, cli_type)
@@ -782,7 +782,7 @@ class InfortrendCommon(object):
         return extraspecs_set
 
     def _get_pool_extraspecs(self, pool_name, all_extraspecs):
-        LOG.debug('_Extraspecs_dict: %s' % all_extraspecs)
+        LOG.debug('_Extraspecs_dict: %s', all_extraspecs)
         pool_extraspecs = {}
         provisioning = None
         tiering = None
@@ -2390,21 +2390,23 @@ class InfortrendCommon(object):
             src_extraspec = new_type['extra_specs'].copy()
 
             if self.PROVISIONING_KEY in diff['extra_specs']:
-                src_extraspec[self.PROVISIONING_KEY] = \
-                    diff['extra_specs'][self.PROVISIONING_KEY][0]
+                src_prov = diff['extra_specs'][self.PROVISIONING_KEY][0]
+                src_extraspec[self.PROVISIONING_KEY] = src_prov
+
             if self.TIERING_SET_KEY in diff['extra_specs']:
-                src_extraspec[self.TIERING_SET_KEY] = \
-                    diff['extra_specs'][self.TIERING_SET_KEY][0]
+                src_tier = diff['extra_specs'][self.TIERING_SET_KEY][0]
+                src_extraspec[self.TIERING_SET_KEY] = src_tier
 
             if src_extraspec != new_type['extra_specs']:
-                src_extraspec_set = \
-                    self._get_extraspecs_set(src_extraspec)
-                new_extraspec_set = \
-                    self._get_extraspecs_set(new_type['extra_specs'])
-                src_extraspecs = \
-                    self._get_pool_extraspecs(src_pool_name, src_extraspec_set)
-                new_extraspecs = \
-                    self._get_pool_extraspecs(dst_pool_name, new_extraspec_set)
+                src_extraspec_set = self._get_extraspecs_set(
+                    src_extraspec)
+                new_extraspec_set = self._get_extraspecs_set(
+                    new_type['extra_specs'])
+
+                src_extraspecs = self._get_pool_extraspecs(
+                    src_pool_name, src_extraspec_set)
+                new_extraspecs = self._get_pool_extraspecs(
+                    dst_pool_name, new_extraspec_set)
 
                 if not self._check_volume_type_diff(
                         src_extraspecs, new_extraspecs, 'provisioning'):
