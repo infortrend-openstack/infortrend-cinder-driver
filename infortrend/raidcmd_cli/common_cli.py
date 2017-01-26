@@ -43,12 +43,6 @@ infortrend_esds_opts = [
                default='',
                help='The Infortrend logical volumes name list. '
                'It is separated with comma.'),
-    cfg.StrOpt('san_ip',
-               default='',
-               help='The Infortrend storage ip for management.'),
-    cfg.StrOpt('san_password',
-               default='',
-               help='The Infortrend array password.'),
     cfg.StrOpt('infortrend_cli_path',
                default='/opt/bin/Infortrend/raidcmd_ESDS10.jar',
                help='The Infortrend CLI absolute path.'),
