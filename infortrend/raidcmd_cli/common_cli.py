@@ -41,22 +41,23 @@ LOG = logging.getLogger(__name__)
 infortrend_esds_opts = [
     cfg.StrOpt('infortrend_pools_name',
                default='',
-               help='Infortrend raid pool name list. '
+               help='The Infortrend logical volumes name list. '
                'It is separated with comma.'),
+    cfg.StrOpt('san_ip',
+               default='',
+               help='The Infortrend storage ip for management.'),
+    cfg.StrOpt('san_password',
+               default='',
+               help='The Infortrend array password.'),
     cfg.StrOpt('infortrend_cli_path',
                default='/opt/bin/Infortrend/raidcmd_ESDS10.jar',
-               help='The Infortrend CLI absolute path. '
-               'By default, it is at '
-               '/opt/bin/Infortrend/raidcmd_ESDS10.jar'),
+               help='The Infortrend CLI absolute path.'),
     cfg.IntOpt('infortrend_cli_max_retries',
                default=5,
-               help='Maximum retry time for cli. Default is 5.'),
+               help='The maximum retry times if a command fails.'),
     cfg.IntOpt('infortrend_cli_timeout',
                default=30,
-               help='Default timeout for CLI copy operations in minutes. '
-               'Support: migrate volume, create cloned volume and '
-               'create volume from snapshot. '
-               'By Default, it is 30 minutes.'),
+               help='The timeout for migration jobs in minute.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='',
                help='Infortrend raid channel ID list on Slot A '
@@ -67,17 +68,18 @@ infortrend_esds_opts = [
                'for OpenStack usage. It is separated with comma.'),
     cfg.StrOpt('infortrend_iqn_prefix',
                default='iqn.2002-10.com.infortrend',
-               help='Infortrend iqn prefix for iSCSI. '
-               'By default, it is iqn.2002-10.com.infortrend.'),
+               help='Infortrend iqn prefix for iSCSI.'),
     cfg.BoolOpt('infortrend_cli_cache',
                 default=False,
-                help='Infortrend Raidcmd cache for show command. '
-                'Disable if Openstack HA controllers are configured. '
-                'By default, it is disabled.'),
+                help='The Infortrend CLI cache. '
+                'Make sure the array is only managed by Openstack, '
+                'and it is only used by one cinder-volume node. '
+                'Otherwise, never enable it! '
+                'The data might be asynchronous '
+                'if there were any other operations.'),
     cfg.StrOpt('java_path',
                default='/usr/bin/java',
-               help='The java absolute path. '
-               'By default, it is at /usr/bin/java'),
+               help='The Java absolute path.'),
 ]
 
 CONF = cfg.CONF
@@ -152,6 +154,14 @@ def mi_to_gi(mi_size):
 
 def gi_to_mi(gi_size):
     return gi_size * units.Gi / units.Mi
+
+
+def ti_to_gi(ti_size):
+    return ti_size * units.Ti / units.Gi
+
+
+def ti_to_mi(ti_size):
+    return ti_size * units.Ti / units.Mi
 
 
 class InfortrendCommon(object):
@@ -628,21 +638,27 @@ class InfortrendCommon(object):
 
     def _check_tier_space(self, tier_level, pool_id, volume_size):
         rc, lv_info = self._execute('ShowLV', 'tier')
-        for entry in lv_info:
-            if (entry['LV-ID'] == pool_id and
-                    int(entry['Tier']) == tier_level):
-                total_space = self._parse_size(entry['Size'], 'MB')
-                used_space = self._parse_size(entry['Used'], 'MB')
-                if volume_size > (total_space - used_space):
-                    LOG.warning(_LW('Tiering pool [%(pool_id)s] '
-                                    'has already run out of space in '
-                                    'tier level [%(tier_level)s].'), {
-                                        'pool_id': pool_id,
-                                        'tier_level': tier_level})
+        if lv_info:
+            for entry in lv_info:
+                if (entry['LV-ID'] == pool_id and
+                        int(entry['Tier']) == tier_level):
+                    total_space = self._parse_size(entry['Size'], 'MB')
+                    used_space = self._parse_size(entry['Used'], 'MB')
+                    if volume_size > (total_space - used_space):
+                        LOG.warning(_LW('Tiering pool [%(pool_id)s] '
+                                        'has already run out of space in '
+                                        'tier level [%(tier_level)s].'), {
+                                            'pool_id': pool_id,
+                                            'tier_level': tier_level})
 
     def _parse_size(self, size_string, return_unit):
         size = float(size_string.split(' ', 1)[0])
-        if 'GB' in size_string:
+        if 'TB' in size_string:
+            if return_unit == 'GB':
+                return round(ti_to_gi(size), 2)
+            elif return_unit == 'MB':
+                return round(ti_to_mi(size))
+        elif 'GB' in size_string:
             if return_unit == 'GB':
                 return round(size, 2)
             elif return_unit == 'MB':
