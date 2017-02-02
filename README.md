@@ -1,4 +1,4 @@
-Eonstor DS Cinder Driver
+Infortrend Cinder Driver
 =============
 | Branch  | Unit Test Status |
 | ------- | ------------ |
@@ -57,11 +57,11 @@ Execute Bash file and it would git clone cinder driver to run unit test.
 ./run_test.sh
 ```
 
-[travis-ci-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver.svg?style=flat-square
-[travis-ci-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver
+[travis-ci-img]: https://img.shields.io/travis/infortrend-openstack/infortrend-cinder-driver.svg?style=flat-square
+[travis-ci-url]: https://travis-ci.org/infortrend-openstack/infortrend-cinder-driver
 
-[travis-ci-master-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver/master.svg?style=flat-square
-[travis-ci-master-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver/branches
+[travis-ci-master-img]: https://img.shields.io/travis/infortrend-openstack/infortrend-cinder-driver/master.svg?style=flat-square
+[travis-ci-master-url]: https://travis-ci.org/infortrend-openstack/infortrend-cinder-driver/branches
 
-[travis-ci-dev-img]: https://img.shields.io/travis/infortrend-openstack/eonstor-ds-cinder-driver/develop.svg?style=flat-square
-[travis-ci-dev-url]: https://travis-ci.org/infortrend-openstack/eonstor-ds-cinder-driver/branches
+[travis-ci-dev-img]: https://img.shields.io/travis/infortrend-openstack/infortrend-cinder-driver/develop.svg?style=flat-square
+[travis-ci-dev-url]: https://travis-ci.org/infortrend-openstack/infortrend-cinder-driver/branches
