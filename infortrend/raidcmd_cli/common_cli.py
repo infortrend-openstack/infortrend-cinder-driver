@@ -638,7 +638,9 @@ class InfortrendCommon(object):
                         int(entry['Tier']) == tier_level):
                     total_space = self._parse_size(entry['Size'], 'MB')
                     used_space = self._parse_size(entry['Used'], 'MB')
-                    if volume_size > (total_space - used_space):
+                    if not (total_space and used_space):
+                        return
+                    elif volume_size > (total_space - used_space):
                         LOG.warning(_LW('Tiering pool [%(pool_id)s] '
                                         'has already run out of space in '
                                         'tier level [%(tier_level)s].'), {
@@ -662,6 +664,10 @@ class InfortrendCommon(object):
                 return round(mi_to_gi(size), 2)
             elif return_unit == 'MB':
                 return round(size)
+        else:
+            LOG.warning(_LW('Tier size [%(size_string)s], '
+                            'the unit is not recognized.'), {
+                                'size_string': size_string})
         return
 
     def _create_part_parameters_str(self, extraspecs_dict):
