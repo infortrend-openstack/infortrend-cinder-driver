@@ -54,6 +54,11 @@ def retry_cli(func):
                     'method': self.__class__.__name__,
                     'rc': rc,
                     'reason': out})
+            # rc == 11 means not exist
+            # show error log, not retrying
+            if rc == 11:
+                break
+
         LOG.debug(
             'Method: %(method)s Return Code: %(rc)s '
             'Output: %(out)s', {
@@ -173,7 +178,7 @@ class ShellCommand(BaseCommand):
 
 class ExecuteCommand(BaseCommand):
 
-    """The Cinder FilterCommand."""
+    """The Cinder Filter Command."""
 
     def __init__(self, cli_conf):
         super(ExecuteCommand, self).__init__()
@@ -369,11 +374,24 @@ class SetPartition(CLIBaseCommand):
     set part expand [partition-ID] [size={expand-size}]
     set part purge [partition-ID] [number] [rule-type]
     set part reclaim [partition-ID]
+    set part tier-resided [partition-ID] tier={tier-level-list}
     """
 
     def __init__(self, *args, **kwargs):
         super(SetPartition, self).__init__(*args, **kwargs)
         self.command = "set part"
+
+
+class SetLV(CLIBaseCommand):
+
+    """Set Logical Volume.
+
+    set lv tier-migrate [LV-ID] [part={partition-IDs}]
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SetLV, self).__init__(*args, **kwargs)
+        self.command = "set lv"
 
 
 class CreateMap(CLIBaseCommand):

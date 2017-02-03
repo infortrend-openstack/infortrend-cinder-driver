@@ -24,7 +24,7 @@ class InfortrendCLITestData(object):
     """CLI Test Data."""
 
     # Infortrend entry
-    fake_lv_id = ['5DE94FF775D81C30', '1234567890']
+    fake_lv_id = ['5DE94FF775D81C30', '1234567890', 'HK3345678']
 
     fake_partition_id = ['6A41315B0EDC8EB7', '51B4283E4E159173',
                          '987654321', '123456789',
@@ -104,7 +104,7 @@ class InfortrendCLITestData(object):
         'id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
         'size': 1,
         'name': 'Part-1-Copy',
-        'host': 'infortrend-server1@backend_1',
+        'host': 'infortrend-server1@backend_1#LV-1',
         'name_id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
         'provider_auth': None,
         'project_id': 'project',
@@ -333,7 +333,6 @@ class InfortrendCLITestData(object):
         'QoS_support': False,
         'thick_provisioning_support': True,
         'thin_provisioning_support': False,
-        'infortrend_provisioning': 'full',
     }]
 
     test_volume_states_full = {
@@ -357,7 +356,6 @@ class InfortrendCLITestData(object):
         'QoS_support': False,
         'thick_provisioning_support': True,
         'thin_provisioning_support': True,
-        'infortrend_provisioning': 'thin',
         'provisioned_capacity_gb':
             round((400) / 1024, 2),
         'max_over_subscription_ratio': 20.0,
@@ -391,7 +389,6 @@ class InfortrendCLITestData(object):
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
-        'infortrend_provisioning': 'full',
     }
 
     test_migrate_host = {
@@ -411,7 +408,6 @@ class InfortrendCLITestData(object):
         'free_capacity_gb': round(841978.0 / 1024, 2),
         'reserved_percentage': 0,
         'QoS_support': False,
-        'infortrend_provisioning': 'full',
     }
 
     test_migrate_host_2 = {
@@ -448,11 +444,11 @@ class InfortrendCLITestData(object):
         'name': 'type0',
         'qos_specs_id': None,
         'deleted': False,
-        'extra_specs': {'infortrend_provisioning': 'thin'},
+        'extra_specs': {'infortrend:provisioning': 'thin'},
         'id': '28c8f82f-416e-148b-b1ae-2556c032d3c0',
     }
 
-    test_diff = {'extra_specs': {'infortrend_provisioning': ('full', 'thin')}}
+    test_diff = {'extra_specs': {'infortrend:provisioning': ('full', 'thin')}}
 
     def get_fake_cli_failed(self):
         return """
@@ -466,7 +462,7 @@ RAIDCmd:>
     def get_fake_cli_failed_with_network(self):
         return """
 ift cli command
-CLI: No network
+CLI: Not exist: There is no such partition: 3345678
 Return: 0x000b
 
 RAIDCmd:>
@@ -1279,7 +1275,7 @@ RAIDCmd:>
 
     def get_test_show_lv_tier_for_migration(self):
         return (0, [{
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[1],
             'Tier': '0',
             'Size': '418.93 GB',
@@ -1287,7 +1283,7 @@ RAIDCmd:>
             'Data Service': '0 MB(0.0%)',
             'Reserved Ratio': '10.0%',
         }, {
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[1],
             'Tier': '3',
             'Size': '931.02 GB',
@@ -1298,7 +1294,7 @@ RAIDCmd:>
 
     def get_test_show_lv_tier(self):
         return (0, [{
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[0],
             'Tier': '0',
             'Size': '418.93 GB',
@@ -1306,7 +1302,7 @@ RAIDCmd:>
             'Data Service': '0 MB(0.0%)',
             'Reserved Ratio': '10.0%',
         }, {
-            'LV-Name': 'TierLV',
+            'LV-Name': 'LV-1',
             'LV-ID': self.fake_lv_id[0],
             'Tier': '3',
             'Size': '931.02 GB',
@@ -1320,8 +1316,8 @@ RAIDCmd:>
 show lv tier
  LV-Name  LV-ID  Tier  Size       Used          Data Service   Reserved Ratio
 ------------------------------------------------------------------------------
- TierLV   %s     0     418.93 GB  10 GB(2.4%%)  0 MB(0.0%%)    10.0%%
- TierLV   %s     3     931.02 GB  0 MB(0.0%%)   0 MB(0.0%%)    0.0%%
+ LV-1     %s     0     418.93 GB  10 GB(2.4%%)  0 MB(0.0%%)    10.0%%
+ LV-1     %s     3     931.02 GB  0 MB(0.0%%)   0 MB(0.0%%)    0.0%%
 
 CLI: Successful: 2 lv tiering(s) shown
 Return: 0x0000
@@ -2224,7 +2220,7 @@ RAIDCmd:>
 class InfortrendCLITestCase(test.TestCase):
 
     CommandList = ['CreateLD', 'CreateLV',
-                   'CreatePartition', 'DeletePartition', 'SetPartition',
+                   'CreatePartition', 'DeletePartition',
                    'CreateMap', 'DeleteMap',
                    'CreateSnapshot', 'DeleteSnapshot',
                    'CreateReplica', 'DeleteReplica',
@@ -2235,7 +2231,8 @@ class InfortrendCLITestCase(test.TestCase):
                    'ShowDisk', 'ShowMap',
                    'ShowNet', 'ShowLicense',
                    'ShowWWN', 'ShowReplica',
-                   'ShowIQN', 'ShowHost', 'ConnectRaid']
+                   'ShowIQN', 'ShowHost', 'ConnectRaid',
+                   'SetPartition', 'SetLV']
 
     def __init__(self, *args, **kwargs):
         super(InfortrendCLITestCase, self).__init__(*args, **kwargs)
@@ -2307,7 +2304,7 @@ class InfortrendCLITestCase(test.TestCase):
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        self.assertEqual(0, rc)
+        self.assertEqual(11, rc)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -2320,7 +2317,7 @@ class InfortrendCLITestCase(test.TestCase):
                 'retry': 2,
                 'method': test_command.__class__.__name__,
                 'rc': int('0x000b', 16),
-                'reason': 'No network',
+                'reason': 'Not exist: There is no such partition: 3345678',
             })
         ]
         log_error.assert_has_calls(expect_log_error)
@@ -2335,16 +2332,16 @@ class InfortrendCLITestCase(test.TestCase):
 
         fake_result_list = [
             self.cli_data.get_fake_cli_failed(),
-            self.cli_data.get_fake_cli_failed_with_network(),
-            self.cli_data.get_fake_cli_failed_with_network(),
             self.cli_data.get_fake_cli_failed(),
-            self.cli_data.get_fake_cli_failed_with_network(),
+            self.cli_data.get_fake_cli_failed(),
+            self.cli_data.get_fake_cli_failed(),
+            self.cli_data.get_fake_cli_failed(),
         ]
         test_command = self._cli_multi_set(command, fake_result_list)
 
         rc, out = test_command.execute()
-        self.assertEqual(int('0x000b', 16), rc)
-        self.assertEqual('No network', out)
+        self.assertEqual(int('0x000c', 16), rc)
+        self.assertEqual('No selected device', out)
 
         expect_log_error = [
             mock.call(LOG_ERROR_STR, {
@@ -2356,14 +2353,14 @@ class InfortrendCLITestCase(test.TestCase):
             mock.call(LOG_ERROR_STR, {
                 'retry': 2,
                 'method': test_command.__class__.__name__,
-                'rc': int('0x000b', 16),
-                'reason': 'No network',
+                'rc': int('0x000c', 16),
+                'reason': 'No selected device',
             }),
             mock.call(LOG_ERROR_STR, {
                 'retry': 3,
                 'method': test_command.__class__.__name__,
-                'rc': int('0x000b', 16),
-                'reason': 'No network',
+                'rc': int('0x000c', 16),
+                'reason': 'No selected device',
             }),
             mock.call(LOG_ERROR_STR, {
                 'retry': 4,
@@ -2374,8 +2371,8 @@ class InfortrendCLITestCase(test.TestCase):
             mock.call(LOG_ERROR_STR, {
                 'retry': 5,
                 'method': test_command.__class__.__name__,
-                'rc': int('0x000b', 16),
-                'reason': 'No network',
+                'rc': int('0x000c', 16),
+                'reason': 'No selected device',
             })
         ]
         log_error.assert_has_calls(expect_log_error)
