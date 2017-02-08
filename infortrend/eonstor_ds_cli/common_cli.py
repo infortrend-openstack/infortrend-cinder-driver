@@ -815,6 +815,13 @@ class InfortrendCommon(object):
             tiering = all_extraspecs['global_tiering']
 
         if tiering != 'all':
+            pool_id = self._find_pool_id_by_name(pool_name)
+            if not self._check_tier_pool_or_not(pool_id):
+                LOG.warning(_LW('Infortrend pool: [%(pool_name)s] '
+                                'is not a tier pool. Skip tiering '
+                                '%(tiering)s because it is invalid.'), {
+                                    'pool_name': pool_name,
+                                    'tiering': tiering})
             self._check_extraspecs_conflict(tiering, provisioning)
 
         pool_extraspecs['provisioning'] = provisioning
