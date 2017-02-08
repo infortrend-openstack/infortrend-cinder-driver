@@ -2461,12 +2461,9 @@ class InfortrendCommon(object):
         new_tiering = new_pool_extraspecs['tiering']
 
         if not self._check_tier_pool_or_not(pool_id):
-            msg = _('[%(pool_name)s] is not a tier Pool. '
-                    'Can not retype volume to tier %(tier)s.') % {
-                        'pool_name': pool_name,
-                        'tier': new_tiering}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+            LOG.debug('[%(pool_name)s] is not a tier Pool.', {
+                          'pool_name': pool_name})
+            return
 
         pool_tiers = self.tier_pools_dict[pool_id]
 
