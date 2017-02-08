@@ -2339,7 +2339,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             None, test_volume, test_new_type,
             test_diff, test_host)
 
-    def test_retype_change_with_not_a_tier_pool(self):
+    @mock.patch.object(common_cli.LOG, 'warning')
+    def test_retype_change_with_not_a_tier_pool(self, log_warning):
 
         test_volume = self.cli_data.test_volume
         test_host = self.cli_data.test_migrate_host_2
@@ -2367,11 +2368,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             self.cli_data.fake_lv_id[2]: [0, 1, 2],
         }
 
-        self.assertRaises(
-            exception.VolumeDriverException,
-            self.driver.retype,
-            None, test_volume, test_new_type,
-            test_diff, test_host)
+        rc = self.driver.retype(
+            None, test_volume, test_new_type, test_diff, test_host)
+
+        self.assertTrue(rc)
+        self.assertEqual(1, log_warning.call_count)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
     def test_retype_with_migrate(self):
@@ -2710,7 +2711,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'tiering': [0],
         }
 
-        self.driver = self._get_driver(self.configuration)
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+        }
+        self._driver_setup(mock_commands)
+
         result = self.driver._get_pool_extraspecs(
             'LV-1', test_extraspecs_set)
 
@@ -2732,8 +2737,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'provisioning': 'thin',
             'tiering': [1, 2],
         }
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+        }
+        self._driver_setup(mock_commands)
 
-        self.driver = self._get_driver(self.configuration)
         result = self.driver._get_pool_extraspecs(
             'LV-2', test_extraspecs_set)
 
@@ -2751,7 +2759,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             },
         }
 
-        self.driver = self._get_driver(self.configuration)
+        mock_commands = {
+            'ShowLV': self._mock_show_lv(),
+        }
+        self._driver_setup(mock_commands)
 
         self.assertRaises(
             exception.VolumeDriverException,

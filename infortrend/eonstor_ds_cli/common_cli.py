@@ -641,7 +641,7 @@ class InfortrendCommon(object):
                     if not (total_space and used_space):
                         return
                     elif volume_size > (total_space - used_space):
-                        LOG.warning(_LW('Tiering pool [%(pool_id)s] '
+                        LOG.warning(_LW('Tier pool [%(pool_id)s] '
                                         'has already run out of space in '
                                         'tier level [%(tier_level)s].'), {
                                             'pool_id': pool_id,
@@ -815,6 +815,13 @@ class InfortrendCommon(object):
             tiering = all_extraspecs['global_tiering']
 
         if tiering != 'all':
+            pool_id = self._find_pool_id_by_name(pool_name)
+            if not self._check_tier_pool_or_not(pool_id):
+                LOG.warning(_LW('Infortrend pool: [%(pool_name)s] '
+                                'is not a tier pool. Skip tiering '
+                                '%(tiering)s because it is invalid.'), {
+                                    'pool_name': pool_name,
+                                    'tiering': tiering})
             self._check_extraspecs_conflict(tiering, provisioning)
 
         pool_extraspecs['provisioning'] = provisioning
