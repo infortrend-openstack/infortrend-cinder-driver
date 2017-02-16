@@ -245,7 +245,6 @@ class InfortrendCommon(object):
         self._init_raidcmd()
         self.cli_conf = {
             'path': self.path,
-            'password': self.password,
             'ip': self.ip,
             'cli_retry_time': int(self.cli_retry_time),
             'raidcmd_timeout': int(self._raidcmd_timeout),
@@ -303,7 +302,11 @@ class InfortrendCommon(object):
         LOG.debug('Raidcmd timeout is [%s]', self._raidcmd_timeout)
 
     def _init_raid_connection(self):
-        rc, _ = self._execute('ConnectRaid')
+        raid_password = ''
+        if self.password:
+            raid_password = 'password=%s' % self.password
+
+        rc, _ = self._execute('ConnectRaid', raid_password)
         LOG.info(_LI('Raid [%s] is connected!'), self.ip)
 
     def _execute_command(self, cli_type, *args, **kwargs):
