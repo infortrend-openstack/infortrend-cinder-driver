@@ -208,7 +208,6 @@ class CLIBaseCommand(BaseCommand):
     def __init__(self, cli_conf):
         super(CLIBaseCommand, self).__init__()
         self.ip = cli_conf.get('ip')
-        self.password = cli_conf.get('password')
         self.cli_retry_time = cli_conf.get('cli_retry_time')
         self.raidcmd_timeout = cli_conf.get('raidcmd_timeout')
         self.cli_cache = cli_conf.get('cli_cache')
@@ -223,10 +222,6 @@ class CLIBaseCommand(BaseCommand):
         """Generate execute Command. use java, execute, command, parameters."""
         self.parameters = parameters
         parameters_line = ' '.join(parameters)
-
-        if self.password:
-            parameters_line = 'password=%s %s' % (
-                self.password, parameters_line)
 
         self.command_line = "{0} {1} {2}\n".format(
             self.command,
