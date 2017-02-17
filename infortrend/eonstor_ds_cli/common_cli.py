@@ -1078,7 +1078,7 @@ class InfortrendCommon(object):
 
         map_lun = self._get_minimum_common_lun_id(map_chl)
 
-        if map_lun is None:
+        if not map_lun:
             msg = _('Cannot find a common lun id for mapping.')
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
@@ -1089,12 +1089,12 @@ class InfortrendCommon(object):
         """Find the minimun common lun id in all channels."""
         map_lun = []
         for lun_id in range(self.constants['MAX_LUN_MAP_PER_CHL']):
-            check_map = True
+            has_mapped = False
             for controller in channel_dict.keys():
                 for channel_id in channel_dict[controller]:
-                    if lun_id not in self.map_dict['slot_a'][channel_id]:
-                        check_map = False
-            if check_map:
+                    if lun_id not in self.map_dict[controller][channel_id]:
+                        has_mapped = True
+            if not has_mapped:
                 map_lun.append(str(lun_id))
                 break
 
