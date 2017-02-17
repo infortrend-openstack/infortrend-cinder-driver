@@ -2516,7 +2516,7 @@ class InfortrendCommon(object):
                         check_done = True
             except Exception:
                 check_done = False
-                LOG.exception(_LE('Cannot detect replica status.'))
+                LOG.exception(_LE('Cannot detect tier migrate status.'))
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
