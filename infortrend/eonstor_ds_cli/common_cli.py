@@ -254,7 +254,7 @@ class InfortrendCommon(object):
         self.cli_conf = {
             'path': self.path,
             'cli_retry_time': self.cli_retry_time,
-            'raidcmd_timeout': self._raidcmd_timeout,
+            'raidcmd_timeout': self.cli_timeout,
             'cli_cache': self.cli_cache,
             'pid': self.pid,
             'fd': self.fd,
