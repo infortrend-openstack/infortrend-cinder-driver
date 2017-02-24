@@ -176,9 +176,10 @@ class InfortrendCommon(object):
               - Fix manage-existing issues
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
+        2.0.1 - Remove checks while deleting volume
     """
 
-    VERSION = '2.0.0'
+    VERSION = '2.0.1'
 
     constants = {
         'ISCSI_PORT': 3260,
