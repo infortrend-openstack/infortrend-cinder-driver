@@ -899,18 +899,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
-        test_snapshot_id = self.cli_data.fake_snapshot_id
-        test_pair_id = self.cli_data.fake_pair_id
 
         mock_commands = {
             'ShowPartition':
                 self.cli_data.get_test_show_partition_detail_for_map(
                     test_partition_id),
-            'ShowReplica': self.cli_data.get_test_show_replica_detail(),
-            'DeleteReplica': SUCCEED,
-            'ShowSnapshot': self.cli_data.get_test_show_snapshot(),
-            'DeleteSnapshot': SUCCEED,
-            'ShowMap': self.cli_data.get_test_show_map(),
             'DeleteMap': SUCCEED,
             'DeletePartition': SUCCEED,
         }
@@ -920,12 +913,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         expect_cli_cmd = [
             mock.call('ShowPartition', '-l'),
-            mock.call('ShowReplica', '-l'),
-            mock.call('DeleteReplica', test_pair_id[0], '-y'),
-            mock.call('ShowSnapshot', 'part=%s' % test_partition_id),
-            mock.call('DeleteSnapshot', test_snapshot_id[0], '-y'),
-            mock.call('DeleteSnapshot', test_snapshot_id[1], '-y'),
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
             mock.call('DeleteMap', 'part', test_partition_id, '-y'),
             mock.call('DeletePartition', test_partition_id, '-y'),
         ]
