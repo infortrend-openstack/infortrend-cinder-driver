@@ -101,7 +101,6 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '0,5'
         self.configuration.infortrend_slots_b_channels_id = '0,5'
-        self.configuration.infortrend_cli_timeout = 30
 
     @mock.patch.object(
         common_cli.InfortrendCommon, '_init_raidcmd', mock.Mock())
@@ -1814,7 +1813,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_dst_part_id = self.cli_data.fake_partition_id[2]
 
         configuration = copy.copy(self.configuration)
-        configuration.infortrend_cli_timeout = 0
+        configuration.infortrend_migration_timeout = 0
 
         mock_commands = {
             'CreatePartition': SUCCEED,
