@@ -1201,7 +1201,6 @@ class InfortrendCommon(object):
             return
 
         volume_id = volume['id'].replace('-', '')
-        has_pair = False
         have_map = False
 
         part_id = self._extract_specific_provider_location(
@@ -1216,60 +1215,13 @@ class InfortrendCommon(object):
                 'volume_id': volume_id})
             return
 
-        rc, replica_list = self._execute('ShowReplica', '-l')
+        if have_map:
+            self._execute('DeleteMap', 'part', part_id, '-y')
 
-        for entry in replica_list:
-            if (volume_id == entry['Source-Name'] and
-                    part_id == entry['Source']):
-                if not self._check_replica_completed(entry):
-                    has_pair = True
-                    LOG.warning(_LW('Volume still %(status)s '
-                                    'Cannot delete volume.'), {
-                                        'status': entry['Status']})
-                else:
-                    have_map = entry['Source-Mapped'] == 'Yes'
-                    self._execute('DeleteReplica', entry['Pair-ID'], '-y')
+        self._execute('DeletePartition', part_id, '-y')
 
-            elif (volume_id == entry['Target-Name'] and
-                    part_id == entry['Target']):
-                have_map = entry['Target-Mapped'] == 'Yes'
-                self._execute('DeleteReplica', entry['Pair-ID'], '-y')
-
-        if not has_pair:
-
-            rc, snapshot_list = self._execute(
-                'ShowSnapshot', 'part=%s' % part_id)
-
-            for snapshot in snapshot_list:
-                si_has_pair = self._delete_pair_with_snapshot(
-                    snapshot['SI-ID'], replica_list)
-
-                if si_has_pair:
-                    msg = _('Failed to delete SI '
-                            'for volume_id: %(volume_id)s '
-                            'because it has pair.') % {
-                                'volume_id': volume_id}
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
-
-                self._execute('DeleteSnapshot', snapshot['SI-ID'], '-y')
-
-            rc, map_info = self._execute('ShowMap', 'part=%s' % part_id)
-
-            if have_map or len(map_info) > 0:
-                self._execute('DeleteMap', 'part', part_id, '-y')
-
-            self._execute('DeletePartition', part_id, '-y')
-
-            LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
-                'volume_id': volume_id})
-        else:
-            msg = _('Failed to delete volume '
-                    'for volume_id: %(volume_id)s '
-                    'because it has pair.') % {
-                        'volume_id': volume_id}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+        LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
+            'volume_id': volume_id})
 
     def _check_replica_completed(self, replica):
         if ((replica['Type'] == 'Copy' and replica['Status'] == 'Completed') or
