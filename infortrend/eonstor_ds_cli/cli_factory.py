@@ -69,7 +69,7 @@ def retry_cli(func):
 
 def os_execute(fd, raidcmd_timeout, command_line):
     os.write(fd, command_line)
-    return os_read(fd, 8192, 'RAIDCmd:>', raidcmd_timeout)
+    return os_read(fd, 4096, 'RAIDCmd:>', raidcmd_timeout)
 
 
 def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
@@ -83,8 +83,10 @@ def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
         if content.find(cmd_pattern) >= 0:
             break
         if int(time.time()) - start_time > raidcmd_timeout:
-            content = 'Raidcmd timeout.'
-            LOG.error(_LE('Raidcmd timeout.'))
+            content = 'Raidcmd timeout: %s' % content
+            LOG.error(_LE(
+                'Raidcmd exceeds cli timeout [%(timeout)s]s.'), {
+                    'timeout': raidcmd_timeout})
             break
     return content
 
@@ -207,7 +209,6 @@ class CLIBaseCommand(BaseCommand):
 
     def __init__(self, cli_conf):
         super(CLIBaseCommand, self).__init__()
-        self.ip = cli_conf.get('ip')
         self.cli_retry_time = cli_conf.get('cli_retry_time')
         self.raidcmd_timeout = cli_conf.get('raidcmd_timeout')
         self.cli_cache = cli_conf.get('cli_cache')
@@ -277,14 +278,10 @@ class CLIBaseCommand(BaseCommand):
         return os_execute(
             self.fd, self.raidcmd_timeout, command_line)
 
-    def set_ip(self, ip):
-        """Set the Raid's ip."""
-        self.ip = ip
-
     def _parse_return(self, content_lines):
         """Get the end of command line result."""
         rc = 0
-        if content_lines[0] == 'Raidcmd timeout.':
+        if 'Raidcmd timeout' in content_lines[0]:
             rc = -3
             return_cli_result = content_lines
         elif len(content_lines) < 4:
@@ -304,7 +301,7 @@ class ConnectRaid(CLIBaseCommand):
 
     def __init__(self, *args, **kwargs):
         super(ConnectRaid, self).__init__(*args, **kwargs)
-        self.command = "connect %s" % self.ip
+        self.command = "connect"
 
 
 class CheckConnection(CLIBaseCommand):
@@ -502,7 +499,7 @@ class SetIOTimeout(CLIBaseCommand):
 
     def __init__(self, *args, **kwargs):
         super(SetIOTimeout, self).__init__(*args, **kwargs)
-        self.command = "utility set io-timeout %s" % self.raidcmd_timeout
+        self.command = "utility set io-timeout"
 
 
 class ShowCommand(CLIBaseCommand):

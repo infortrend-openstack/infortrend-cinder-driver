@@ -50,8 +50,11 @@ infortrend_esds_opts = [
                default=5,
                help='The maximum retry times if a command fails.'),
     cfg.IntOpt('infortrend_cli_timeout',
+               default=60,
+               help='The timeout for CLI in seconds.'),
+    cfg.IntOpt('infortrend_migration_timeout',
                default=30,
-               help='The timeout for migration jobs in minute.'),
+               help='The timeout for migration jobs in minutes.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='',
                help='Infortrend raid channel ID list on Slot A '
@@ -199,6 +202,7 @@ class InfortrendCommon(object):
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
         self.cli_timeout = self.configuration.infortrend_cli_timeout
+        self.migrate_timeout = self.configuration.infortrend_migration_timeout
         self.cli_cache = self.configuration.infortrend_cli_cache
         self.iqn_prefix = self.configuration.infortrend_iqn_prefix
         self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
@@ -210,6 +214,11 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
+        if self.cli_timeout < 40:
+            msg = _('infortrend_cli_timeout should be larger than 40.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
         self.fc_lookup_service = fczm_utils.create_lookup_service()
 
         self.backend_name = None
@@ -218,8 +227,7 @@ class InfortrendCommon(object):
         self.pid = None
         self.fd = None
         self._model_type = 'R'
-        self._replica_timeout = self.cli_timeout * 60
-        self._raidcmd_timeout = self.cli_timeout * 2
+        self._replica_timeout = self.migrate_timeout * 60
 
         self.map_dict = {
             'slot_a': {},
@@ -245,9 +253,8 @@ class InfortrendCommon(object):
         self._init_raidcmd()
         self.cli_conf = {
             'path': self.path,
-            'ip': self.ip,
-            'cli_retry_time': int(self.cli_retry_time),
-            'raidcmd_timeout': int(self._raidcmd_timeout),
+            'cli_retry_time': self.cli_retry_time,
+            'raidcmd_timeout': self._raidcmd_timeout,
             'cli_cache': self.cli_cache,
             'pid': self.pid,
             'fd': self.fd,
@@ -298,15 +305,16 @@ class InfortrendCommon(object):
         LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
 
     def _set_raidcmd(self):
-        rc, _ = self._execute('SetIOTimeout')
-        LOG.debug('Raidcmd timeout is [%s]', self._raidcmd_timeout)
+        cli_io_timeout = str(self.cli_timeout - 10)
+        rc, _ = self._execute('SetIOTimeout', cli_io_timeout)
+        LOG.debug('CLI IO timeout is [%s]', cli_io_timeout)
 
     def _init_raid_connection(self):
         raid_password = ''
         if self.password:
             raid_password = 'password=%s' % self.password
 
-        rc, _ = self._execute('ConnectRaid', raid_password)
+        rc, _ = self._execute('ConnectRaid', self.ip, raid_password)
         LOG.info(_LI('Raid [%s] is connected!'), self.ip)
 
     def _execute_command(self, cli_type, *args, **kwargs):
