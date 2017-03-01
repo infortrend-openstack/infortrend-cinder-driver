@@ -1376,6 +1376,7 @@ class InfortrendCommon(object):
             return 'Connected'
         elif rc == 9:
             self._init_raid_connection()
+            self._set_raidcmd()
             return 'Reconnected'
         else:
             return 'Error: %s' % out
