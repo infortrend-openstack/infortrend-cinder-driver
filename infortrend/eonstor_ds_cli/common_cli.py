@@ -50,8 +50,11 @@ infortrend_esds_opts = [
                default=5,
                help='The maximum retry times if a command fails.'),
     cfg.IntOpt('infortrend_cli_timeout',
+               default=60,
+               help='The timeout for CLI in seconds.'),
+    cfg.IntOpt('infortrend_migration_timeout',
                default=30,
-               help='The timeout for migration jobs in minute.'),
+               help='The timeout for migration jobs in minutes.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='',
                help='Infortrend raid channel ID list on Slot A '
@@ -173,9 +176,10 @@ class InfortrendCommon(object):
               - Fix manage-existing issues
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
+        2.0.1 - Remove check while deleting volume
     """
 
-    VERSION = '2.0.0'
+    VERSION = '2.0.1'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -199,6 +203,7 @@ class InfortrendCommon(object):
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
         self.cli_timeout = self.configuration.infortrend_cli_timeout
+        self.migrate_timeout = self.configuration.infortrend_migration_timeout
         self.cli_cache = self.configuration.infortrend_cli_cache
         self.iqn_prefix = self.configuration.infortrend_iqn_prefix
         self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
@@ -210,6 +215,11 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
+        if self.cli_timeout < 40:
+            msg = _('infortrend_cli_timeout should be larger than 40.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
         self.fc_lookup_service = fczm_utils.create_lookup_service()
 
         self.backend_name = None
@@ -218,8 +228,7 @@ class InfortrendCommon(object):
         self.pid = None
         self.fd = None
         self._model_type = 'R'
-        self._replica_timeout = self.cli_timeout * 60
-        self._raidcmd_timeout = self.cli_timeout * 2
+        self._replica_timeout = self.migrate_timeout * 60
 
         self.map_dict = {
             'slot_a': {},
@@ -245,9 +254,8 @@ class InfortrendCommon(object):
         self._init_raidcmd()
         self.cli_conf = {
             'path': self.path,
-            'ip': self.ip,
-            'cli_retry_time': int(self.cli_retry_time),
-            'raidcmd_timeout': int(self._raidcmd_timeout),
+            'cli_retry_time': self.cli_retry_time,
+            'raidcmd_timeout': self.cli_timeout,
             'cli_cache': self.cli_cache,
             'pid': self.pid,
             'fd': self.fd,
@@ -298,15 +306,16 @@ class InfortrendCommon(object):
         LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
 
     def _set_raidcmd(self):
-        rc, _ = self._execute('SetIOTimeout')
-        LOG.debug('Raidcmd timeout is [%s]', self._raidcmd_timeout)
+        cli_io_timeout = str(self.cli_timeout - 10)
+        rc, _ = self._execute('SetIOTimeout', cli_io_timeout)
+        LOG.debug('CLI IO timeout is [%s]', cli_io_timeout)
 
     def _init_raid_connection(self):
         raid_password = ''
         if self.password:
             raid_password = 'password=%s' % self.password
 
-        rc, _ = self._execute('ConnectRaid', raid_password)
+        rc, _ = self._execute('ConnectRaid', self.ip, raid_password)
         LOG.info(_LI('Raid [%s] is connected!'), self.ip)
 
     def _execute_command(self, cli_type, *args, **kwargs):
@@ -1193,7 +1202,6 @@ class InfortrendCommon(object):
             return
 
         volume_id = volume['id'].replace('-', '')
-        has_pair = False
         have_map = False
 
         part_id = self._extract_specific_provider_location(
@@ -1208,60 +1216,13 @@ class InfortrendCommon(object):
                 'volume_id': volume_id})
             return
 
-        rc, replica_list = self._execute('ShowReplica', '-l')
+        if have_map:
+            self._execute('DeleteMap', 'part', part_id, '-y')
 
-        for entry in replica_list:
-            if (volume_id == entry['Source-Name'] and
-                    part_id == entry['Source']):
-                if not self._check_replica_completed(entry):
-                    has_pair = True
-                    LOG.warning(_LW('Volume still %(status)s '
-                                    'Cannot delete volume.'), {
-                                        'status': entry['Status']})
-                else:
-                    have_map = entry['Source-Mapped'] == 'Yes'
-                    self._execute('DeleteReplica', entry['Pair-ID'], '-y')
+        self._execute('DeletePartition', part_id, '-y')
 
-            elif (volume_id == entry['Target-Name'] and
-                    part_id == entry['Target']):
-                have_map = entry['Target-Mapped'] == 'Yes'
-                self._execute('DeleteReplica', entry['Pair-ID'], '-y')
-
-        if not has_pair:
-
-            rc, snapshot_list = self._execute(
-                'ShowSnapshot', 'part=%s' % part_id)
-
-            for snapshot in snapshot_list:
-                si_has_pair = self._delete_pair_with_snapshot(
-                    snapshot['SI-ID'], replica_list)
-
-                if si_has_pair:
-                    msg = _('Failed to delete SI '
-                            'for volume_id: %(volume_id)s '
-                            'because it has pair.') % {
-                                'volume_id': volume_id}
-                    LOG.error(msg)
-                    raise exception.VolumeDriverException(message=msg)
-
-                self._execute('DeleteSnapshot', snapshot['SI-ID'], '-y')
-
-            rc, map_info = self._execute('ShowMap', 'part=%s' % part_id)
-
-            if have_map or len(map_info) > 0:
-                self._execute('DeleteMap', 'part', part_id, '-y')
-
-            self._execute('DeletePartition', part_id, '-y')
-
-            LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
-                'volume_id': volume_id})
-        else:
-            msg = _('Failed to delete volume '
-                    'for volume_id: %(volume_id)s '
-                    'because it has pair.') % {
-                        'volume_id': volume_id}
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
+        LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
+            'volume_id': volume_id})
 
     def _check_replica_completed(self, replica):
         if ((replica['Type'] == 'Copy' and replica['Status'] == 'Completed') or
