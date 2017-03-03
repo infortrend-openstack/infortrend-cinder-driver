@@ -298,7 +298,7 @@ class InfortrendCommon(object):
                 os.execv(self.java_path, [self.java_path, '-jar', self.path])
 
             check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 10)
-            if check_java_start == 'Raidcmd timeout.':
+            if 'Raidcmd timeout' in check_java_start:
                 msg = _('Raidcmd failed to start. '
                         'Please check Java is installed.')
                 LOG.error(msg)
@@ -1374,7 +1374,7 @@ class InfortrendCommon(object):
         rc, out = self._execute('CheckConnection')
         if rc == 0:
             return 'Connected'
-        elif rc == 9:
+        elif rc in (9, 13):
             self._init_raid_connection()
             self._set_raidcmd()
             return 'Reconnected'

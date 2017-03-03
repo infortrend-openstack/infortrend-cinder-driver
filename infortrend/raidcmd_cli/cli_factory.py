@@ -69,7 +69,7 @@ def retry_cli(func):
 
 def os_execute(fd, raidcmd_timeout, command_line):
     os.write(fd, command_line)
-    return os_read(fd, 4096, 'RAIDCmd:>', raidcmd_timeout)
+    return os_read(fd, 8192, 'RAIDCmd:>', raidcmd_timeout)
 
 
 def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
