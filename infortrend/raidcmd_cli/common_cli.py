@@ -1508,22 +1508,11 @@ class InfortrendCommon(object):
         raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
 
         if raid_snapshot_id:
-            rc, replica_list = self._execute('ShowReplica', '-l')
 
-            has_pair = self._delete_pair_with_snapshot(
-                raid_snapshot_id, replica_list)
+            self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
 
-            if not has_pair:
-                self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
-
-                LOG.info(_LI('Delete Snapshot %(snapshot_id)s completed.'), {
-                    'snapshot_id': snapshot_id})
-            else:
-                msg = _('Failed to delete snapshot '
-                        'for snapshot_id: %s '
-                        'because it has pair.') % snapshot_id
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
+            LOG.info(_LI('Delete Snapshot %(snapshot_id)s completed.'), {
+                'snapshot_id': snapshot_id})
         else:
             LOG.warning(_LW('Snapshot %(snapshot_id)s '
                             'provider_location not stored.'), {
@@ -1533,20 +1522,6 @@ class InfortrendCommon(object):
         if 'provider_location' in snapshot:
             return snapshot['provider_location']
         return
-
-    def _delete_pair_with_snapshot(self, snapshot_id, replica_list):
-        has_pair = False
-        for entry in replica_list:
-            if entry['Source'] == snapshot_id:
-
-                if not self._check_replica_completed(entry):
-                    has_pair = True
-                    LOG.warning(_LW(
-                        'Snapshot still %(status)s Cannot delete snapshot.'), {
-                            'status': entry['Status']})
-                else:
-                    self._execute('DeleteReplica', entry['Pair-ID'], '-y')
-        return has_pair
 
     def _get_part_id(self, volume_id, pool_id=None, part_list=None):
         if part_list is None:
