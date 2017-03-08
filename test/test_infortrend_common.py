@@ -895,7 +895,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume)
 
     @mock.patch.object(common_cli.LOG, 'info')
-    def test_delete_volume(self, log_info):
+    def test_delete_volume_with_mapped(self, log_info):
 
         test_volume = self.cli_data.test_volume
         test_partition_id = self.cli_data.fake_partition_id[0]
@@ -919,25 +919,27 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, log_info.call_count)
 
-    @mock.patch.object(common_cli.LOG, 'warning', mock.Mock())
-    def test_delete_volume_with_sync_pair(self):
+    @mock.patch.object(common_cli.LOG, 'info')
+    def test_delete_volume_without_mapped(self, log_info):
 
-        test_volume = self.cli_data.test_volume
-        test_partition_id = self.cli_data.fake_partition_id[0]
+        test_volume = self.cli_data.test_volume_1
+        test_partition_id = self.cli_data.fake_partition_id[1]
 
         mock_commands = {
             'ShowPartition':
-                self.cli_data.get_test_show_partition_detail_for_map(
-                    test_partition_id),
-            'ShowReplica':
-                self.cli_data.get_test_show_replica_detail_for_sync_pair(),
+                self.cli_data.get_test_show_partition_detail(
+                    test_volume['id'].replace('-', ''), '5DE94FF775D81C30'),
+            'DeletePartition': SUCCEED,
         }
         self._driver_setup(mock_commands)
+        self.driver.delete_volume(test_volume)
 
-        self.assertRaises(
-            exception.VolumeDriverException,
-            self.driver.delete_volume,
-            test_volume)
+        expect_cli_cmd = [
+            mock.call('ShowPartition', '-l'),
+            mock.call('DeletePartition', test_partition_id, '-y'),
+        ]
+        self._assert_cli_has_calls(expect_cli_cmd)
+        self.assertEqual(1, log_info.call_count)
 
     def test_delete_volume_with_delete_fail(self):
 
