@@ -1788,40 +1788,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume,
             test_host)
 
-    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
-                new=utils.ZeroIntervalLoopingCall)
-    def test_migrate_volume_timeout(self):
-
-        test_host = copy.deepcopy(self.cli_data.test_migrate_host)
-        fake_pool = copy.deepcopy(self.cli_data.fake_pool)
-        test_volume = self.cli_data.test_volume
-        test_volume_id = test_volume['id'].replace('-', '')
-        test_src_part_id = self.cli_data.fake_partition_id[0]
-        test_dst_part_id = self.cli_data.fake_partition_id[2]
-
-        configuration = copy.copy(self.configuration)
-        configuration.infortrend_migration_timeout = 0
-
-        mock_commands = {
-            'CreatePartition': SUCCEED,
-            'ShowPartition': self.cli_data.get_test_show_partition(
-                test_volume_id, fake_pool['pool_id']),
-            'CreateReplica': SUCCEED,
-            'ShowLV': self._mock_show_lv_for_migrate,
-            'ShowReplica':
-                self.cli_data.get_test_show_replica_detail_for_migrate(
-                    test_src_part_id, test_dst_part_id, test_volume_id,
-                    'Copy'),
-        }
-        self._driver_setup(mock_commands, configuration)
-        self.driver.system_id = 'DEEC'
-
-        self.assertRaises(
-            exception.VolumeDriverException,
-            self.driver.migrate_volume,
-            test_volume,
-            test_host)
-
     def test_manage_existing_get_size(self):
 
         test_volume = self.cli_data.test_volume

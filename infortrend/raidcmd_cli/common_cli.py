@@ -17,7 +17,6 @@ Infortrend Common CLI.
 """
 import math
 import os
-import time
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -52,9 +51,6 @@ infortrend_esds_opts = [
     cfg.IntOpt('infortrend_cli_timeout',
                default=60,
                help='The timeout for CLI in seconds.'),
-    cfg.IntOpt('infortrend_migration_timeout',
-               default=30,
-               help='The timeout for migration jobs in minutes.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='',
                help='Infortrend raid channel ID list on Slot A '
@@ -176,10 +172,11 @@ class InfortrendCommon(object):
               - Fix manage-existing issues
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
-        2.0.1 - Remove checks while deleting volume
+        2.0.1 - Improve speed for deleting volume
+        2.0.2 - Remove timeout for replication
     """
 
-    VERSION = '2.0.1'
+    VERSION = '2.0.2'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -203,7 +200,6 @@ class InfortrendCommon(object):
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
         self.cli_timeout = self.configuration.infortrend_cli_timeout
-        self.migrate_timeout = self.configuration.infortrend_migration_timeout
         self.cli_cache = self.configuration.infortrend_cli_cache
         self.iqn_prefix = self.configuration.infortrend_iqn_prefix
         self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
@@ -228,7 +224,6 @@ class InfortrendCommon(object):
         self.pid = None
         self.fd = None
         self._model_type = 'R'
-        self._replica_timeout = self.migrate_timeout * 60
 
         self.map_dict = {
             'slot_a': {},
@@ -2170,9 +2165,6 @@ class InfortrendCommon(object):
         return model_update
 
     def _wait_replica_complete(self, part_id):
-        start_time = int(time.time())
-        timeout = self._replica_timeout
-
         def _inner():
             check_done = False
             try:
@@ -2188,11 +2180,6 @@ class InfortrendCommon(object):
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
-
-            if int(time.time()) - start_time > timeout:
-                msg = _('Wait replica complete timeout.')
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
 
         timer = loopingcall.FixedIntervalLoopingCall(_inner)
         timer.start(interval=15).wait()
@@ -2440,9 +2427,6 @@ class InfortrendCommon(object):
         self._wait_tier_migrate_complete(part_id)
 
     def _wait_tier_migrate_complete(self, part_id):
-        start_time = int(time.time())
-        timeout = self._replica_timeout
-
         def _inner():
             check_done = False
             try:
@@ -2457,11 +2441,6 @@ class InfortrendCommon(object):
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
-
-            if int(time.time()) - start_time > timeout:
-                msg = _('Retype volume timeout while tier migrating.')
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
 
         timer = loopingcall.FixedIntervalLoopingCall(_inner)
         timer.start(interval=15).wait()
