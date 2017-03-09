@@ -265,7 +265,7 @@ class InfortrendCommon(object):
 
         self.tier_pools_dict = {}
 
-        self._init_pool_list()
+        self._init_pool_dict()
         self._init_channel_list()
         self._init_raidcmd()
         self.cli_conf = {
@@ -279,7 +279,8 @@ class InfortrendCommon(object):
         self._init_raid_connection()
         self._set_raidcmd()
 
-    def _init_pool_list(self):
+    def _init_pool_dict(self):
+        self.pool_dict = {}
         pools_name = self.configuration.infortrend_pools_name
         if pools_name == '':
             msg = _('Pools name is not set.')
@@ -287,7 +288,8 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
         tmp_pool_list = pools_name.split(',')
-        self.pool_list = [pool.strip() for pool in tmp_pool_list]
+        for pool in tmp_pool_list:
+            self.pool_dict[pool.strip()] = ''
 
     def _init_channel_list(self):
         self.channel_list = {
@@ -523,19 +525,20 @@ class InfortrendCommon(object):
         self.mcs_dict[controller][mcs_id].append(channel_id)
 
     def _check_pools_setup(self):
-        pool_list = self.pool_list[:]
+        temp_pool_dict = self.pool_dict.copy()
 
         rc, lv_info = self._execute('ShowLV')
 
         for lv in lv_info:
-            if lv['Name'] in pool_list:
-                pool_list.remove(lv['Name'])
-            if len(pool_list) == 0:
+            if lv['Name'] in temp_pool_dict.keys():
+                del temp_pool_dict[lv['Name']]
+                self.pool_dict[lv['Name']] = lv['ID']
+            if len(temp_pool_dict) == 0:
                 break
 
-        if len(pool_list) != 0:
+        if len(temp_pool_dict) != 0:
             msg = _('Please create %(pool_list)s pool in advance!') % {
-                'pool_list': pool_list}
+                'pool_list': list(temp_pool_dict.keys())}
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
@@ -816,18 +819,17 @@ class InfortrendCommon(object):
         if volume_type_id:
             extraspecs = volume_types.get_volume_type_extra_specs(
                 volume_type_id)
-
         return extraspecs
 
     def _get_volume_pool_id(self, volume):
         pool_name = volume['host'].split('#')[-1]
         pool_id = self._find_pool_id_by_name(pool_name)
 
-        if pool_id is None:
-            msg = _('Failed to get pool id with volume %(volume_id)s.') % {
-                'volume_id': volume['id']}
+        if not pool_id:
+            msg = _('Failed to get pool id with pool %(pool_name)s.') % {
+                'pool_name': pool_name}
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeDriverException(data=msg)
 
         return pool_id
 
@@ -979,7 +981,7 @@ class InfortrendCommon(object):
             for provisioning in provisioning_string:
                 pool, value = provisioning.split(':', 1)
 
-                if pool not in self.pool_list:
+                if pool not in self.pool_dict.keys():
                     LOG.warning(_LW('Infortrend:provisioning '
                                     'this setting %(pool)s:%(value)s, '
                                     'pool [%(pool)s] not set in config.'), {
@@ -1019,7 +1021,7 @@ class InfortrendCommon(object):
             for tiering_set in tiering_string:
                 pool, value = tiering_set.split(':', 1)
 
-                if pool not in self.pool_list:
+                if pool not in self.pool_dict.keys():
                     LOG.warning(_LW('Infortrend:tiering '
                                     'this setting %(pool)s:%(value)s, '
                                     'pool [%(pool)s] not set in config.'), {
@@ -1065,13 +1067,13 @@ class InfortrendCommon(object):
         return extraspecs_set
 
     def _find_pool_id_by_name(self, pool_name):
-        pool_id = None
-        rc, lv_info = self._execute('ShowLV')
-        for entry in lv_info:
-            if entry['Name'] == pool_name:
-                pool_id = entry['ID']
-                break
-        return pool_id
+        if pool_name in self.pool_dict.keys():
+            return self.pool_dict[pool_name]
+        else:
+            msg = _('Pool [%(pool_name)s] not set in cinder conf.') % {
+                'pool_name': pool_name}
+            LOG.error(msg)
+            raise exception.VolumeDriverException(data=msg)
 
     def _get_system_id(self, system_ip):
         if not self.system_id:
@@ -1470,7 +1472,7 @@ class InfortrendCommon(object):
             rc, part_list = self._execute('ShowPartition', '-l', '-noinit')
 
         for pool in pools_info:
-            if pool['Name'] in self.pool_list:
+            if pool['Name'] in self.pool_dict.keys():
                 total_space = float(pool['Size'].split(' ', 1)[0])
                 available_space = float(pool['Available'].split(' ', 1)[0])
 
@@ -1523,7 +1525,7 @@ class InfortrendCommon(object):
 
         temp_dict = {}
         for entry in lv_info:
-            if entry['LV-Name'] in self.pool_list:
+            if entry['LV-Name'] in self.pool_dict.keys():
                 if entry['LV-ID'] not in temp_dict.keys():
                     temp_dict[entry['LV-ID']] = []
                 temp_dict[entry['LV-ID']].append(int(entry['Tier']))
