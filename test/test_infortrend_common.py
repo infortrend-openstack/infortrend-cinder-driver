@@ -48,6 +48,7 @@ class InfortrendTestCase(test.TestCase):
         if configuration is None:
             configuration = self.configuration
         self.driver = self._get_driver(configuration)
+        self.driver.pool_dict = self.pool_dict
 
         mock_commands_execute = self._mock_command_execute(mock_commands)
         mock_cli = mock.Mock(side_effect=mock_commands_execute)
@@ -101,6 +102,10 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '0,5'
         self.configuration.infortrend_slots_b_channels_id = '0,5'
+        self.pool_dict = {
+            'LV-1': self.cli_data.fake_lv_id[0],
+            'LV-2': self.cli_data.fake_lv_id[1],
+        }
 
     @mock.patch.object(
         common_cli.InfortrendCommon, '_init_raidcmd', mock.Mock())
@@ -554,6 +559,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.configuration.infortrend_pools_name = 'LV-1, LV-2'
         self.configuration.infortrend_slots_a_channels_id = '1,2,4'
         self.configuration.infortrend_slots_b_channels_id = '1,2,4'
+        self.pool_dict = {
+            'LV-1': self.cli_data.fake_lv_id[0],
+            'LV-2': self.cli_data.fake_lv_id[1],
+        }
 
     @mock.patch.object(
         common_cli.InfortrendCommon, '_init_raidcmd', mock.Mock())
@@ -1694,7 +1703,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             'ShowPartition': self.cli_data.get_test_show_partition(
                 test_volume_id, fake_pool['pool_id']),
             'CreateReplica': SUCCEED,
-            'ShowLV': self._mock_show_lv_for_migrate,
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_src_part_id, test_dst_part_id, test_volume_id),
@@ -1879,7 +1887,6 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         mock_commands = {
             'ShowPartition': FAKE_ERROR_RETURN,
-            'ShowMap': SUCCEED,
         }
         self._driver_setup(mock_commands)
 
@@ -1889,7 +1896,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume,
             test_ref_volume)
 
-    def test_manage_existing_get_size_show_map_fail(self):
+    def test_manage_existing_get_size_with_wrong_pool(self):
 
         test_volume = self.cli_data.test_volume
         test_ref_volume = self.cli_data.test_ref_volume_with_id
@@ -1899,12 +1906,11 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         mock_commands = {
             'ShowPartition': self.cli_data.get_test_show_partition_detail(
                 'cinder-unmanaged-%s' % test_ref_volume_id[:-17], test_pool),
-            'ShowMap': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
         self.assertRaises(
-            exception.InfortrendCliException,
+            exception.VolumeBackendAPIException,
             self.driver.manage_existing_get_size,
             test_volume,
             test_ref_volume)
@@ -2514,7 +2520,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             },
         }
         self.driver = self._get_driver(self.configuration)
-        self.driver.pool_list = ['LV-0', 'LV-1', 'LV-2']
+        self.driver.pool_dict = {'LV-0': '', 'LV-1': '', 'LV-2': ''}
         result = self.driver._get_extraspecs_set(test_extraspecs)
 
         self.assertEqual(test_result, result)
