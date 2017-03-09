@@ -562,7 +562,7 @@ class InfortrendCommon(object):
             "provider_location": self._concat_provider_location(model_dict),
         }
         LOG.info(_LI('Create Volume %(volume_id)s completed.'), {
-            'volume_id': volume_id})
+            'volume_id': volume['id']})
         return model_update
 
     def _create_partition_by_default(self, volume):
@@ -2223,7 +2223,8 @@ class InfortrendCommon(object):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)
 
-        self._execute('SetPartition', volume_data['ID'], 'name=%s' % volume['id'])
+        self._execute(
+            'SetPartition', volume_data['ID'], 'name=%s' % volume['id'])
 
         model_dict = {
             'system_id': self._get_system_id(self.ip),
