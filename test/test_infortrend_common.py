@@ -1245,30 +1245,12 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_snapshot = self.cli_data.test_snapshot
 
         mock_commands = {
-            'ShowReplica': self.cli_data.get_test_show_replica_detail(),
             'DeleteSnapshot': FAKE_ERROR_RETURN,
         }
         self._driver_setup(mock_commands)
 
         self.assertRaises(
             exception.InfortrendCliException,
-            self.driver.delete_snapshot,
-            test_snapshot)
-
-    @mock.patch.object(common_cli.LOG, 'warning', mock.Mock())
-    def test_delete_snapshot_with_sync_pair(self):
-
-        test_snapshot = self.cli_data.test_snapshot
-
-        mock_commands = {
-            'ShowReplica':
-                self.cli_data.get_test_show_replica_detail_for_si_sync_pair(),
-            'DeleteSnapshot': FAKE_ERROR_RETURN,
-        }
-        self._driver_setup(mock_commands)
-
-        self.assertRaises(
-            exception.VolumeDriverException,
             self.driver.delete_snapshot,
             test_snapshot)
 
