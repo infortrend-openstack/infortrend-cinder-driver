@@ -386,6 +386,18 @@ class SetLV(CLIBaseCommand):
         self.command = "set lv"
 
 
+class SetSnapshot(CLIBaseCommand):
+
+    """Set Logical Volume.
+
+    set lv tier-migrate [LV-ID] [part={partition-IDs}]
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SetSnapshot, self).__init__(*args, **kwargs)
+        self.command = "set si"
+
+
 class CreateMap(CLIBaseCommand):
 
     """Map the Partition on the channel.
