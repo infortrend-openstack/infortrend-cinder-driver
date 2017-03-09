@@ -2207,7 +2207,7 @@ class InfortrendCommon(object):
             msg = _('The specified volume is mapped. '
                     'Please unmap first for Openstack using.')
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeDriverException(data=msg)
 
         if volume_data['LV-ID'] != volume_pool_id:
             msg = _('The specified volume pool is wrong.')
