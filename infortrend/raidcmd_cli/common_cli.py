@@ -175,8 +175,10 @@ class InfortrendCommon(object):
         2.0.0 - Enhance extraspecs usage and refactor retype
         2.0.1 - Improve speed for deleting volume
         2.0.2 - Remove timeout for replication
+        2.0.3 - Use full ID for volume name
         2.1.0 - Add `cinder manageable-list` support
               - Add snapshot manage supports
+
     """
 
     VERSION = '2.1.0'
@@ -545,10 +547,9 @@ class InfortrendCommon(object):
 
     def create_volume(self, volume):
         """Create a Infortrend partition."""
-        volume_id = volume['id'].replace('-', '')
 
         self._create_partition_by_default(volume)
-        part_id = self._get_part_id(volume_id)
+        part_id = self._get_part_id(volume['id'])
 
         system_id = self._get_system_id(self.ip)
 
@@ -571,7 +572,6 @@ class InfortrendCommon(object):
     def _create_partition_with_pool(
             self, volume, pool_id, extraspecs=None):
 
-        volume_id = volume['id'].replace('-', '')
         volume_size = gi_to_mi(volume['size'])
         pool_name = volume['host'].split('#')[-1]
 
@@ -629,7 +629,7 @@ class InfortrendCommon(object):
         if extraspecs_dict:
             cmd = self._create_part_parameters_str(extraspecs_dict)
 
-        commands = (pool_id, volume_id, 'size=%s' % int(volume_size), cmd)
+        commands = (pool_id, volume['id'], 'size=%s' % int(volume_size), cmd)
         self._execute('CreatePartition', *commands)
 
     def _check_pool_tiering(self, pool_tiers, extra_specs_tiers):
@@ -1199,19 +1199,18 @@ class InfortrendCommon(object):
                                 'volume_name': volume['name']})
             return
 
-        volume_id = volume['id'].replace('-', '')
         have_map = False
 
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
         (check_exist, have_map, part_id) = (
-            self._check_volume_exist(volume_id, part_id)
+            self._check_volume_exist(volume['id'], part_id)
         )
 
         if not check_exist:
             LOG.warning(_LW('Volume %(volume_id)s already deleted.'), {
-                'volume_id': volume_id})
+                'volume_id': volume['id']})
             return
 
         if have_map:
@@ -1220,7 +1219,7 @@ class InfortrendCommon(object):
         self._execute('DeletePartition', part_id, '-y')
 
         LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
-            'volume_id': volume_id})
+            'volume_id': volume['id']})
 
     def _check_replica_completed(self, replica):
         if ((replica['Type'] == 'Copy' and replica['Status'] == 'Completed') or
@@ -1239,34 +1238,39 @@ class InfortrendCommon(object):
     def _check_volume_exist(self, volume_id, part_id):
         check_exist = False
         have_map = False
-        result_part_id = part_id
 
         rc, part_list = self._execute('ShowPartition', '-l')
 
-        for entry in part_list:
-            if entry['Name'] == volume_id:
-                check_exist = True
+        if part_id:
+            key = 'ID'
+            find_key = part_id
+        else:
+            key = 'Name'
+            find_key = volume_id
 
-                if part_id is None:
-                    result_part_id = entry['ID']
+        for entry in part_list:
+            if entry[key] == find_key:
+                check_exist = True
                 if entry['Mapped'] == 'true':
                     have_map = True
+                if not part_id:
+                    part_id = entry['ID']
+                break
 
         if check_exist:
-            return (check_exist, have_map, result_part_id)
+            return (check_exist, have_map, part_id)
         else:
             return (False, False, None)
 
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the volume by volume copy."""
 
-        volume_id = volume['id'].replace('-', '')
         #  Step1 create a snapshot of the volume
         src_part_id = self._extract_specific_provider_location(
             src_vref['provider_location'], 'partition_id')
 
         if src_part_id is None:
-            src_part_id = self._get_part_id(volume_id)
+            src_part_id = self._get_part_id(volume['id'])
 
         model_update = self._create_volume_from_volume(volume, src_part_id)
 
@@ -1276,11 +1280,9 @@ class InfortrendCommon(object):
 
     def _create_volume_from_volume(self, dst_volume, src_part_id):
         # create the target volume for volume copy
-        dst_volume_id = dst_volume['id'].replace('-', '')
-
         self._create_partition_by_default(dst_volume)
 
-        dst_part_id = self._get_part_id(dst_volume_id)
+        dst_part_id = self._get_part_id(dst_volume['id'])
         # prepare return value
         system_id = self._get_system_id(self.ip)
         model_dict = {
@@ -1458,7 +1460,7 @@ class InfortrendCommon(object):
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
 
-        volume_id = snapshot['volume_id'].replace('-', '')
+        volume_id = snapshot['volume_id']
 
         LOG.debug('Create Snapshot %(snapshot)s volume %(volume)s.',
                   {'snapshot': snapshot['id'], 'volume': volume_id})
@@ -1466,7 +1468,7 @@ class InfortrendCommon(object):
         model_update = {}
         part_id = self._get_part_id(volume_id)
 
-        if part_id is None:
+        if not part_id:
             msg = _('Failed to get Partition ID for volume %(volume_id)s.') % {
                 'volume_id': volume_id}
             LOG.error(msg)
@@ -1497,7 +1499,7 @@ class InfortrendCommon(object):
     def delete_snapshot(self, snapshot):
         """Delete the snapshot."""
 
-        volume_id = snapshot['volume_id'].replace('-', '')
+        volume_id = snapshot['volume_id']
 
         LOG.debug('Delete Snapshot %(snapshot)s volume %(volume)s.',
                   {'snapshot': snapshot['id'], 'volume': volume_id})
@@ -1566,11 +1568,9 @@ class InfortrendCommon(object):
     def _create_volume_from_snapshot_id(
             self, dst_volume, raid_snapshot_id, src_part_id):
         # create the target volume for volume copy
-        dst_volume_id = dst_volume['id'].replace('-', '')
-
         self._create_partition_by_default(dst_volume)
 
-        dst_part_id = self._get_part_id(dst_volume_id)
+        dst_part_id = self._get_part_id(dst_volume['id'])
         # prepare return value
         system_id = self._get_system_id(self.ip)
         model_dict = {
@@ -1639,7 +1639,6 @@ class InfortrendCommon(object):
 
     @log_func
     def _do_fc_connection(self, volume, connector):
-        volume_id = volume['id'].replace('-', '')
         target_wwpns = []
 
         partition_data = self._extract_all_provider_location(
@@ -1647,7 +1646,7 @@ class InfortrendCommon(object):
         part_id = partition_data['partition_id']
 
         if part_id is None:
-            part_id = self._get_part_id(volume_id)
+            part_id = self._get_part_id(volume['id'])
 
         wwpn_list, wwpn_channel_info = self._get_wwpn_list()
 
@@ -1755,15 +1754,13 @@ class InfortrendCommon(object):
         self._init_map_info()
         self._update_map_info(multipath)
 
-        volume_id = volume['id'].replace('-', '')
-
         partition_data = self._extract_all_provider_location(
             volume['provider_location'])  # system_id, part_id
 
         system_id = partition_data['system_id']
         part_id = partition_data['partition_id']
         if part_id is None:
-            part_id = self._get_part_id(volume_id)
+            part_id = self._get_part_id(volume['id'])
 
         self._set_host_iqn(connector['initiator'])
 
@@ -1930,13 +1927,12 @@ class InfortrendCommon(object):
         return False
 
     def extend_volume(self, volume, new_size):
-        volume_id = volume['id'].replace('-', '')
 
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
         if part_id is None:
-            part_id = self._get_part_id(volume_id)
+            part_id = self._get_part_id(volume['id'])
 
         expand_size = new_size - volume['size']
 
@@ -1958,14 +1954,13 @@ class InfortrendCommon(object):
         @lockutils.synchronized(
             '%s-connection' % system_id, 'infortrend-', True)
         def lock_terminate_conn():
-            volume_id = volume['id'].replace('-', '')
             conn_info = None
 
             part_id = self._extract_specific_provider_location(
                 volume['provider_location'], 'partition_id')
 
             if part_id is None:
-                part_id = self._get_part_id(volume_id)
+                part_id = self._get_part_id(volume['id'])
 
             self._delete_map(part_id, connector)
 
@@ -2091,8 +2086,6 @@ class InfortrendCommon(object):
         return (True, dst_pool_id)
 
     def _migrate_volume_with_pool(self, volume, dst_pool_id, extraspecs=None):
-        volume_id = volume['id'].replace('-', '')
-
         # Get old partition data for delete map
         partition_data = self._extract_all_provider_location(
             volume['provider_location'])
@@ -2100,13 +2093,13 @@ class InfortrendCommon(object):
         src_part_id = partition_data['partition_id']
 
         if src_part_id is None:
-            src_part_id = self._get_part_id(volume_id)
+            src_part_id = self._get_part_id(volume['id'])
 
         # Create New Partition
         self._create_partition_with_pool(volume, dst_pool_id, extraspecs)
 
         dst_part_id = self._get_part_id(
-            volume_id, pool_id=dst_pool_id)
+            volume['id'], pool_id=dst_pool_id)
 
         if dst_part_id is None:
             msg = _('Failed to get new part id in new pool: %(pool_id)s.') % {
@@ -2137,8 +2130,8 @@ class InfortrendCommon(object):
                                original_volume_status):
         """Return model update for migrated volume."""
 
-        src_volume_id = volume['id'].replace('-', '')
-        dst_volume_id = new_volume['id'].replace('-', '')
+        src_volume_id = volume['id']
+        dst_volume_id = new_volume['id']
         part_id = self._extract_specific_provider_location(
             new_volume['provider_location'], 'partition_id')
 
@@ -2222,8 +2215,6 @@ class InfortrendCommon(object):
         return int(math.ceil(mi_to_gi(float(volume_data['Size']))))
 
     def manage_existing(self, volume, ref):
-        volume_id = volume['id'].replace('-', '')
-
         volume_data = self._get_existing_volume_ref_data(ref)
 
         if not volume_data:
@@ -2232,7 +2223,7 @@ class InfortrendCommon(object):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)
 
-        self._execute('SetPartition', volume_data['ID'], 'name=%s' % volume_id)
+        self._execute('SetPartition', volume_data['ID'], 'name=%s' % volume['id'])
 
         model_dict = {
             'system_id': self._get_system_id(self.ip),
@@ -2272,18 +2263,18 @@ class InfortrendCommon(object):
         return ref_dict
 
     def unmanage(self, volume):
-        volume_id = volume['id'].replace('-', '')
         part_id = self._extract_specific_provider_location(
             volume['provider_location'], 'partition_id')
 
         if part_id is None:
-            part_id = self._get_part_id(volume_id)
+            part_id = self._get_part_id(volume['id'])
 
         new_vol_name = self.unmanaged_prefix % volume_id[:-17]
+
         self._execute('SetPartition', part_id, 'name=%s' % new_vol_name)
 
         LOG.info(_LI('Unmanage volume %(volume_id)s completed.'), {
-            'volume_id': volume_id})
+            'volume_id': volume['id']})
 
     def _check_volume_attachment(self, volume):
         if not volume['volume_attachment']:
@@ -2383,8 +2374,7 @@ class InfortrendCommon(object):
             volume['provider_location'], 'partition_id')
 
         if part_id is None:
-            volume_id = volume['id'].replace('-', '')
-            part_id = self._get_part_id(volume_id)
+            part_id = self._get_part_id(volume['id'])
 
         pool_name = volume['host'].split('#')[-1]
         pool_id = self._get_volume_pool_id(volume)
