@@ -2894,14 +2894,17 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             self.cli_data.fake_snapshot_id[1]
         )
 
+        mock_commands = {
+            'SetSnapshot': (0, None),
+        }
+
         expect_cli_cmd = [
             mock.call(
-                'SetSnapshot', self.cli_data.fake_snapshot_name[1],
+                'SetSnapshot', self.cli_data.fake_snapshot_id[1],
                 'name=cinder-unmanaged-%s' %
-                self.cli_data.fake_snapshot_id[1][:-17]
+                self.cli_data.fake_snapshot_name[1][:-17]
             )
         ]
-
+        self._driver_setup(mock_commands)
         self.driver.unmanage_snapshot(fake_snapshot)
         self._assert_cli_has_calls(expect_cli_cmd)
-

@@ -45,6 +45,8 @@ It manages storage by Infortrend CLI tool.
 - Manage and unmanage a volume.
 - Migrate a volume with back-end assistance.
 - Live migrate an instance with volumes hosted on an Infortrend backend.
+- List volumes.
+- Manage and unmanage a snapshot.
 
 ## How to setup and use
 
