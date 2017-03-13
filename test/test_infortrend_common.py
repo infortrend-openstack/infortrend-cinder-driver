@@ -23,6 +23,7 @@ from cinder.tests.unit import utils
 from cinder.tests.unit.volume.drivers.infortrend import test_infortrend_cli
 from cinder.volume import configuration
 from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli
+from cinder.volume import utils as cv_utils
 
 SUCCEED = (0, '')
 FAKE_ERROR_RETURN = (-1, '')
@@ -1802,7 +1803,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             mock.call('ShowPartition', '-l'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertEqual(1, size)
+        self.assertEqual(20, size)
 
     def test_manage_existing_get_size_with_name(self):
 
@@ -1825,7 +1826,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             mock.call('ShowPartition', '-l'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertEqual(1, size)
+        self.assertEqual(20, size)
 
     def test_manage_existing_get_size_in_use(self):
 
@@ -2701,3 +2702,206 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             exception.VolumeDriverException,
             self.driver._get_pool_extraspecs,
             'LV-1', test_extraspecs_set)
+
+    def test_get_manageable_volumes(self):
+        fake_cinder_volumes = self.cli_data.fake_cinder_volumes
+
+        mock_commands = {
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(
+                volume_id='hello-there',
+                pool_id=self.cli_data.fake_lv_id[2])
+        }
+
+        ans = [{
+            'reference': {
+                'source-name': self.cli_data.fake_volume_id[0],
+                'source-id': self.cli_data.fake_partition_id[0],
+                'pool-name': 'LV-1'
+            },
+            'size': 20,
+            'safe_to_manage': False,
+            'reason_not_safe': 'Volume In-use',
+            'cinder_id': None,
+            'extra_info': None
+        }, {
+            'reference': {
+                'source-name': self.cli_data.fake_volume_id[1],
+                'source-id': self.cli_data.fake_partition_id[1],
+                'pool-name': 'LV-1'
+            },
+            'size': 20,
+            'safe_to_manage': False,
+            'reason_not_safe': 'Already Managed',
+            'cinder_id': self.cli_data.fake_volume_id[1],
+            'extra_info': None
+        }, {
+            'reference': {
+                'source-name': 'hello-there',
+                'source-id': '6bb119a8-d25b-45a7-8d1b-88e127885666',
+                'pool-name': 'LV-1'
+            },
+            'size': 20,
+            'safe_to_manage': True,
+            'reason_not_safe': None,
+            'cinder_id': None,
+            'extra_info': None
+        }]
+
+        self._driver_setup(mock_commands)
+        result = self.driver.get_manageable_volumes(fake_cinder_volumes,
+                                                    None, 1000, 0,
+                                                    ['reference'], ['desc'])
+        ans = cv_utils.paginate_entries_list(ans, None, 1000, 0,
+                                             ['reference'], ['desc'])
+        self.assertEqual(ans, result)
+
+    def test_get_manageable_snapshots(self):
+        fake_cinder_snapshots = self.cli_data.fake_cinder_snapshots
+
+        mock_commands = {
+            'ShowSnapshot':
+                self.cli_data.get_test_show_snapshot_get_manage(),
+            'ShowPartition': self.cli_data.get_test_show_partition_detail(
+                volume_id='hello-there',
+                pool_id=self.cli_data.fake_lv_id[2])
+        }
+
+        self._driver_setup(mock_commands)
+
+        ans = [{
+            'reference': {
+                'source-id': self.cli_data.fake_snapshot_id[0],
+                'source-name': self.cli_data.fake_snapshot_name[0],
+            },
+            'size': 20,
+            'safe_to_manage': False,
+            'reason_not_safe': 'Volume In-use',
+            'cinder_id': None,
+            'extra_info': None,
+            'source_reference': {
+                'volume-id': self.cli_data.fake_volume_id[0]
+            }
+        }, {
+            'reference': {
+                'source-id': self.cli_data.fake_snapshot_id[1],
+                'source-name': self.cli_data.fake_snapshot_name[1],
+            },
+            'size': 20,
+            'safe_to_manage': False,
+            'reason_not_safe': 'Already Managed',
+            'cinder_id': self.cli_data.fake_snapshot_name[1],
+            'extra_info': None,
+            'source_reference': {
+                'volume-id': self.cli_data.fake_volume_id[1]
+            }
+        }, {
+            'reference': {
+                'source-id': self.cli_data.fake_snapshot_id[2],
+                'source-name': self.cli_data.fake_snapshot_name[2],
+            },
+            'size': 20,
+            'safe_to_manage': True,
+            'reason_not_safe': None,
+            'cinder_id': None,
+            'extra_info': None,
+            'source_reference': {
+                'volume-id': 'hello-there'
+            }
+        }]
+
+        result = self.driver.get_manageable_snapshots(fake_cinder_snapshots,
+                                                      None, 1000, 0,
+                                                      ['reference'], ['desc'])
+        ans = cv_utils.paginate_entries_list(ans, None, 1000, 0,
+                                             ['reference'], ['desc'])
+        self.assertEqual(ans, result)
+
+    def test_manage_existing_snapshot(self):
+        fake_snapshot = self.cli_data.fake_cinder_snapshots[0]
+        fake_ref_from_id = {
+            'source-id': self.cli_data.fake_snapshot_id[1]
+        }
+        fake_ref_from_name = {
+            'source-name': self.cli_data.fake_snapshot_name[1]
+        }
+
+        mock_commands = {
+            'ShowSnapshot': self.cli_data.get_test_show_snapshot_named(),
+            'SetSnapshot': (0, None)
+        }
+
+        ans = {'provider_location': self.cli_data.fake_snapshot_id[1]}
+
+        self._driver_setup(mock_commands)
+        result_from_id = self.driver.manage_existing_snapshot(
+            fake_snapshot, fake_ref_from_id)
+        result_from_name = self.driver.manage_existing_snapshot(
+            fake_snapshot, fake_ref_from_name)
+
+        self.assertEqual(ans, result_from_id)
+        self.assertEqual(ans, result_from_name)
+
+    @mock.patch.object(common_cli.LOG, 'warning')
+    def test_get_snapshot_ref_data_err_and_warning(self, mock_warning):
+        fake_snapshot = self.cli_data.fake_cinder_snapshots[0]
+        fake_ref_err1 = {
+            'invalid-key': 'invalid-content'
+        }
+        fake_ref_err2 = {
+            'source-id': 'invalid-content'
+        }
+        fake_ref_err_and_warning = {
+            'source-name': '---'
+        }
+
+        mock_commands = {
+            'ShowSnapshot': self.cli_data.get_test_show_snapshot_named()
+        }
+
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          fake_snapshot, fake_ref_err1)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          fake_snapshot, fake_ref_err2)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          fake_snapshot, fake_ref_err_and_warning)
+        self.assertEqual(1, mock_warning.call_count)
+
+    def test_manage_existing_snapshot_get_size(self):
+        fake_snapshot = self.cli_data.fake_cinder_snapshots[0]
+        fake_ref = {
+            'source-id': self.cli_data.fake_snapshot_id[1]
+        }
+
+        mock_commands = {
+            'ShowSnapshot': self.cli_data.get_test_show_snapshot_named(),
+            'ShowPartition': self.cli_data.get_test_show_partition()
+        }
+
+        self._driver_setup(mock_commands)
+
+        result = self.driver.manage_existing_snapshot_get_size(fake_snapshot,
+                                                               fake_ref)
+        self.assertEqual(20, result)
+
+    def test_unmanage_snapshot(self):
+        fake_snapshot = self.cli_data.Fake_cinder_snapshot(
+            self.cli_data.fake_snapshot_name[1],
+            self.cli_data.fake_snapshot_id[1]
+        )
+
+        expect_cli_cmd = [
+            mock.call(
+                'SetSnapshot', self.cli_data.fake_snapshot_name[1],
+                'name=cinder-unmanaged-%s' %
+                self.cli_data.fake_snapshot_id[1][:-17]
+            )
+        ]
+
+        self.driver.unmanage_snapshot(fake_snapshot)
+        self._assert_cli_has_calls(expect_cli_cmd)
+

@@ -32,6 +32,7 @@ from cinder.i18n import _LI
 from cinder.i18n import _LW
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
+from cinder.volume import utils
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
 
@@ -175,9 +176,12 @@ class InfortrendCommon(object):
         2.0.1 - Improve speed for deleting volume
         2.0.2 - Remove timeout for replication
         2.0.3 - Use full ID for volume name
+        2.1.0 - Add `cinder manageable-list` support
+              - Add snapshot manage supports
+
     """
 
-    VERSION = '2.0.3'
+    VERSION = '2.1.0'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -1475,7 +1479,8 @@ class InfortrendCommon(object):
         @lockutils.synchronized(
             'snapshot-' + part_id, 'infortrend-', True)
         def do_create_snapshot():
-            self._execute('CreateSnapshot', 'part', part_id)
+            self._execute('CreateSnapshot', 'part', part_id,
+                          'name=%s' % snapshot['id'])
             rc, tmp_snapshot_list = self._execute(
                 'ShowSnapshot', 'part=%s' % part_id)
             return tmp_snapshot_list
@@ -2267,14 +2272,12 @@ class InfortrendCommon(object):
         if part_id is None:
             part_id = self._get_part_id(volume['id'])
 
-        new_vol_name = self._get_unmanaged_volume_name(volume['id'])
+        new_vol_name = self.unmanaged_prefix % volume['id'][:-17]
+
         self._execute('SetPartition', part_id, 'name=%s' % new_vol_name)
 
         LOG.info(_LI('Unmanage volume %(volume_id)s completed.'), {
             'volume_id': volume['id']})
-
-    def _get_unmanaged_volume_name(self, volume_id):
-        return self.unmanaged_prefix % volume_id[:-17]
 
     def _check_volume_attachment(self, volume):
         if not volume['volume_attachment']:
@@ -2443,3 +2446,198 @@ class InfortrendCommon(object):
                              'progess': status})
             return False
         return True
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """List volumes on the backend available for management by Cinder."""
+
+        manageable_volumes = []     # List to Return
+        cinder_ids = [cinder_volume.id for cinder_volume in cinder_volumes]
+
+        rc, part_list = self._execute('ShowPartition', '-l')
+
+        for entry in part_list:
+            # Check if parts are located within right LVs config.
+            pool_name = None
+            for _name, _id in self.pool_dict.items():
+                if _id == entry['LV-ID']:
+                    pool_name = _name
+                    break
+
+            if not pool_name:
+                continue
+
+            if entry['Name'] in cinder_ids:
+                safety = False
+                reason = 'Already Managed'
+                cinder_id = entry['Name']
+            elif entry['Mapped'].lower() != 'false':
+                safety = False
+                reason = 'Volume In-use'
+                cinder_id = None
+            else:
+                safety = True
+                reason = None
+                cinder_id = None
+
+            volume = {
+                'reference': {
+                    'source-id': entry['ID'],
+                    'source-name': entry['Name'],
+                    'pool-name': pool_name
+                },
+                'size': int(round(mi_to_gi(float(entry['Size'])))),
+                'safe_to_manage': safety,
+                'reason_not_safe': reason,
+                'cinder_id': cinder_id,
+                'extra_info': None
+            }
+            manageable_volumes.append(volume)
+
+        return utils.paginate_entries_list(manageable_volumes, marker, limit,
+                                           offset, sort_keys, sort_dirs)
+
+    ###############################
+    # Manage Snapshot
+    ###############################
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Brings existing backend storage object under Cinder management."""
+
+        si = self._get_snapshot_ref_data(existing_ref)
+
+        self._execute('SetSnapshot', si['SI-ID'], 'name=%s' % snapshot.id)
+
+        LOG.info(_LI('Rename Snapshot %(si_id)s completed.'), {
+            'si_id': si['SI-ID']})
+
+        return {'provider_location': si['SI-ID']}
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of snapshot to be managed by manage_existing."""
+
+        si = self._get_snapshot_ref_data(existing_ref)
+
+        rc, part_list = self._execute('ShowPartition')
+        volume_id = si['Partition-ID']
+
+        for entry in part_list:
+            if entry['ID'] == volume_id:
+                part = entry
+                break
+
+        return math.ceil(mi_to_gi(float(part['Size'])))
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        """List snapshots on the backend available for management by Cinder."""
+
+        manageable_snapshots = []  # List to Return
+        cinder_si_ids = [cinder_si.id for cinder_si in cinder_snapshots]
+
+        rc, si_list = self._execute('ShowSnapshot', '-l')
+        rc, part_list = self._execute('ShowPartition', '-l')
+
+        for entry in si_list:
+            # Check if parts are located within right LVs config.
+            pool_name = None
+            for _name, _id in self.pool_dict.items():
+                if _id == entry['LV-ID']:
+                    pool_name = _name
+                    break
+
+            if not pool_name:
+                continue
+
+            # Find si's partition
+            for part_entry in part_list:
+                if part_entry['ID'] == entry['Partition-ID']:
+                    part = part_entry
+                    break
+
+            if entry['Name'] in cinder_si_ids:
+                safety = False
+                reason = 'Already Managed'
+                cinder_id = entry['Name']
+            elif part['Mapped'].lower() != 'false':
+                safety = False
+                reason = 'Volume In-use'
+                cinder_id = None
+            else:
+                safety = True
+                reason = None
+                cinder_id = None
+
+            return_si = {
+                'reference': {
+                    'source-id': entry['ID'],
+                    'source-name': entry['Name']
+                },
+                'size': int(round(mi_to_gi(float(part['Size'])))),
+                'safe_to_manage': safety,
+                'reason_not_safe': reason,
+                'cinder_id': cinder_id,
+                'extra_info': None,
+                'source_reference': {
+                    'volume-id': part['Name']
+                }
+            }
+
+            manageable_snapshots.append(return_si)
+
+        return utils.paginate_entries_list(manageable_snapshots, marker, limit,
+                                           offset, sort_keys, sort_dirs)
+
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management."""
+
+        si_id = snapshot.provider_location
+        if si_id is None:
+            msg = _('Failed to get snapshot provider location.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        self._execute('SetSnapshot', si_id,
+                      'name=cinder-unmanaged-%s' % snapshot.id[:-17])
+
+        LOG.info(_LI('Unmanaging Snapshot %(si_id)s is completed.'), {
+            'si_id': snapshot.id})
+        return
+
+    def _get_snapshot_ref_data(self, ref):
+        """Check the existance of SI for the specified partition
+
+           Returns the `show si` entry of specified snapshot.
+        """
+        if 'source-name' in ref:
+            key = 'Name'
+            content = ref['source-name']
+            if ref['source-name'] == '---':
+                LOG.warning(_LW(
+                    'Finding snapshot with default name "---" '
+                    'can cause ambiguity.'
+                ))
+        elif 'source-id' in ref:
+            key = 'SI-ID'
+            content = ref['source-id']
+        else:
+            msg = _('Reference must contain source-id or source-name.')
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=ref, reason=msg)
+
+        rc, si_list = self._execute('ShowSnapshot')
+        si_data = {}
+        for entry in si_list:
+            if entry[key] == content:
+                si_data = entry
+                break
+
+        if not si_data:
+            msg = _('Specified snapshot does not exist %(key)s: %(content)s.'
+                    ) % {'key': key, 'content': content}
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=ref, reason=msg)
+
+        return si_data
