@@ -2272,7 +2272,7 @@ class InfortrendCommon(object):
         if part_id is None:
             part_id = self._get_part_id(volume['id'])
 
-        new_vol_name = self.unmanaged_prefix % volume_id[:-17]
+        new_vol_name = self.unmanaged_prefix % volume['id'][:-17]
 
         self._execute('SetPartition', part_id, 'name=%s' % new_vol_name)
 
@@ -2452,23 +2452,25 @@ class InfortrendCommon(object):
         """List volumes on the backend available for management by Cinder."""
 
         manageable_volumes = []     # List to Return
-        cinder_ids = {cinder_volume.id.replace('-', ''): cinder_volume.id
-                      for cinder_volume in cinder_volumes}
-
-        # In order to check if parts are located within right LVs
-        # which set in the cinder config.
-        manageable_pool = self._get_pool_ids()
+        cinder_ids = [cinder_volume.id for cinder_volume in cinder_volumes]
 
         rc, part_list = self._execute('ShowPartition', '-l')
 
         for entry in part_list:
-            if entry['LV-ID'] not in manageable_pool.keys():
+            # Check if parts are located within right LVs config.
+            pool_name = None
+            for _name, _id in self.pool_dict.items():
+                if _id == entry['LV-ID']:
+                    pool_name = _name
+                    break
+
+            if not pool_name:
                 continue
 
-            if entry['Name'] in cinder_ids.keys():
+            if entry['Name'] in cinder_ids:
                 safety = False
                 reason = 'Already Managed'
-                cinder_id = cinder_ids[entry['Name']]
+                cinder_id = entry['Name']
             elif entry['Mapped'].lower() != 'false':
                 safety = False
                 reason = 'Volume In-use'
@@ -2482,26 +2484,18 @@ class InfortrendCommon(object):
                 'reference': {
                     'source-id': entry['ID'],
                     'source-name': entry['Name'],
-                    'pool-name': manageable_pool[entry['LV-ID']]},
-                'size': round(mi_to_gi(float(entry['Size']))),
+                    'pool-name': pool_name
+                },
+                'size': int(round(mi_to_gi(float(entry['Size'])))),
                 'safe_to_manage': safety,
                 'reason_not_safe': reason,
                 'cinder_id': cinder_id,
                 'extra_info': None
             }
-
             manageable_volumes.append(volume)
 
         return utils.paginate_entries_list(manageable_volumes, marker, limit,
                                            offset, sort_keys, sort_dirs)
-
-    def _get_pool_ids(self):
-        manageable_pool = {}
-        rc, lv_list = self._execute('ShowLV')
-        for entry in lv_list:
-            if entry['Name'] in self.pool_list:
-                manageable_pool[entry['ID']] = entry['Name']
-        return manageable_pool
 
     ###############################
     # Manage Snapshot
@@ -2543,10 +2537,16 @@ class InfortrendCommon(object):
 
         rc, si_list = self._execute('ShowSnapshot', '-l')
         rc, part_list = self._execute('ShowPartition', '-l')
-        pool_list = self._get_pool_ids()
 
         for entry in si_list:
-            if entry['LV-ID'] not in pool_list.keys():
+            # Check if parts are located within right LVs config.
+            pool_name = None
+            for _name, _id in self.pool_dict.items():
+                if _id == entry['LV-ID']:
+                    pool_name = _name
+                    break
+
+            if not pool_name:
                 continue
 
             # Find si's partition
@@ -2573,14 +2573,13 @@ class InfortrendCommon(object):
                     'source-id': entry['ID'],
                     'source-name': entry['Name']
                 },
-                'size': round(mi_to_gi(float(part['Size']))),
+                'size': int(round(mi_to_gi(float(part['Size'])))),
                 'safe_to_manage': safety,
                 'reason_not_safe': reason,
                 'cinder_id': cinder_id,
                 'extra_info': None,
                 'source_reference': {
-                    # 'volume-id': part['Name']
-                    'volume-id': 'N/A'
+                    'volume-id': part['Name']
                 }
             }
 
@@ -2612,10 +2611,15 @@ class InfortrendCommon(object):
         """
         if 'source-name' in ref:
             key = 'Name'
-            find_key = ref['source-name']
+            content = ref['source-name']
+            if ref['source-name'] == '---':
+                LOG.warning(_LW(
+                    'Finding snapshot with default name "---" '
+                    'can cause ambiguity.'
+                ))
         elif 'source-id' in ref:
             key = 'SI-ID'
-            find_key = ref['source-id']
+            content = ref['source-id']
         else:
             msg = _('Reference must contain source-id or source-name.')
             LOG.error(msg)
@@ -2625,13 +2629,13 @@ class InfortrendCommon(object):
         rc, si_list = self._execute('ShowSnapshot')
         si_data = {}
         for entry in si_list:
-            if entry[key] == find_key:
+            if entry[key] == content:
                 si_data = entry
                 break
 
         if not si_data:
-            msg = _('Specified snapshot does not exist %(key)s: %(find_key)s.'
-                    ) % {'key': key, 'find_key': find_key}
+            msg = _('Specified snapshot does not exist %(key)s: %(content)s.'
+                    ) % {'key': key, 'content': content}
             LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=ref, reason=msg)

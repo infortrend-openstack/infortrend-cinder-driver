@@ -301,7 +301,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
             'limit: %(lmt)s, '
             'offset: %(_offset)s, '
             'sort_keys: %(s_key)s, '
-            'sort_dirs: %(sort_dir)', {
+            'sort_dirs: %(sort_dir)s', {
                 'volume': cinder_volumes,
                 'mkr': marker,
                 'lmt': limit,
