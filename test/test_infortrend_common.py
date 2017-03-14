@@ -1232,11 +1232,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     @mock.patch.object(common_cli.LOG, 'warning')
     def test_delete_snapshot_without_provider_location(self, log_warning):
 
-        test_snapshot = self.cli_data.test_snapshot
+        test_snapshot = self.cli_data.test_snapshot_without_provider_location
 
         self.driver = self._get_driver(self.configuration)
-        self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
-
         self.driver.delete_snapshot(test_snapshot)
 
         self.assertEqual(1, log_warning.call_count)
@@ -1271,13 +1269,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
                 self.cli_data.fake_partition_id[1]),
         }
         mock_commands = {
-            'ShowSnapshot':
-                self.cli_data.get_test_show_snapshot_detail_filled_block(),
             'CreatePartition': SUCCEED,
             'ShowPartition': self.cli_data.get_test_show_partition(),
             'ShowDevice': self.cli_data.get_test_show_device(),
             'CreateReplica': SUCCEED,
-            'ShowLV': self._mock_show_lv,
             'ShowReplica':
                 self.cli_data.get_test_show_replica_detail_for_migrate(
                     test_snapshot_id, test_dst_part_id, test_dst_volume_id),
@@ -1291,53 +1286,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.assertDictEqual(test_model_update, model_update)
         self.assertEqual(1, log_info.call_count)
 
-    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
-                new=utils.ZeroIntervalLoopingCall)
-    @mock.patch.object(common_cli.LOG, 'info')
-    def test_create_volume_from_snapshot_without_filled_block(self, log_info):
-
-        test_snapshot = self.cli_data.test_snapshot
-        test_snapshot_id = self.cli_data.fake_snapshot_id[0]
-        test_dst_volume = self.cli_data.test_dst_volume
-        test_dst_volume_id = test_dst_volume['id']
-        test_dst_part_id = self.cli_data.fake_partition_id[1]
-        test_src_part_id = self.cli_data.fake_partition_id[0]
-        test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[1]),
-        }
-        mock_commands = {
-            'ShowSnapshot': self.cli_data.get_test_show_snapshot_detail(),
-            'CreatePartition': SUCCEED,
-            'ShowPartition': self.cli_data.get_test_show_partition(),
-            'ShowDevice': self.cli_data.get_test_show_device(),
-            'CreateReplica': SUCCEED,
-            'ShowLV': self._mock_show_lv,
-            'ShowReplica': [
-                self.cli_data.get_test_show_replica_detail_for_migrate(
-                    test_src_part_id, test_dst_part_id, test_dst_volume_id),
-                self.cli_data.get_test_show_replica_detail_for_migrate(
-                    test_snapshot_id, test_dst_part_id, test_dst_volume_id),
-            ],
-            'DeleteReplica': SUCCEED,
-        }
-        self._driver_setup(mock_commands)
-
-        model_update = self.driver.create_volume_from_snapshot(
-            test_dst_volume, test_snapshot)
-
-        self.assertDictEqual(test_model_update, model_update)
-        self.assertEqual(1, log_info.call_count)
-
     def test_create_volume_from_snapshot_without_provider_location(
             self):
 
-        test_snapshot = self.cli_data.test_snapshot
+        test_snapshot = self.cli_data.test_snapshot_without_provider_location
         test_dst_volume = self.cli_data.test_dst_volume
 
         self.driver = self._get_driver(self.configuration)
-        self.driver._get_raid_snapshot_id = mock.Mock(return_value=None)
 
         self.assertRaises(
             exception.VolumeBackendAPIException,

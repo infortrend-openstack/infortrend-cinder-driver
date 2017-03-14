@@ -178,7 +178,7 @@ class InfortrendCommon(object):
         2.0.3 - Use full ID for volume name
         2.1.0 - Add `cinder manageable-list` support
               - Add snapshot manage supports
-
+              - Remove `filled-block` used in create_volume_from_snapshot
     """
 
     VERSION = '2.1.0'
@@ -1506,9 +1506,8 @@ class InfortrendCommon(object):
         LOG.debug('Delete Snapshot %(snapshot)s volume %(volume)s.',
                   {'snapshot': snapshot['id'], 'volume': volume_id})
 
-        raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
-
-        if raid_snapshot_id:
+        if 'provider_location' in snapshot:
+            raid_snapshot_id = snapshot['provider_location']
 
             self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
 
@@ -1518,11 +1517,6 @@ class InfortrendCommon(object):
             LOG.warning(_LW('Snapshot %(snapshot_id)s '
                             'provider_location not stored.'), {
                                 'snapshot_id': snapshot['id']})
-
-    def _get_raid_snapshot_id(self, snapshot):
-        if 'provider_location' in snapshot:
-            return snapshot['provider_location']
-        return
 
     def _get_part_id(self, volume_id, pool_id=None, part_list=None):
         if part_list is None:
@@ -1537,59 +1531,18 @@ class InfortrendCommon(object):
         return
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
 
-        if raid_snapshot_id is None:
+        if 'provider_location' not in snapshot:
             msg = _('Failed to get Raid Snapshot ID '
                     'from snapshot: %(snapshot_id)s.') % {
                         'snapshot_id': snapshot['id']}
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        src_part_id = self._check_snapshot_filled_block(raid_snapshot_id)
+        raid_snapshot_id = snapshot['provider_location']
 
-        model_update = self._create_volume_from_snapshot_id(
-            volume, raid_snapshot_id, src_part_id)
-
-        LOG.info(_LI(
-            'Create Volume %(volume_id)s from '
-            'snapshot %(snapshot_id)s completed.'), {
-                'volume_id': volume['id'],
-                'snapshot_id': snapshot['id']})
-
-        return model_update
-
-    def _check_snapshot_filled_block(self, raid_snapshot_id):
-        rc, snapshot_list = self._execute(
-            'ShowSnapshot', 'si=%s' % raid_snapshot_id, '-l')
-
-        if snapshot_list and snapshot_list[0]['Total-filled-block'] == '0':
-            return snapshot_list[0]['Partition-ID']
-        return
-
-    def _create_volume_from_snapshot_id(
-            self, dst_volume, raid_snapshot_id, src_part_id):
-        # create the target volume for volume copy
-        self._create_partition_by_default(dst_volume)
-
-        dst_part_id = self._get_part_id(dst_volume['id'])
-        # prepare return value
-        system_id = self._get_system_id(self.ip)
-        model_dict = {
-            'system_id': system_id,
-            'partition_id': dst_part_id,
-        }
-
-        model_info = self._concat_provider_location(model_dict)
-        model_update = {"provider_location": model_info}
-
-        if src_part_id:
-            # clone the volume from the origin partition
-            commands = (
-                'Cinder-Snapshot', 'part', src_part_id, 'part', dst_part_id
-            )
-            self._execute('CreateReplica', *commands)
-            self._wait_replica_complete(dst_part_id)
+        self._create_partition_by_default(volume)
+        dst_part_id = self._get_part_id(volume['id'])
 
         # clone the volume from the snapshot
         commands = (
@@ -1598,7 +1551,21 @@ class InfortrendCommon(object):
         self._execute('CreateReplica', *commands)
         self._wait_replica_complete(dst_part_id)
 
-        return model_update
+        # prepare return value
+        system_id = self._get_system_id(self.ip)
+        model_dict = {
+            'system_id': system_id,
+            'partition_id': dst_part_id,
+        }
+        model_info = self._concat_provider_location(model_dict)
+
+        LOG.info(_LI(
+            'Create Volume %(volume_id)s from '
+            'snapshot %(snapshot_id)s completed.'), {
+                'volume_id': volume['id'],
+                'snapshot_id': snapshot['id']})
+
+        return {"provider_location": model_info}
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
