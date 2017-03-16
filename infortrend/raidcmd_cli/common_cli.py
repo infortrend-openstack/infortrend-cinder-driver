@@ -166,19 +166,19 @@ class InfortrendCommon(object):
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
         1.0.2 - Support GS/GSe Family
-        1.0.3 - Add iSCSI MPIO support
+        1.0.3 - Support MPIO for iSCSI protocol
         1.0.4 - Fix Nova live migration (bug #1481968)
         1.1.0 - Improve driver performance
-        1.1.1 - Fix creating volume on the wrong pool
-              - Fix manage-existing issues
+        1.1.1 - Fix creating volume on a wrong pool
+              - Fix manage-existing volume issue
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
         2.0.1 - Improve speed for deleting volume
         2.0.2 - Remove timeout for replication
         2.0.3 - Use full ID for volume name
-        2.1.0 - Add `cinder manageable-list` support
-              - Add snapshot manage supports
-              - Remove `filled-block` used in create_volume_from_snapshot
+        2.1.0 - Support for list manageable volume
+              - Support for manage/unmanage snapshot
+              - Remove unnecessary check in snapshot
     """
 
     VERSION = '2.1.0'
