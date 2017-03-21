@@ -27,9 +27,6 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.i18n import _LE
-from cinder.i18n import _LI
-from cinder.i18n import _LW
 from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 from cinder.volume.drivers.san import san
 from cinder.volume import utils
@@ -84,11 +81,11 @@ CLI_RC_FILTER = {
     'DeletePartition': {'error': _('Failed to delete partition.')},
     'SetPartition': {'error': _('Failed to set partition.')},
     'CreateMap': {
-        'warning': {20: _LW('The MCS Channel is grouped.')},
+        'warning': {20: 'The MCS Channel is grouped.'},
         'error': _('Failed to create map.'),
     },
     'DeleteMap': {
-        'warning': {11: _LW('No mapping.')},
+        'warning': {11: 'No mapping.'},
         'error': _('Failed to delete map.'),
     },
     'CreateSnapshot': {'error': _('Failed to create snapshot.')},
@@ -96,13 +93,13 @@ CLI_RC_FILTER = {
     'CreateReplica': {'error': _('Failed to create replica.')},
     'DeleteReplica': {'error': _('Failed to delete replica.')},
     'CreateIQN': {
-        'warning': {20: _LW('IQN already existed.')},
+        'warning': {20: 'IQN already existed.'},
         'error': _('Failed to create iqn.'),
     },
     'DeleteIQN': {
         'warning': {
-            20: _LW('IQN has been used to create map.'),
-            11: _LW('No such host alias name.'),
+            20: 'IQN has been used to create map.',
+            11: 'No such host alias name.',
         },
         'error': _('Failed to delete iqn.'),
     },
@@ -318,7 +315,7 @@ class InfortrendCommon(object):
             raid_password = 'password=%s' % self.password
 
         rc, _ = self._execute('ConnectRaid', self.ip, raid_password)
-        LOG.info(_LI('Raid [%s] is connected!'), self.ip)
+        LOG.info('Raid [%s] is connected!', self.ip)
 
     def _execute_command(self, cli_type, *args, **kwargs):
         command = getattr(cli, cli_type)
@@ -442,9 +439,9 @@ class InfortrendCommon(object):
 
                     # check the channel status
                     if entry['curClock'] == '---':
-                        LOG.warning(_LW(
+                        LOG.warning(
                             'Controller[%(controller)s] '
-                            'Channel[%(Ch)s] not linked, please check.'), {
+                            'Channel[%(Ch)s] not linked, please check.', {
                                 'controller': controller, 'Ch': entry['Ch']})
 
     @log_func
@@ -539,10 +536,10 @@ class InfortrendCommon(object):
 
         self.constants['MAX_LUN_MAP_PER_CHL'] = max_lun
         system_id = self._get_system_id(self.ip)
-        LOG.info(_LI('Device: [%(device)s] '
-                     'max LUN setting is: [%(luns)s]'), {
-                         'device': system_id,
-                         'luns': self.constants['MAX_LUN_MAP_PER_CHL']})
+        LOG.info('Device: [%(device)s] '
+                 'max LUN setting is: [%(luns)s]', {
+                     'device': system_id,
+                     'luns': self.constants['MAX_LUN_MAP_PER_CHL']})
 
     def check_for_setup_error(self):
         self._check_pools_setup()
@@ -564,7 +561,7 @@ class InfortrendCommon(object):
         model_update = {
             "provider_location": self._concat_provider_location(model_dict),
         }
-        LOG.info(_LI('Create Volume %(volume_id)s completed.'), {
+        LOG.info('Create Volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
         return model_update
 
@@ -654,11 +651,11 @@ class InfortrendCommon(object):
                     if not (total_space and used_space):
                         return
                     elif volume_size > (total_space - used_space):
-                        LOG.warning(_LW('Tier pool [%(pool_id)s] '
-                                        'has already run out of space in '
-                                        'tier level [%(tier_level)s].'), {
-                                            'pool_id': pool_id,
-                                            'tier_level': tier_level})
+                        LOG.warning('Tier pool [%(pool_id)s] '
+                                    'has already run out of space in '
+                                    'tier level [%(tier_level)s].', {
+                                        'pool_id': pool_id,
+                                        'tier_level': tier_level})
 
     def _parse_size(self, size_string, return_unit):
         size = float(size_string.split(' ', 1)[0])
@@ -678,9 +675,9 @@ class InfortrendCommon(object):
             elif return_unit == 'MB':
                 return round(size)
         else:
-            LOG.warning(_LW('Tier size [%(size_string)s], '
-                            'the unit is not recognized.'), {
-                                'size_string': size_string})
+            LOG.warning('Tier size [%(size_string)s], '
+                        'the unit is not recognized.', {
+                            'size_string': size_string})
         return
 
     def _create_part_parameters_str(self, extraspecs_dict):
@@ -829,11 +826,11 @@ class InfortrendCommon(object):
         if tiering != 'all':
             pool_id = self._find_pool_id_by_name(pool_name)
             if not self._check_tier_pool_or_not(pool_id):
-                LOG.warning(_LW('Infortrend pool: [%(pool_name)s] '
-                                'is not a tier pool. Skip tiering '
-                                '%(tiering)s because it is invalid.'), {
-                                    'pool_name': pool_name,
-                                    'tiering': tiering})
+                LOG.warning('Infortrend pool: [%(pool_name)s] '
+                            'is not a tier pool. Skip tiering '
+                            '%(tiering)s because it is invalid.', {
+                                'pool_name': pool_name,
+                                'tiering': tiering})
             self._check_extraspecs_conflict(tiering, provisioning)
 
         pool_extraspecs['provisioning'] = provisioning
@@ -931,11 +928,11 @@ class InfortrendCommon(object):
                 pool, value = provisioning.split(':', 1)
 
                 if pool not in self.pool_dict.keys():
-                    LOG.warning(_LW('Infortrend:provisioning '
-                                    'this setting %(pool)s:%(value)s, '
-                                    'pool [%(pool)s] not set in config.'), {
-                                        'pool': pool,
-                                        'value': value})
+                    LOG.warning('Infortrend:provisioning '
+                                'this setting %(pool)s:%(value)s, '
+                                'pool [%(pool)s] not set in config.', {
+                                    'pool': pool,
+                                    'value': value})
                 else:
                     if pool not in extraspecs_set.keys():
                         extraspecs_set[pool] = {}
@@ -944,11 +941,11 @@ class InfortrendCommon(object):
                         extraspecs_set[pool]['provisioning'] = value.lower()
                     else:
                         extraspecs_set[pool]['provisioning'] = 'Err:%s' % value
-                        LOG.warning(_LW('Infortrend:provisioning '
-                                        'this setting %(pool)s:%(value)s, '
-                                        '[%(value)s] is illegal'), {
-                                            'pool': pool,
-                                            'value': value})
+                        LOG.warning('Infortrend:provisioning '
+                                    'this setting %(pool)s:%(value)s, '
+                                    '[%(value)s] is illegal', {
+                                        'pool': pool,
+                                        'value': value})
         # provisioning global setting
         elif provisioning_string:
             provisioning = provisioning_string.replace(' ', '').lower()
@@ -956,9 +953,9 @@ class InfortrendCommon(object):
                 extraspecs_set['global_provisioning'] = provisioning
             else:
                 extraspecs_set['global_provisioning'] = 'Err:%s' % provisioning
-                LOG.warning(_LW('Infortrend:provisioning '
-                                '[%(value)s] is illegal'), {
-                                    'value': provisioning_string})
+                LOG.warning('Infortrend:provisioning '
+                            '[%(value)s] is illegal', {
+                                'value': provisioning_string})
         return extraspecs_set
 
     def _get_tiering_setting(self, extraspecs_set, tiering_string):
@@ -971,11 +968,11 @@ class InfortrendCommon(object):
                 pool, value = tiering_set.split(':', 1)
 
                 if pool not in self.pool_dict.keys():
-                    LOG.warning(_LW('Infortrend:tiering '
-                                    'this setting %(pool)s:%(value)s, '
-                                    'pool [%(pool)s] not set in config.'), {
-                                        'pool': pool,
-                                        'value': value})
+                    LOG.warning('Infortrend:tiering '
+                                'this setting %(pool)s:%(value)s, '
+                                'pool [%(pool)s] not set in config.', {
+                                    'pool': pool,
+                                    'value': value})
                 else:
                     if pool not in extraspecs_set.keys():
                         extraspecs_set[pool] = {}
@@ -991,12 +988,12 @@ class InfortrendCommon(object):
                             extraspecs_set[pool]['tiering'] = value
                         else:
                             extraspecs_set[pool]['tiering'] = 'Err:%s' % value
-                            LOG.warning(_LW('Infortrend:tiering '
-                                            'this setting %(pool)s:%(value)s, '
-                                            '[%(err_value)s] is illegal'), {
-                                                'pool': pool,
-                                                'value': value,
-                                                'err_value': value[-1]})
+                            LOG.warning('Infortrend:tiering '
+                                        'this setting %(pool)s:%(value)s, '
+                                        '[%(err_value)s] is illegal', {
+                                            'pool': pool,
+                                            'value': value,
+                                            'err_value': value[-1]})
         # tiering global setting
         elif tiering_string:
             tiering_set = tiering_string.replace(' ', '').lower()
@@ -1010,9 +1007,9 @@ class InfortrendCommon(object):
                     extraspecs_set['global_tiering'] = tiering_set
                 else:
                     extraspecs_set['global_tiering'] = 'Err:%s' % tiering_set
-                    LOG.warning(_LW('Infortrend:tiering '
-                                    '[%(err_value)s] is illegal'), {
-                                        'err_value': tiering_set[-1]})
+                    LOG.warning('Infortrend:tiering '
+                                '[%(err_value)s] is illegal', {
+                                    'err_value': tiering_set[-1]})
         return extraspecs_set
 
     def _find_pool_id_by_name(self, pool_name):
@@ -1196,9 +1193,9 @@ class InfortrendCommon(object):
         """Delete the specific volume."""
 
         if not volume['provider_location']:
-            LOG.warning(_LW('Volume %(volume_name)s '
-                            'provider location not stored.'), {
-                                'volume_name': volume['name']})
+            LOG.warning('Volume %(volume_name)s '
+                        'provider location not stored.', {
+                            'volume_name': volume['name']})
             return
 
         have_map = False
@@ -1211,7 +1208,7 @@ class InfortrendCommon(object):
         )
 
         if not check_exist:
-            LOG.warning(_LW('Volume %(volume_id)s already deleted.'), {
+            LOG.warning('Volume %(volume_id)s already deleted.', {
                 'volume_id': volume['id']})
             return
 
@@ -1220,7 +1217,7 @@ class InfortrendCommon(object):
 
         self._execute('DeletePartition', part_id, '-y')
 
-        LOG.info(_LI('Delete Volume %(volume_id)s completed.'), {
+        LOG.info('Delete Volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
 
     def _check_replica_completed(self, replica):
@@ -1230,11 +1227,11 @@ class InfortrendCommon(object):
             return True
         # show the progress percentage
         status = replica['Progress'].lower()
-        LOG.info(_LI('Replica from %(source_type)s: [%(source_name)s] '
-                     'progess [%(progess)s].'), {
-                         'source_type': replica['Source-Type'],
-                         'source_name': replica['Source-Name'],
-                         'progess': status})
+        LOG.info('Replica from %(source_type)s: [%(source_name)s] '
+                 'progess [%(progess)s].', {
+                     'source_type': replica['Source-Type'],
+                     'source_name': replica['Source-Name'],
+                     'progess': status})
         return False
 
     def _check_volume_exist(self, volume_id, part_id):
@@ -1276,7 +1273,7 @@ class InfortrendCommon(object):
 
         model_update = self._create_volume_from_volume(volume, src_part_id)
 
-        LOG.info(_LI('Create Cloned Volume %(volume_id)s completed.'), {
+        LOG.info('Create Cloned Volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
         return model_update
 
@@ -1331,7 +1328,7 @@ class InfortrendCommon(object):
     def create_export(self, context, volume):
         model_update = volume['provider_location']
 
-        LOG.info(_LI('Create export done from Volume %(volume_id)s.'), {
+        LOG.info('Create export done from Volume %(volume_id)s.', {
             'volume_id': volume['id']})
 
         return {'provider_location': model_update}
@@ -1344,7 +1341,7 @@ class InfortrendCommon(object):
         if self._volume_stats is None or refresh:
             self._update_volume_stats()
 
-        LOG.info(_LI(
+        LOG.info(
             'Successfully update volume stats. '
             'backend: %(volume_backend_name)s, '
             'vendor: %(vendor_name)s, '
@@ -1352,7 +1349,7 @@ class InfortrendCommon(object):
             'system_id: %(system_id)s, '
             'status: %(status)s, '
             'driver_version: %(driver_version)s, '
-            'storage_protocol: %(storage_protocol)s.'), self._volume_stats)
+            'storage_protocol: %(storage_protocol)s.', self._volume_stats)
 
         return self._volume_stats
 
@@ -1487,11 +1484,11 @@ class InfortrendCommon(object):
 
         snapshot_list = do_create_snapshot()
 
-        LOG.info(_LI(
+        LOG.info(
             'Create success. '
             'Snapshot: %(snapshot)s, '
             'Snapshot ID in raid: %(raid_snapshot_id)s, '
-            'volume: %(volume)s.'), {
+            'volume: %(volume)s.', {
                 'snapshot': snapshot['id'],
                 'raid_snapshot_id': snapshot_list[-1]['SI-ID'],
                 'volume': volume_id})
@@ -1511,12 +1508,12 @@ class InfortrendCommon(object):
 
             self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
 
-            LOG.info(_LI('Delete Snapshot %(snapshot_id)s completed.'), {
+            LOG.info('Delete Snapshot %(snapshot_id)s completed.', {
                 'snapshot_id': snapshot['id']})
         else:
-            LOG.warning(_LW('Snapshot %(snapshot_id)s '
-                            'provider_location not stored.'), {
-                                'snapshot_id': snapshot['id']})
+            LOG.warning('Snapshot %(snapshot_id)s '
+                        'provider_location not stored.', {
+                            'snapshot_id': snapshot['id']})
 
     def _get_part_id(self, volume_id, pool_id=None, part_list=None):
         if part_list is None:
@@ -1559,9 +1556,9 @@ class InfortrendCommon(object):
         }
         model_info = self._concat_provider_location(model_dict)
 
-        LOG.info(_LI(
+        LOG.info(
             'Create Volume %(volume_id)s from '
-            'snapshot %(snapshot_id)s completed.'), {
+            'snapshot %(snapshot_id)s completed.', {
                 'volume_id': volume['id'],
                 'snapshot_id': snapshot['id']})
 
@@ -1600,10 +1597,10 @@ class InfortrendCommon(object):
         properties = self._generate_fc_connection_properties(
             map_lun, target_wwpns, initiator_target_map)
 
-        LOG.info(_LI('Successfully initialized connection. '
-                     'target_wwn: %(target_wwn)s, '
-                     'initiator_target_map: %(initiator_target_map)s, '
-                     'lun: %(target_lun)s.'), properties['data'])
+        LOG.info('Successfully initialized connection. '
+                 'target_wwn: %(target_wwn)s, '
+                 'initiator_target_map: %(initiator_target_map)s, '
+                 'lun: %(target_lun)s.', properties['data'])
         return properties
 
     @log_func
@@ -1649,12 +1646,12 @@ class InfortrendCommon(object):
         else:
             create_new_maps = True
 
-        LOG.info(_LI('volume: [%(volume)s], '
-                     'mapped_lun_list: %(list)s, '
-                     'create_new_maps: [%(flag)s]'), {
-                         'volume': volume['id'],
-                         'list': map_lun_list,
-                         'flag': create_new_maps})
+        LOG.info('volume: [%(volume)s], '
+                 'mapped_lun_list: %(list)s, '
+                 'create_new_maps: [%(flag)s]', {
+                     'volume': volume['id'],
+                     'list': map_lun_list,
+                     'flag': create_new_maps})
 
         if create_new_maps:
             for initiator_wwpn in sorted(initiator_target_map):
@@ -1742,8 +1739,8 @@ class InfortrendCommon(object):
 
         properties = self._generate_iscsi_connection_properties(
             iqns, ips, luns, volume, multipath)
-        LOG.info(_LI('Successfully initialized connection '
-                     'with volume: %(volume_id)s.'), properties['data'])
+        LOG.info('Successfully initialized connection '
+                 'with volume: %(volume_id)s.', properties['data'])
         return properties
 
     def _set_host_iqn(self, host_iqn):
@@ -1885,8 +1882,8 @@ class InfortrendCommon(object):
             run_as_root=True)
 
         if rc != 0:
-            LOG.error(_LE(
-                'Can not discovery in %(target_ip)s with %(target_iqn)s.'), {
+            LOG.error(
+                'Can not discovery in %(target_ip)s with %(target_iqn)s.', {
                     'target_ip': target_ip, 'target_iqn': target_iqn})
             return False
         else:
@@ -1913,8 +1910,8 @@ class InfortrendCommon(object):
 
         self._execute('SetPartition', 'expand', part_id, expand_command)
 
-        LOG.info(_LI(
-            'Successfully extended volume %(volume_id)s to size %(size)s.'), {
+        LOG.info(
+            'Successfully extended volume %(volume_id)s to size %(size)s.', {
                 'volume_id': volume['id'], 'size': new_size})
 
     def terminate_connection(self, volume, connector):
@@ -1954,9 +1951,9 @@ class InfortrendCommon(object):
                     )
                     conn_info['data']['initiator_target_map'] = init_target_map
 
-            LOG.info(_LI(
+            LOG.info(
                 'Successfully terminated connection '
-                'for volume: %(volume_id)s.'), {
+                'for volume: %(volume_id)s.', {
                     'volume_id': volume['id']})
 
             return conn_info
@@ -2010,7 +2007,7 @@ class InfortrendCommon(object):
                     self._concat_provider_location(model_dict),
             }
 
-            LOG.info(_LI('Migrate Volume %(volume_id)s completed.'), {
+            LOG.info('Migrate Volume %(volume_id)s completed.', {
                 'volume_id': volume['id']})
         else:
             model_update = {
@@ -2022,30 +2019,30 @@ class InfortrendCommon(object):
     def _is_valid_for_storage_assisted_migration(self, host, volume):
 
         if 'location_info' not in host['capabilities']:
-            LOG.error(_LE('location_info not stored in pool.'))
+            LOG.error('location_info not stored in pool.')
             return (False, None)
 
         vendor = host['capabilities']['location_info'].split(':')[0]
         dst_system_id = host['capabilities']['location_info'].split(':')[-1]
 
         if vendor != 'Infortrend':
-            LOG.error(_LE('Vendor should be Infortrend for migration.'))
+            LOG.error('Vendor should be Infortrend for migration.')
             return (False, None)
 
         # It should be the same raid for migration
         src_system_id = self._get_system_id(self.ip)
         if dst_system_id != src_system_id:
-            LOG.error(_LE('Migration must be performed '
-                          'on the same Infortrend array.'))
+            LOG.error('Migration must be performed '
+                      'on the same Infortrend array.')
             return (False, None)
 
         # We don't support volume live migration
         if volume['status'].lower() != 'available':
-            LOG.error(_LE('Volume status must be available for migration.'))
+            LOG.error('Volume status must be available for migration.')
             return (False, None)
 
         if 'pool_id' not in host['capabilities']:
-            LOG.error(_LE('Failed to get target pool id.'))
+            LOG.error('Failed to get target pool id.')
             return (False, None)
 
         dst_pool_id = host['capabilities']['pool_id']
@@ -2114,12 +2111,12 @@ class InfortrendCommon(object):
         try:
             self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
         except exception.InfortrendCliException:
-            LOG.exception(_LE('Failed to rename %(new_volume)s into '
-                              '%(volume)s.'), {'new_volume': new_volume['id'],
-                                               'volume': volume['id']})
+            LOG.exception('Failed to rename %(new_volume)s into '
+                          '%(volume)s.', {'new_volume': new_volume['id'],
+                                          'volume': volume['id']})
             return {'_name_id': new_volume['_name_id'] or new_volume['id']}
 
-        LOG.info(_LI('Update migrated volume %(new_volume)s completed.'), {
+        LOG.info('Update migrated volume %(new_volume)s completed.', {
             'new_volume': new_volume['id']})
 
         model_update = {
@@ -2140,7 +2137,7 @@ class InfortrendCommon(object):
                         self._execute('DeleteReplica', entry['Pair-ID'], '-y')
             except Exception:
                 check_done = False
-                LOG.exception(_LE('Cannot detect replica status.'))
+                LOG.exception('Cannot detect replica status.')
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
@@ -2203,7 +2200,7 @@ class InfortrendCommon(object):
             "provider_location": self._concat_provider_location(model_dict),
         }
 
-        LOG.info(_LI('Rename Volume %(volume_id)s completed.'), {
+        LOG.info('Rename Volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
 
         return model_update
@@ -2243,7 +2240,7 @@ class InfortrendCommon(object):
 
         self._execute('SetPartition', part_id, 'name=%s' % new_vol_name)
 
-        LOG.info(_LI('Unmanage volume %(volume_id)s completed.'), {
+        LOG.info('Unmanage volume %(volume_id)s completed.', {
             'volume_id': volume['id']})
 
     def _check_volume_attachment(self, volume):
@@ -2268,16 +2265,16 @@ class InfortrendCommon(object):
 
         if src_pool_name != dst_pool_name:
             if self._check_volume_attachment(volume):
-                LOG.error(_LE(
+                LOG.error(
                     'Volume %(volume_id)s cannot be retyped '
-                    'during attachment.'), {
+                    'during attachment.', {
                         'volume_id': volume['id']})
                 return False
 
             if self._check_volume_has_snapshot(volume):
-                LOG.error(_LE(
+                LOG.error(
                     'Volume %(volume_id)s cannot be retyped '
-                    'because it has snapshot.'), {
+                    'because it has snapshot.', {
                         'volume_id': volume['id']})
                 return False
 
@@ -2286,9 +2283,9 @@ class InfortrendCommon(object):
                 volume, host, new_extraspecs)
 
             if rc:
-                LOG.info(_LI(
+                LOG.info(
                     'Retype Volume %(volume_id)s is done '
-                    'and migrated to pool %(pool_id)s.'), {
+                    'and migrated to pool %(pool_id)s.', {
                         'volume_id': volume['id'],
                         'pool_id': host['capabilities']['pool_id']})
 
@@ -2318,9 +2315,9 @@ class InfortrendCommon(object):
 
                 if not self._check_volume_type_diff(
                         src_extraspecs, new_extraspecs, 'provisioning'):
-                    LOG.warning(_LW(
+                    LOG.warning(
                         'The provisioning: [%(src)s] to [%(new)s] '
-                        'is unable to retype.'), {
+                        'is unable to retype.', {
                             'src': src_extraspecs['provisioning'],
                             'new': new_extraspecs['provisioning']})
                     return False
@@ -2329,7 +2326,7 @@ class InfortrendCommon(object):
                         src_extraspecs, new_extraspecs, 'tiering'):
                     self._execute_retype_tiering(new_extraspecs, volume)
 
-            LOG.info(_LI('Retype Volume %(volume_id)s is completed.'), {
+            LOG.info('Retype Volume %(volume_id)s is completed.', {
                 'volume_id': volume['id']})
 
             return True
@@ -2396,7 +2393,7 @@ class InfortrendCommon(object):
                         check_done = True
             except Exception:
                 check_done = False
-                LOG.exception(_LE('Cannot detect tier migrate status.'))
+                LOG.exception('Cannot detect tier migrate status.')
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
@@ -2407,10 +2404,10 @@ class InfortrendCommon(object):
     def _check_tier_migrate_completed(self, part_info):
         status = part_info['Progress'].lower()
         if 'migrating' in status:
-            LOG.info(_LI('Retype volume [%(volume_name)s] '
-                         'progess [%(progess)s].'), {
-                             'volume_name': part_info['Name'],
-                             'progess': status})
+            LOG.info('Retype volume [%(volume_name)s] '
+                     'progess [%(progess)s].', {
+                         'volume_name': part_info['Name'],
+                         'progess': status})
             return False
         return True
 
@@ -2464,10 +2461,6 @@ class InfortrendCommon(object):
         return utils.paginate_entries_list(manageable_volumes, marker, limit,
                                            offset, sort_keys, sort_dirs)
 
-    ###############################
-    # Manage Snapshot
-    ###############################
-
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Brings existing backend storage object under Cinder management."""
 
@@ -2475,7 +2468,7 @@ class InfortrendCommon(object):
 
         self._execute('SetSnapshot', si['SI-ID'], 'name=%s' % snapshot.id)
 
-        LOG.info(_LI('Rename Snapshot %(si_id)s completed.'), {
+        LOG.info('Rename Snapshot %(si_id)s completed.', {
             'si_id': si['SI-ID']})
 
         return {'provider_location': si['SI-ID']}
@@ -2567,7 +2560,7 @@ class InfortrendCommon(object):
         self._execute('SetSnapshot', si_id,
                       'name=cinder-unmanaged-%s' % snapshot.id[:-17])
 
-        LOG.info(_LI('Unmanaging Snapshot %(si_id)s is completed.'), {
+        LOG.info('Unmanaging Snapshot %(si_id)s is completed.', {
             'si_id': snapshot.id})
         return
 
@@ -2580,10 +2573,10 @@ class InfortrendCommon(object):
             key = 'Name'
             content = ref['source-name']
             if ref['source-name'] == '---':
-                LOG.warning(_LW(
+                LOG.warning(
                     'Finding snapshot with default name "---" '
                     'can cause ambiguity.'
-                ))
+                )
         elif 'source-id' in ref:
             key = 'SI-ID'
             content = ref['source-id']
