@@ -89,7 +89,10 @@ CLI_RC_FILTER = {
         'error': _('Failed to delete map.'),
     },
     'CreateSnapshot': {'error': _('Failed to create snapshot.')},
-    'DeleteSnapshot': {'error': _('Failed to delete snapshot.')},
+    'DeleteSnapshot': {
+        'warning': {11: 'No such snapshot exist.'},
+        'error': _('Failed to delete snapshot.')
+    },
     'CreateReplica': {'error': _('Failed to create replica.')},
     'DeleteReplica': {'error': _('Failed to delete replica.')},
     'CreateIQN': {
