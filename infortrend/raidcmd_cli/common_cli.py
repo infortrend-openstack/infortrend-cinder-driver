@@ -177,7 +177,7 @@ class InfortrendCommon(object):
         2.0.2 - Remove timeout for replication
         2.0.3 - Use full ID for volume name
         2.1.0 - Support for list manageable volume
-              - Support for manage/unmanage snapshot
+              - Support for list/manage/unmanage snapshot
               - Remove unnecessary check in snapshot
     """
 
@@ -690,7 +690,7 @@ class InfortrendCommon(object):
             'tiering': 'tier=%s',
             'init': 'init=%s',
         }
-        for extraspec in extraspecs_dict.keys():
+        for extraspec in sorted(extraspecs_dict.keys()):
             value = parameters[extraspec] % (extraspecs_dict[extraspec])
             parameters_list.append(value)
 
@@ -1190,7 +1190,8 @@ class InfortrendCommon(object):
         return mcs_id
 
     def _concat_provider_location(self, model_dict):
-        return '@'.join([i + '^' + str(model_dict[i]) for i in model_dict])
+        keys = sorted(model_dict.keys())
+        return '@'.join([i + '^' + str(model_dict[i]) for i in keys])
 
     def delete_volume(self, volume):
         """Delete the specific volume."""

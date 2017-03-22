@@ -869,9 +869,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         test_volume = self.cli_data.test_volume
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[0]),
+            'provider_location': 'partition_id^%s@system_id^%s' % (
+                self.cli_data.fake_partition_id[0],
+                int(self.cli_data.fake_system_id[0], 16)
+            )
         }
 
         mock_commands = {
@@ -994,8 +995,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         test_system_id = self.cli_data.fake_system_id[0]
         test_volume = copy.deepcopy(self.cli_data.test_volume)
-        test_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
-            int(test_system_id, 16), 'None')
+        test_volume['provider_location'] = 'partition_id^%s@system_id^%s' % (
+            'None', int(test_system_id, 16))
         test_partition_id = self.cli_data.fake_partition_id[0]
 
         mock_commands = {
@@ -1027,9 +1028,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_src_volume = self.cli_data.test_volume
         test_dst_part_id = self.cli_data.fake_partition_id[1]
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[1]),
+            'provider_location': 'partition_id^%s@system_id^%s' % (
+                self.cli_data.fake_partition_id[1],
+                int(self.cli_data.fake_system_id[0], 16)
+            )
         }
 
         mock_commands = {
@@ -1264,9 +1266,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_dst_volume_id = test_dst_volume['id']
         test_dst_part_id = self.cli_data.fake_partition_id[1]
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                self.cli_data.fake_partition_id[1]),
+            'provider_location': 'partition_id^%s@system_id^%s' % (
+                self.cli_data.fake_partition_id[1],
+                int(self.cli_data.fake_system_id[0], 16)
+            )
         }
         mock_commands = {
             'CreatePartition': SUCCEED,
@@ -1631,9 +1634,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_dst_part_id = self.cli_data.fake_partition_id[2]
         test_pair_id = self.cli_data.fake_pair_id[0]
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                test_dst_part_id),
+            'provider_location': 'partition_id^%s@system_id^%s' % (
+                test_dst_part_id,
+                int(self.cli_data.fake_system_id[0], 16)
+            )
         }
 
         mock_commands = {
@@ -1855,9 +1859,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_partition_id = self.cli_data.test_dst_volume['id']
         test_ref_volume_id = test_ref_volume['source-id']
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                test_partition_id),
+            'provider_location': 'partition_id^%s@system_id^%s' % (
+                test_partition_id,
+                int(self.cli_data.fake_system_id[0], 16)
+            )
         }
 
         mock_commands = {
@@ -1927,9 +1932,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_pool = self.cli_data.fake_lv_id[0]
         test_partition_id = self.cli_data.fake_partition_id[2]
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                test_partition_id),
+            'provider_location': 'partition_id^%s@system_id^%s' % (
+                test_partition_id,
+                int(self.cli_data.fake_system_id[0], 16)
+            )
         }
 
         mock_commands = {
@@ -2278,9 +2284,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_dst_part_id = self.cli_data.fake_partition_id[2]
         test_pair_id = self.cli_data.fake_pair_id[0]
         test_model_update = {
-            'provider_location': 'system_id^%s@partition_id^%s' % (
-                int(self.cli_data.fake_system_id[0], 16),
-                test_dst_part_id),
+            'provider_location': 'partition_id^%s@system_id^%s' % (
+                test_dst_part_id,
+                int(self.cli_data.fake_system_id[0], 16)
+            )
         }
 
         mock_commands = {
@@ -2303,9 +2310,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             None, test_volume, test_new_type, test_diff, test_host)
 
         min_size = int(test_volume['size'] * 1024 * 0.2)
-        create_params = {'init': 'disable', 'min': '%sMB' % min_size}
-        create_params = ' '.join('%s=%s' % (key, value)
-                                 for key, value in create_params.items())
+        create_params = 'init=disable min=%sMB' % min_size
         expect_cli_cmd = [
             mock.call('ShowSnapshot', 'part=%s' % test_src_part_id),
             mock.call(
@@ -2338,8 +2343,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         src_volume = self.cli_data.test_volume
         dst_volume = copy.deepcopy(self.cli_data.test_dst_volume)
         test_dst_part_id = self.cli_data.fake_partition_id[1]
-        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
-            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
+        dst_volume['provider_location'] = 'partition_id^%s@system_id^%s' % (
+            test_dst_part_id, int(self.cli_data.fake_system_id[0], 16))
         test_model_update = {
             '_name_id': None,
             'provider_location': dst_volume['provider_location'],
@@ -2366,8 +2371,8 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         dst_volume = self.cli_data.test_dst_volume
         dst_volume['_name_id'] = 'fake_name_id'
         test_dst_part_id = self.cli_data.fake_partition_id[1]
-        dst_volume['provider_location'] = 'system_id^%s@partition_id^%s' % (
-            int(self.cli_data.fake_system_id[0], 16), test_dst_part_id)
+        dst_volume['provider_location'] = 'partition_id^%s@system_id^%s' % (
+            test_dst_part_id, int(self.cli_data.fake_system_id[0], 16))
 
         mock_commands = {
             'SetPartition': FAKE_ERROR_RETURN

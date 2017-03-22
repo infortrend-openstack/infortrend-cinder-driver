@@ -42,11 +42,10 @@ It manages storage by Infortrend CLI tool.
 - Clone a volume.
 - Extend a volume
 - Retype a volume.
-- Manage and unmanage a volume.
 - Migrate a volume with back-end assistance.
 - Live migrate an instance with volumes hosted on an Infortrend backend.
-- List volumes.
-- Manage and unmanage a snapshot.
+- List, manage and unmanage a volume.
+- List, manage and unmanage a snapshot.
 
 ## How to setup and use
 
