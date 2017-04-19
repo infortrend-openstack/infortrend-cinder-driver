@@ -69,7 +69,7 @@ def retry_cli(func):
 
 def os_execute(fd, raidcmd_timeout, command_line):
     os.write(fd, command_line)
-    return os_read(fd, 4096, 'RAIDCmd:>', raidcmd_timeout)
+    return os_read(fd, 8192, 'RAIDCmd:>', raidcmd_timeout)
 
 
 def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
@@ -82,12 +82,7 @@ def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
             content += output
         if content.find(cmd_pattern) >= 0:
             break
-        if int(time.time()) - start_time > raidcmd_timeout:
-            content = 'Raidcmd timeout: %s' % content
-            LOG.error(_LE(
-                'Raidcmd exceeds cli timeout [%(timeout)s]s.'), {
-                    'timeout': raidcmd_timeout})
-            break
+
     return content
 
 

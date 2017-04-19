@@ -17,7 +17,6 @@ Infortrend Common CLI.
 """
 import math
 import os
-import time
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -52,9 +51,6 @@ infortrend_esds_opts = [
     cfg.IntOpt('infortrend_cli_timeout',
                default=60,
                help='The timeout for CLI in seconds.'),
-    cfg.IntOpt('infortrend_migration_timeout',
-               default=30,
-               help='The timeout for migration jobs in minutes.'),
     cfg.StrOpt('infortrend_slots_a_channels_id',
                default='',
                help='Infortrend raid channel ID list on Slot A '
@@ -177,9 +173,10 @@ class InfortrendCommon(object):
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
         2.0.1 - Remove check while deleting volume
+        2.0.1.1 - Remove timeout and change create_volume_from_snapshot
     """
 
-    VERSION = '2.0.1'
+    VERSION = '2.0.1.1'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -203,7 +200,6 @@ class InfortrendCommon(object):
         self.ip = self.configuration.san_ip
         self.cli_retry_time = self.configuration.infortrend_cli_max_retries
         self.cli_timeout = self.configuration.infortrend_cli_timeout
-        self.migrate_timeout = self.configuration.infortrend_migration_timeout
         self.cli_cache = self.configuration.infortrend_cli_cache
         self.iqn_prefix = self.configuration.infortrend_iqn_prefix
         self.iqn = self.iqn_prefix + ':raid.uid%s.%s%s%s'
@@ -228,7 +224,6 @@ class InfortrendCommon(object):
         self.pid = None
         self.fd = None
         self._model_type = 'R'
-        self._replica_timeout = self.migrate_timeout * 60
 
         self.map_dict = {
             'slot_a': {},
@@ -298,7 +293,7 @@ class InfortrendCommon(object):
                 os.execv(self.java_path, [self.java_path, '-jar', self.path])
 
             check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 10)
-            if check_java_start == 'Raidcmd timeout.':
+            if 'Raidcmd timeout' in check_java_start:
                 msg = _('Raidcmd failed to start. '
                         'Please check Java is installed.')
                 LOG.error(msg)
@@ -1374,7 +1369,7 @@ class InfortrendCommon(object):
         rc, out = self._execute('CheckConnection')
         if rc == 0:
             return 'Connected'
-        elif rc == 9:
+        elif rc in (9, 13):
             self._init_raid_connection()
             self._set_raidcmd()
             return 'Reconnected'
@@ -1508,22 +1503,10 @@ class InfortrendCommon(object):
         raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
 
         if raid_snapshot_id:
-            rc, replica_list = self._execute('ShowReplica', '-l')
+            self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
 
-            has_pair = self._delete_pair_with_snapshot(
-                raid_snapshot_id, replica_list)
-
-            if not has_pair:
-                self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
-
-                LOG.info(_LI('Delete Snapshot %(snapshot_id)s completed.'), {
-                    'snapshot_id': snapshot_id})
-            else:
-                msg = _('Failed to delete snapshot '
-                        'for snapshot_id: %s '
-                        'because it has pair.') % snapshot_id
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
+            LOG.info(_LI('Delete Snapshot %(snapshot_id)s completed.'), {
+                'snapshot_id': snapshot_id})
         else:
             LOG.warning(_LW('Snapshot %(snapshot_id)s '
                             'provider_location not stored.'), {
@@ -1533,20 +1516,6 @@ class InfortrendCommon(object):
         if 'provider_location' in snapshot:
             return snapshot['provider_location']
         return
-
-    def _delete_pair_with_snapshot(self, snapshot_id, replica_list):
-        has_pair = False
-        for entry in replica_list:
-            if entry['Source'] == snapshot_id:
-
-                if not self._check_replica_completed(entry):
-                    has_pair = True
-                    LOG.warning(_LW(
-                        'Snapshot still %(status)s Cannot delete snapshot.'), {
-                            'status': entry['Status']})
-                else:
-                    self._execute('DeleteReplica', entry['Pair-ID'], '-y')
-        return has_pair
 
     def _get_part_id(self, volume_id, pool_id=None, part_list=None):
         if part_list is None:
@@ -1561,6 +1530,7 @@ class InfortrendCommon(object):
         return
 
     def create_volume_from_snapshot(self, volume, snapshot):
+        volume_id = volume['id'].replace('-', '')
         raid_snapshot_id = self._get_raid_snapshot_id(snapshot)
 
         if raid_snapshot_id is None:
@@ -1570,52 +1540,8 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        src_part_id = self._check_snapshot_filled_block(raid_snapshot_id)
-
-        model_update = self._create_volume_from_snapshot_id(
-            volume, raid_snapshot_id, src_part_id)
-
-        LOG.info(_LI(
-            'Create Volume %(volume_id)s from '
-            'snapshot %(snapshot_id)s completed.'), {
-                'volume_id': volume['id'],
-                'snapshot_id': snapshot['id']})
-
-        return model_update
-
-    def _check_snapshot_filled_block(self, raid_snapshot_id):
-        rc, snapshot_list = self._execute(
-            'ShowSnapshot', 'si=%s' % raid_snapshot_id, '-l')
-
-        if snapshot_list and snapshot_list[0]['Total-filled-block'] == '0':
-            return snapshot_list[0]['Partition-ID']
-        return
-
-    def _create_volume_from_snapshot_id(
-            self, dst_volume, raid_snapshot_id, src_part_id):
-        # create the target volume for volume copy
-        dst_volume_id = dst_volume['id'].replace('-', '')
-
-        self._create_partition_by_default(dst_volume)
-
-        dst_part_id = self._get_part_id(dst_volume_id)
-        # prepare return value
-        system_id = self._get_system_id(self.ip)
-        model_dict = {
-            'system_id': system_id,
-            'partition_id': dst_part_id,
-        }
-
-        model_info = self._concat_provider_location(model_dict)
-        model_update = {"provider_location": model_info}
-
-        if src_part_id:
-            # clone the volume from the origin partition
-            commands = (
-                'Cinder-Snapshot', 'part', src_part_id, 'part', dst_part_id
-            )
-            self._execute('CreateReplica', *commands)
-            self._wait_replica_complete(dst_part_id)
+        self._create_partition_by_default(volume)
+        dst_part_id = self._get_part_id(volume_id)
 
         # clone the volume from the snapshot
         commands = (
@@ -1624,7 +1550,21 @@ class InfortrendCommon(object):
         self._execute('CreateReplica', *commands)
         self._wait_replica_complete(dst_part_id)
 
-        return model_update
+        # prepare return value
+        system_id = self._get_system_id(self.ip)
+        model_dict = {
+            'system_id': system_id,
+            'partition_id': dst_part_id,
+        }
+        model_info = self._concat_provider_location(model_dict)
+
+        LOG.info(
+            'Create Volume %(volume_id)s from '
+            'snapshot %(snapshot_id)s completed.', {
+                'volume_id': volume['id'],
+                'snapshot_id': snapshot['id']})
+
+        return {"provider_location": model_info}
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
@@ -2197,9 +2137,6 @@ class InfortrendCommon(object):
         return model_update
 
     def _wait_replica_complete(self, part_id):
-        start_time = int(time.time())
-        timeout = self._replica_timeout
-
         def _inner():
             check_done = False
             try:
@@ -2215,11 +2152,6 @@ class InfortrendCommon(object):
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
-
-            if int(time.time()) - start_time > timeout:
-                msg = _('Wait replica complete timeout.')
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
 
         timer = loopingcall.FixedIntervalLoopingCall(_inner)
         timer.start(interval=15).wait()
@@ -2467,9 +2399,6 @@ class InfortrendCommon(object):
         self._wait_tier_migrate_complete(part_id)
 
     def _wait_tier_migrate_complete(self, part_id):
-        start_time = int(time.time())
-        timeout = self._replica_timeout
-
         def _inner():
             check_done = False
             try:
@@ -2484,11 +2413,6 @@ class InfortrendCommon(object):
 
             if check_done:
                 raise loopingcall.LoopingCallDone()
-
-            if int(time.time()) - start_time > timeout:
-                msg = _('Retype volume timeout while tier migrating.')
-                LOG.error(msg)
-                raise exception.VolumeDriverException(message=msg)
 
         timer = loopingcall.FixedIntervalLoopingCall(_inner)
         timer.start(interval=15).wait()
