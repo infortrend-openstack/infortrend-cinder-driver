@@ -91,7 +91,10 @@ CLI_RC_FILTER = {
         'error': _('Failed to delete map.'),
     },
     'CreateSnapshot': {'error': _('Failed to create snapshot.')},
-    'DeleteSnapshot': {'error': _('Failed to delete snapshot.')},
+    'DeleteSnapshot': {
+        'warning': {11: 'No such snapshot exist.'},
+        'error': _('Failed to delete snapshot.')
+    },
     'CreateReplica': {'error': _('Failed to create replica.')},
     'DeleteReplica': {'error': _('Failed to delete replica.')},
     'CreateIQN': {
@@ -173,10 +176,10 @@ class InfortrendCommon(object):
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
         2.0.1 - Remove check while deleting volume
-        2.0.1.1 - Remove timeout and change create_volume_from_snapshot
+        2.1.0 - Remove timeout and change create_volume_from_snapshot
     """
 
-    VERSION = '2.0.1.1'
+    VERSION = '2.1.0'
 
     constants = {
         'ISCSI_PORT': 3260,
