@@ -1,4 +1,4 @@
-Eonstor DS Cinder Driver
+Infortrend Cinder Driver
 =============
 | Branch  | Unit Test Status |
 | ------- | ------------ |
@@ -20,31 +20,32 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations
 under the License.
 
-# EonStor DS Driver (FC and iSCSI)
+# Infortrend Cinder Driver (FC and iSCSI)
 
 ## Overview
-Infortrend implement ISCSI and FC volume drivers for EonStor DS product.
+Infortrend implement ISCSI and FC volume drivers for OpenStack Cinder.
 It manages storage by Infortrend CLI tool.
 
 ## Support OpenStack Version
 
-- Base on Kilo.
-  + If you want to run on Kilo, please download from [release](https://github.com/infortrend-openstack/eonstor-ds-cinder-driver/releases).
-- Release on Liberty.
+- Release on Openstack Liberty and later.
   + It is already merged into Liberty. [More detail](https://blueprints.launchpad.net/cinder/+spec/infortrend-iscsi-fc-volume-driver).
+- For the latest driver version, please check [release](https://github.com/infortrend-openstack/infortrend-cinder-driver/releases).
 
 ## Supported Cinder Operations
 
-- Volume Create/Delete
-- Volume Attach/Detach
-- Snapshot Create/Delete
-- Create Volume from Snapshot
-- Get Volume Stats
-- Copy Image to Volume
-- Copy Volume to Image
-- Clone Volume
-- Extend Volume
-- Volume Manage/Unmanage
+- Create, delete, attach, and detach volumes.
+- Create and delete a snapshot.
+- Create a volume from a snapshot.
+- Copy an image to a volume.
+- Copy a volume to an image.
+- Clone a volume.
+- Extend a volume
+- Retype a volume.
+- Migrate a volume with back-end assistance.
+- Live migrate an instance with volumes hosted on an Infortrend backend.
+- Manage and unmanage a volume.
+- Manage and unmanage a snapshot.
 
 ## Require Tools
 

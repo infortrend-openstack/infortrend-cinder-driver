@@ -1,8 +1,12 @@
 language: python
 
-python:
-  - '2.7'
-  - '3.4'
+matrix:
+  include:
+  - python: "2.7"
+    env: TEST_PY=py27
+  - python: "3.5"
+    env: TEST_PY=py35
+
 
 sudo: false
 
@@ -19,6 +23,8 @@ branches:
 
 before_script:
   - chmod +x ./run_test.sh
+  - flake8 ./$INFORTREND_DRIVER_DIR/
+  - flake8 ./$INFORTREND_TEST_DIR/
 
 script:
-  - ./run_test.sh
+  ./run_test.sh $TEST_PY

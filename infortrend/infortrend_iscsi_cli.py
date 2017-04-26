@@ -245,3 +245,57 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
                 'volume_id': volume['id'], 'new_volume_id': new_volume['id']})
         return self.common.update_migrated_volume(ctxt, volume, new_volume,
                                                   original_volume_status)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Brings an existing backend storage object under Cinder management.
+
+        :param snapshot:     Cinder volume snapshot to manage
+        :param existing_ref: Driver-specific information used to identify a
+                             volume snapshot
+        """
+
+        LOG.debug(
+            'manage_existing_snapshot CALLED '
+            'snapshot: %(si)s, '
+            'existing_ref: %(ref)s', {
+                'si': snapshot, 'ref': existing_ref
+            }
+        )
+        return self.common.manage_existing_snapshot(snapshot, existing_ref)
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """Return size of snapshot to be managed by manage_existing.
+
+        :param snapshot:     Cinder volume snapshot to manage
+        :param existing_ref: Driver-specific information used to identify a
+                             volume snapshot
+        :returns size:       Volume snapshot size in GiB (integer)
+        """
+
+        LOG.debug(
+            'manage_existing_snapshot_get_size CALLED '
+            'snapshot: %(si)s, '
+            'existing_ref: %(ref)s', {
+                'si': snapshot, 'ref': existing_ref
+            }
+        )
+        return self.common.manage_existing_snapshot_get_size(snapshot,
+                                                             existing_ref)
+
+    def unmanage_snapshot(self, snapshot):
+        """Removes the specified snapshot from Cinder management.
+
+        Does not delete the underlying backend storage object.
+        For most drivers, this will not need to do anything. However, some
+        drivers might use this call as an opportunity to clean up any
+        Cinder-specific configuration that they have associated with the
+        backend storage object.
+        :param snapshot: Cinder volume snapshot to unmanage
+        """
+        LOG.debug(
+            'manage_existing_snapshot_get_size CALLED '
+            'snapshot: %(si)s', {
+                'si': snapshot
+            }
+        )
+        return self.common.unmanage_snapshot(snapshot)

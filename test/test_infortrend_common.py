@@ -1845,7 +1845,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             mock.call('ShowPartition', '-l'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertEqual(1, size)
+        self.assertEqual(20, size)
 
     def test_manage_existing_get_size_with_name(self):
 
@@ -1869,7 +1869,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             mock.call('ShowPartition', '-l'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
-        self.assertEqual(1, size)
+        self.assertEqual(20, size)
 
     def test_manage_existing_get_size_in_use(self):
 
@@ -2754,3 +2754,96 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             exception.VolumeDriverException,
             self.driver._get_pool_extraspecs,
             'LV-1', test_extraspecs_set)
+
+    def test_manage_existing_snapshot(self):
+        fake_snapshot = self.cli_data.fake_cinder_snapshots[0]
+        fake_ref_from_id = {
+            'source-id': self.cli_data.fake_snapshot_id[1]
+        }
+        fake_ref_from_name = {
+            'source-name': self.cli_data.fake_snapshot_name[1]
+        }
+
+        mock_commands = {
+            'ShowSnapshot': self.cli_data.get_test_show_snapshot_named(),
+            'SetSnapshot': (0, None)
+        }
+
+        ans = {'provider_location': self.cli_data.fake_snapshot_id[1]}
+
+        self._driver_setup(mock_commands)
+        result_from_id = self.driver.manage_existing_snapshot(
+            fake_snapshot, fake_ref_from_id)
+        result_from_name = self.driver.manage_existing_snapshot(
+            fake_snapshot, fake_ref_from_name)
+
+        self.assertEqual(ans, result_from_id)
+        self.assertEqual(ans, result_from_name)
+
+    @mock.patch.object(common_cli.LOG, 'warning')
+    def test_get_snapshot_ref_data_err_and_warning(self, mock_warning):
+        fake_snapshot = self.cli_data.fake_cinder_snapshots[0]
+        fake_ref_err1 = {
+            'invalid-key': 'invalid-content'
+        }
+        fake_ref_err2 = {
+            'source-id': 'invalid-content'
+        }
+        fake_ref_err_and_warning = {
+            'source-name': '---'
+        }
+
+        mock_commands = {
+            'ShowSnapshot': self.cli_data.get_test_show_snapshot_named()
+        }
+
+        self._driver_setup(mock_commands)
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          fake_snapshot, fake_ref_err1)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          fake_snapshot, fake_ref_err2)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          fake_snapshot, fake_ref_err_and_warning)
+        self.assertEqual(1, mock_warning.call_count)
+
+    def test_manage_existing_snapshot_get_size(self):
+        fake_snapshot = self.cli_data.fake_cinder_snapshots[0]
+        fake_ref = {
+            'source-id': self.cli_data.fake_snapshot_id[1]
+        }
+
+        mock_commands = {
+            'ShowSnapshot': self.cli_data.get_test_show_snapshot_named(),
+            'ShowPartition': self.cli_data.get_test_show_partition()
+        }
+
+        self._driver_setup(mock_commands)
+
+        result = self.driver.manage_existing_snapshot_get_size(fake_snapshot,
+                                                               fake_ref)
+        self.assertEqual(20, result)
+
+    def test_unmanage_snapshot(self):
+        fake_snapshot = self.cli_data.Fake_cinder_snapshot(
+            self.cli_data.fake_snapshot_name[1],
+            self.cli_data.fake_snapshot_id[1]
+        )
+
+        mock_commands = {
+            'SetSnapshot': (0, None),
+        }
+
+        expect_cli_cmd = [
+            mock.call(
+                'SetSnapshot', self.cli_data.fake_snapshot_id[1],
+                'name=cinder-unmanaged-%s' %
+                self.cli_data.fake_snapshot_name[1][:-17]
+            )
+        ]
+        self._driver_setup(mock_commands)
+        self.driver.unmanage_snapshot(fake_snapshot)
+        self._assert_cli_has_calls(expect_cli_cmd)
