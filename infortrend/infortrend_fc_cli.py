@@ -301,10 +301,6 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                                                   limit, offset, sort_keys,
                                                   sort_dirs)
 
-    ###############################
-    # Manage Snapshot
-    ###############################
-
     def manage_existing_snapshot(self, snapshot, existing_ref):
         """Brings an existing backend storage object under Cinder management.
 

@@ -20,10 +20,6 @@ cp ./test/* $CINDER_DIR/$INFORTREND_TEST_DIR/ -r
 
 cd $CINDER_DIR
 
-tox -e py27 test_infortrend_* -- --concurrency=4
-
-# flake8
-flake8 ./$INFORTREND_DRIVER_DIR/
-flake8 ./$INFORTREND_TEST_DIR/
+tox -e ${1} test_infortrend_* -- --concurrency=4
 
 cd ..

@@ -1507,11 +1507,10 @@ class InfortrendCommon(object):
         LOG.debug('Delete Snapshot %(snapshot)s volume %(volume)s.',
                   {'snapshot': snapshot['id'], 'volume': volume_id})
 
-        if 'provider_location' in snapshot:
-            raid_snapshot_id = snapshot['provider_location']
+        raid_snapshot_id = snapshot.get('provider_location')
 
+        if raid_snapshot_id:
             self._execute('DeleteSnapshot', raid_snapshot_id, '-y')
-
             LOG.info('Delete Snapshot %(snapshot_id)s completed.', {
                 'snapshot_id': snapshot['id']})
         else:
@@ -1533,14 +1532,13 @@ class InfortrendCommon(object):
 
     def create_volume_from_snapshot(self, volume, snapshot):
 
-        if 'provider_location' not in snapshot:
+        raid_snapshot_id = snapshot.get('provider_location')
+        if raid_snapshot_id is None:
             msg = _('Failed to get Raid Snapshot ID '
                     'from snapshot: %(snapshot_id)s.') % {
                         'snapshot_id': snapshot['id']}
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
-
-        raid_snapshot_id = snapshot['provider_location']
 
         self._create_partition_by_default(volume)
         dst_part_id = self._get_part_id(volume['id'])
@@ -2490,7 +2488,7 @@ class InfortrendCommon(object):
                 part = entry
                 break
 
-        return math.ceil(mi_to_gi(float(part['Size'])))
+        return int(math.ceil(mi_to_gi(float(part['Size']))))
 
     def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
                                  sort_keys, sort_dirs):
