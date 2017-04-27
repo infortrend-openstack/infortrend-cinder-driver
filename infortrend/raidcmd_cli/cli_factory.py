@@ -47,13 +47,14 @@ def retry_cli(func):
             if rc == 0:
                 break
 
-            LOG.error(_LE(
-                'Retry %(retry)s times: %(method)s Failed '
-                '%(rc)s: %(reason)s'), {
-                    'retry': retry_time,
-                    'method': self.__class__.__name__,
-                    'rc': rc,
-                    'reason': out})
+            LOG.error(
+                _LE('Retry %(retry)s times: %(method)s Failed '
+                    '%(rc)s: %(reason)s'),
+                {'retry': retry_time,
+                 'method': self.__class__.__name__,
+                 'rc': rc,
+                 'reason': out}
+            )
             # rc == 11 means not exist
             # show error log, not retrying
             if rc == 11:
@@ -69,7 +70,7 @@ def retry_cli(func):
 
 def os_execute(fd, raidcmd_timeout, command_line):
     os.write(fd, command_line)
-    return os_read(fd, 4096, 'RAIDCmd:>', raidcmd_timeout)
+    return os_read(fd, 8192, 'RAIDCmd:>', raidcmd_timeout)
 
 
 def os_read(fd, buffer_size, cmd_pattern, raidcmd_timeout):
@@ -173,8 +174,8 @@ class ShellCommand(BaseCommand):
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
                 'Error on execute command. '
-                'Error code: %(exit_code)d Error msg: %(result)s'), {
-                    'exit_code': pe.exit_code, 'result': result})
+                'Error code: %(exit_code)d Error msg: %(result)s'),
+                {'exit_code': pe.exit_code, 'result': result})
         return rc, result
 
 
@@ -198,8 +199,8 @@ class ExecuteCommand(BaseCommand):
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
                 'Error on execute command. '
-                'Error code: %(exit_code)d Error msg: %(result)s'), {
-                    'exit_code': pe.exit_code, 'result': result})
+                'Error code: %(exit_code)d Error msg: %(result)s'),
+                {'exit_code': pe.exit_code, 'result': result})
         return rc, result
 
 
@@ -268,10 +269,11 @@ class CLIBaseCommand(BaseCommand):
             result = result.replace('\n', '\\n')
             LOG.error(_LE(
                 'Error on execute %(command)s. '
-                'Error code: %(exit_code)d Error msg: %(result)s'), {
-                    'command': command_line,
-                    'exit_code': pe.exit_code,
-                    'result': result})
+                'Error code: %(exit_code)d Error msg: %(result)s'),
+                {'command': command_line,
+                 'exit_code': pe.exit_code,
+                 'result': result}
+            )
         return rc, result
 
     def _execute(self, command_line):
@@ -384,6 +386,18 @@ class SetLV(CLIBaseCommand):
     def __init__(self, *args, **kwargs):
         super(SetLV, self).__init__(*args, **kwargs)
         self.command = "set lv"
+
+
+class SetSnapshot(CLIBaseCommand):
+
+    """Set Logical Volume.
+
+    set lv tier-migrate [LV-ID] [part={partition-IDs}]
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SetSnapshot, self).__init__(*args, **kwargs)
+        self.command = "set si"
 
 
 class CreateMap(CLIBaseCommand):

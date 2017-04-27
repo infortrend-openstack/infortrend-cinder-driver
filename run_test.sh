@@ -9,7 +9,7 @@ if [ -d "$CINDER_DIR" ]; then
     rm -rf $CINDER_DIR
 fi
 
-git clone -b stable/newton $CINDER_REPO_URL --depth=1
+git clone $CINDER_REPO_URL --depth=1 -b stable/newton
 
 if [ ! -d "$CINDER_DIR/$INFORTREND_DRIVER_DIR" ]; then
     mkdir $CINDER_DIR/$INFORTREND_DRIVER_DIR
@@ -20,10 +20,4 @@ cp ./test/* $CINDER_DIR/$INFORTREND_TEST_DIR/ -r
 
 cd $CINDER_DIR
 
-tox -e py27 test_infortrend_* -- --concurrency=4
-
-# flake8
-flake8 ./$INFORTREND_DRIVER_DIR/
-flake8 ./$INFORTREND_TEST_DIR/
-
-cd ..
+tox -e ${1} test_infortrend_* -- --concurrency=4

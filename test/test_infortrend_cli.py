@@ -16,7 +16,7 @@
 import mock
 
 from cinder import test
-from cinder.volume.drivers.infortrend.eonstor_ds_cli import cli_factory as cli
+from cinder.volume.drivers.infortrend.raidcmd_cli import cli_factory as cli
 
 
 class InfortrendCLITestData(object):
@@ -32,7 +32,13 @@ class InfortrendCLITestData(object):
 
     fake_pair_id = ['55D790F8350B036B', '095A184B0ED2DB10']
 
-    fake_snapshot_id = ['2C7A8D211F3B1E36', '60135EE53C14D5EB']
+    fake_snapshot_id = ['2C7A8D211F3B1E36', '60135EE53C14D5EB',
+                        '4884610D11FD3335', '5C44BE0A776A2804']
+
+    fake_snapshot_name = ['9e8b27e9-568c-44ca-bd7c-2c7af96ab248',
+                          '35e8ba6e-3372-4e67-8464-2b68758f3aeb',
+                          'f69696ea-26fc-4f4c-97335-e3ce33ee563',
+                          'cinder-unmanaged-f31d8326-c2d8-4668-']
 
     fake_data_port_ip = ['172.27.0.1', '172.27.0.2',
                          '172.27.0.3', '172.27.0.4',
@@ -141,6 +147,16 @@ class InfortrendCLITestData(object):
         'display_description': 'SI-1',
         'volume_type_id': None,
         'provider_location': fake_snapshot_id[0],
+    }
+    test_snapshot_without_provider_location = {
+        'id': 'ffa9bc5e-1172-4021-acaf-cdcd78a9584d',
+        'volume_id': test_volume['id'],
+        'volume_name': test_volume['name'],
+        'volume_size': 2,
+        'project_id': 'project',
+        'display_name': None,
+        'display_description': 'SI-1',
+        'volume_type_id': None,
     }
 
     test_iqn = [(
@@ -357,7 +373,7 @@ class InfortrendCLITestData(object):
         'thick_provisioning_support': True,
         'thin_provisioning_support': True,
         'provisioned_capacity_gb':
-            round((400) / 1024, 2),
+            round((40000) / 1024, 2),
         'max_over_subscription_ratio': 20.0,
     }]
 
@@ -507,6 +523,23 @@ RAIDCmd:>
                 'Index': '2',
             }])
 
+    def get_test_show_snapshot_named(self):
+        return (0, [{
+            'Map': 'No',
+            'Partition-ID': self.fake_partition_id[0],
+            'SI-ID': self.fake_snapshot_id[0],
+            'Name': self.fake_snapshot_name[0],
+            'Activated-time': 'Thu, Jan 09 01:33:11 2020',
+            'Index': '1',
+        }, {
+            'Map': 'No',
+            'Partition-ID': self.fake_partition_id[1],
+            'SI-ID': self.fake_snapshot_id[1],
+            'Name': self.fake_snapshot_name[1],
+            'Activated-time': 'Thu, Jan 09 01:35:50 2020',
+            'Index': '1',
+        }])
+
     def get_fake_show_snapshot(self):
         msg = """
 show si
@@ -567,6 +600,88 @@ RAIDCmd:>
             'Name': '---',
             'Valid-filled-block': '0',
             'Partition-ID': self.fake_partition_id[0],
+        }])
+
+    def get_test_show_snapshot_get_manage(self):
+        """Show 4 si for api `list si`: 1.Mapped 2.Managed 3.Free 4.WrongLV"""
+
+        return (0, [{
+            'ID': self.fake_snapshot_id[0],
+            'Index': '1',
+            'Name': self.fake_snapshot_name[0],
+            'Partition-ID': self.fake_partition_id[0],
+            'LV-ID': self.fake_lv_id[0],
+            'Created-time': 'Fri, Dec 23 07:54:33 2016',
+            'Last-modification-time': 'Fri, Dec 23 07:54:33 2016',
+            'Activated-time': 'Fri, Dec 23 08:29:41 2016',
+            'Activation-schedule-time': 'Not Actived',
+            'Used': '0',
+            'Valid-filled-block': '0',
+            'Total-filled-block': '0',
+            'Description': '---',
+            'Mapped': 'No',
+            'Mapping': '---',
+            'Backup-to-Cloud': 'false',
+            'Status': 'OK',
+            'Progress': '---',
+        }, {
+            'ID': self.fake_snapshot_id[1],
+            'Index': '2',
+            'Name': self.fake_snapshot_name[1],
+            'Partition-ID': self.fake_partition_id[1],
+            'LV-ID': self.fake_lv_id[0],
+            'Created-time': 'Fri, Dec 23 07:54:33 2016',
+            'Last-modification-time': 'Fri, Dec 23 07:54:33 2016',
+            'Activated-time': 'Fri, Dec 23 08:29:41 2016',
+            'Activation-schedule-time': 'Not Actived',
+            'Used': '0',
+            'Valid-filled-block': '0',
+            'Total-filled-block': '0',
+            'Description': '---',
+            'Mapped': 'No',
+            'Mapping': '---',
+            'Backup-to-Cloud': 'false',
+            'Status': 'OK',
+            'Progress': '---'
+        }, {
+            'ID': self.fake_snapshot_id[2],
+            'Index': '1',
+            'Name': self.fake_snapshot_name[2],
+            'Partition-ID': self.fake_partition_id[2],
+            'LV-ID': self.fake_lv_id[1],
+            'Created-time': 'Fri, Dec 23 07:54:33 2016',
+            'Last-modification-time': 'Fri, Dec 23 07:54:33 2016',
+            'Activated-time': 'Fri, Dec 23 08:29:41 2016',
+            'Activation-schedule-time': 'Not Actived',
+            'Used': '0',
+            'Valid-filled-block': '0',
+            'Total-filled-block': '0',
+            'Description': '---',
+            'Mapped': 'No',
+            'Mapping': '---',
+            'Backup-to-Cloud': 'false',
+            'Status': 'OK',
+            'Progress': '---',
+        }, {
+            'ID': self.fake_snapshot_id[3],
+            'Index': '1',
+            'Name': 'test-get-snapshot-list',
+            # Part ID from get_test_show_partition_detail()
+            'Partition-ID': '123123123123',
+            'LV-ID': '987654321',
+            'Created-time': 'Fri, Dec 23 07:54:33 2016',
+            'Last-modification-time': 'Fri, Dec 23 07:54:33 2016',
+            'Activated-time': 'Fri, Dec 23 08:29:41 2016',
+            'Activation-schedule-time': 'Not Actived',
+            'Used': '0',
+            'Valid-filled-block': '0',
+            'Total-filled-block': '0',
+            'Description': '---',
+            'Mapped': 'No',
+            'Mapping': '---',
+            'Backup-to-Cloud': 'false',
+            'Status': 'OK',
+            'Progress': '---'
         }])
 
     def get_fake_show_snapshot_detail(self):
@@ -734,26 +849,26 @@ RAIDCmd:>
     def get_test_show_partition(self, volume_id=None, pool_id=None):
         result = [{
             'ID': self.fake_partition_id[0],
-            'Used': '200',
-            'Name': self.fake_volume_id[0].replace('-', ''),
-            'Size': '200',
-            'Min-reserve': '200',
+            'Used': '20000',
+            'Name': self.fake_volume_id[0],
+            'Size': '20000',
+            'Min-reserve': '20000',
             'LV-ID': self.fake_lv_id[0],
         }, {
             'ID': self.fake_partition_id[1],
-            'Used': '200',
-            'Name': self.fake_volume_id[1].replace('-', ''),
-            'Size': '200',
-            'Min-reserve': '200',
+            'Used': '20000',
+            'Name': self.fake_volume_id[1],
+            'Size': '20000',
+            'Min-reserve': '20000',
             'LV-ID': self.fake_lv_id[0],
         }]
         if volume_id and pool_id:
             result.append({
                 'ID': self.fake_partition_id[2],
-                'Used': '200',
+                'Used': '20000',
                 'Name': volume_id,
-                'Size': '200',
-                'Min-reserve': '200',
+                'Size': '20000',
+                'Min-reserve': '20000',
                 'LV-ID': pool_id,
             })
         return (0, result)
@@ -761,10 +876,10 @@ RAIDCmd:>
     def get_fake_show_partition(self):
         msg = """
 show part
- ID  Name         LV-ID  Size   Used   Min-reserve
+ ID  Name         LV-ID  Size     Used     Min-reserve
 ---------------------------------------------------
- %s  %s           %s     200    200    200
- %s  %s           %s     200    200    200
+ %s  %s           %s     20000    20000    20000
+ %s  %s           %s     20000    20000    20000
 
 CLI: Successful: 3 partition(s) shown
 Return: 0x0000
@@ -772,10 +887,10 @@ Return: 0x0000
 RAIDCmd:>
 """
         return msg % (self.fake_partition_id[0],
-                      self.fake_volume_id[0].replace('-', ''),
+                      self.fake_volume_id[0],
                       self.fake_lv_id[0],
                       self.fake_partition_id[1],
-                      self.fake_volume_id[1].replace('-', ''),
+                      self.fake_volume_id[1],
                       self.fake_lv_id[0])
 
     def get_test_show_partition_detail_for_map(
@@ -783,14 +898,14 @@ RAIDCmd:>
         result = [{
             'LV-ID': self.fake_lv_id[0],
             'Mapping': 'CH:1/ID:0/LUN:0, CH:1/ID:0/LUN:1',
-            'Used': '200',
-            'Size': '200',
+            'Used': '20000',
+            'Size': '20000',
             'ID': partition_id,
             'Progress': '---',
-            'Min-reserve': '200',
+            'Min-reserve': '20000',
             'Last-modification-time': 'Wed, Jan 08 20:23:23 2020',
             'Valid-filled-block': '100',
-            'Name': self.fake_volume_id[0].replace('-', ''),
+            'Name': self.fake_volume_id[0],
             'Mapped': mapped,
             'Total-filled-block': '100',
             'Creation-time': 'Wed, Jan 08 20:23:23 2020',
@@ -801,28 +916,28 @@ RAIDCmd:>
         result = [{
             'LV-ID': self.fake_lv_id[0],
             'Mapping': 'CH:1/ID:0/LUN:0, CH:1/ID:0/LUN:1, CH:4/ID:0/LUN:0',
-            'Used': '200',
-            'Size': '200',
+            'Used': '20000',
+            'Size': '20000',
             'ID': self.fake_partition_id[0],
             'Progress': '---',
-            'Min-reserve': '200',
+            'Min-reserve': '20000',
             'Last-modification-time': 'Wed, Jan 08 20:23:23 2020',
             'Valid-filled-block': '100',
-            'Name': self.fake_volume_id[0].replace('-', ''),
+            'Name': self.fake_volume_id[0],
             'Mapped': 'true',
             'Total-filled-block': '100',
             'Creation-time': 'Wed, Jan 08 20:23:23 2020',
         }, {
             'LV-ID': self.fake_lv_id[0],
             'Mapping': '---',
-            'Used': '200',
-            'Size': '200',
+            'Used': '20000',
+            'Size': '20000',
             'ID': self.fake_partition_id[1],
             'Progress': '---',
-            'Min-reserve': '200',
+            'Min-reserve': '20000',
             'Last-modification-time': 'Sat, Jan 11 22:18:40 2020',
             'Valid-filled-block': '100',
-            'Name': self.fake_volume_id[1].replace('-', ''),
+            'Name': self.fake_volume_id[1],
             'Mapped': 'false',
             'Total-filled-block': '100',
             'Creation-time': 'Sat, Jan 11 22:18:40 2020',
@@ -831,11 +946,11 @@ RAIDCmd:>
             result.extend([{
                 'LV-ID': pool_id,
                 'Mapping': '---',
-                'Used': '200',
-                'Size': '200',
+                'Used': '20000',
+                'Size': '20000',
                 'ID': self.fake_partition_id[2],
                 'Progress': '---',
-                'Min-reserve': '200',
+                'Min-reserve': '20000',
                 'Last-modification-time': 'Sat, Jan 15 22:18:40 2020',
                 'Valid-filled-block': '100',
                 'Name': volume_id,
@@ -845,11 +960,11 @@ RAIDCmd:>
             }, {
                 'LV-ID': '987654321',
                 'Mapping': '---',
-                'Used': '200',
-                'Size': '200',
+                'Used': '20000',
+                'Size': '20000',
                 'ID': '123123123123',
                 'Progress': '---',
-                'Min-reserve': '200',
+                'Min-reserve': '20000',
                 'Last-modification-time': 'Sat, Jan 12 22:18:40 2020',
                 'Valid-filled-block': '100',
                 'Name': volume_id,
@@ -859,11 +974,11 @@ RAIDCmd:>
             }, {
                 'LV-ID': self.fake_lv_id[0],
                 'Mapping': '---',
-                'Used': '200',
-                'Size': '200',
+                'Used': '20000',
+                'Size': '20000',
                 'ID': '6bb119a8-d25b-45a7-8d1b-88e127885666',
                 'Progress': '---',
-                'Min-reserve': '200',
+                'Min-reserve': '20000',
                 'Last-modification-time': 'Sat, Jan 16 22:18:40 2020',
                 'Valid-filled-block': '100',
                 'Name': volume_id,
@@ -879,9 +994,9 @@ show part -l
  ID: %s
  Name: %s
  LV-ID: %s
- Size: 200
- Used: 200
- Min-reserve: 200
+ Size: 20000
+ Used: 20000
+ Min-reserve: 20000
  Creation-time: Wed, Jan 08 20:23:23 2020
  Last-modification-time: Wed, Jan 08 20:23:23 2020
  Valid-filled-block: 100
@@ -893,9 +1008,9 @@ show part -l
  ID: %s
  Name: %s
  LV-ID: %s
- Size: 200
- Used: 200
- Min-reserve: 200
+ Size: 20000
+ Used: 20000
+ Min-reserve: 20000
  Creation-time: Sat, Jan 11 22:18:40 2020
  Last-modification-time: Sat, Jan 11 22:18:40 2020
  Valid-filled-block: 100
@@ -910,10 +1025,10 @@ Return: 0x0000
 RAIDCmd:>
 """
         return msg % (self.fake_partition_id[0],
-                      self.fake_volume_id[0].replace('-', ''),
+                      self.fake_volume_id[0],
                       self.fake_lv_id[0],
                       self.fake_partition_id[1],
-                      self.fake_volume_id[1].replace('-', ''),
+                      self.fake_volume_id[1],
                       self.fake_lv_id[0])
 
     def get_test_show_replica_detail_for_migrate(
@@ -990,14 +1105,14 @@ RAIDCmd:>
             'Source-Device': 'DEEC',
             'Source': self.fake_partition_id[0],
             'Source-Type': 'LV-Partition',
-            'Source-Name': self.fake_volume_id[0].replace('-', ''),
+            'Source-Name': self.fake_volume_id[0],
             'Source-LV': '5DE94FF775D81C30',
             'Source-VS': '2C482316298F7A4E',
             'Source-Mapped': 'Yes',
             'Target-Device': 'DEEC',
             'Target': self.fake_partition_id[1],
             'Target-Type': 'LV-Partition',
-            'Target-Name': self.fake_volume_id[1].replace('-', ''),
+            'Target-Name': self.fake_volume_id[1],
             'Target-LV': '5DE94FF775D81C30',
             'Target-VS': '033EA1FA4EA193EB',
             'Target-Mapped': 'No',
@@ -1052,14 +1167,14 @@ RAIDCmd:>
             'Source-Device': 'DEEC',
             'Source': self.fake_partition_id[0],
             'Source-Type': 'LV-Partition',
-            'Source-Name': self.fake_volume_id[0].replace('-', ''),
+            'Source-Name': self.fake_volume_id[0],
             'Source-LV': '5DE94FF775D81C30',
             'Source-VS': '2C482316298F7A4E',
             'Source-Mapped': 'Yes',
             'Target-Device': 'DEEC',
             'Target': self.fake_partition_id[1],
             'Target-Type': 'LV-Partition',
-            'Target-Name': self.fake_volume_id[1].replace('-', ''),
+            'Target-Name': self.fake_volume_id[1],
             'Target-LV': '5DE94FF775D81C30',
             'Target-VS': '033EA1FA4EA193EB',
             'Target-Mapped': 'No',
@@ -1081,14 +1196,14 @@ RAIDCmd:>
             'Source-Device': 'DEEC',
             'Source': self.fake_partition_id[4],
             'Source-Type': 'LV-Partition',
-            'Source-Name': self.fake_volume_id[0].replace('-', ''),
+            'Source-Name': self.fake_volume_id[0],
             'Source-LV': '5DE94FF775D81C30',
             'Source-VS': '2C482316298F7A4E',
             'Source-Mapped': 'No',
             'Target-Device': 'DEEC',
             'Target': self.fake_partition_id[5],
             'Target-Type': 'LV-Partition',
-            'Target-Name': self.fake_volume_id[1].replace('-', ''),
+            'Target-Name': self.fake_volume_id[1],
             'Target-LV': '5DE94FF775D81C30',
             'Target-VS': '714B80F0335F6E52',
             'Target-Mapped': 'Yes',
@@ -1206,14 +1321,14 @@ RAIDCmd:>
                       self.fake_partition_id[3],
                       self.fake_pair_id[0],
                       self.fake_partition_id[0],
-                      self.fake_volume_id[0].replace('-', ''),
+                      self.fake_volume_id[0],
                       self.fake_partition_id[1],
-                      self.fake_volume_id[1].replace('-', ''),
+                      self.fake_volume_id[1],
                       self.fake_pair_id[1],
                       self.fake_partition_id[4],
-                      self.fake_volume_id[0].replace('-', ''),
+                      self.fake_volume_id[0],
                       self.fake_partition_id[5],
-                      self.fake_volume_id[1].replace('-', ''))
+                      self.fake_volume_id[1])
 
     def get_test_show_lv(self):
         return (0, [{
@@ -2215,6 +2330,22 @@ RAIDCmd:>
             result.append(template % (
                 target_portals[i], target_iqns[i]))
         return (0, '\n'.join(result))
+
+    class Fake_cinder_object(object):
+        id = None
+
+        def __init__(self, test_volume):
+            self.id = test_volume
+
+    class Fake_cinder_snapshot(Fake_cinder_object):
+        provider_location = None
+
+        def __init__(self, id, provider_location):
+            self.id = id
+            self.provider_location = provider_location
+
+    fake_cinder_volumes = [Fake_cinder_object(test_dst_volume['id'])]
+    fake_cinder_snapshots = [Fake_cinder_object(fake_snapshot_name[1])]
 
 
 class InfortrendCLITestCase(test.TestCase):
