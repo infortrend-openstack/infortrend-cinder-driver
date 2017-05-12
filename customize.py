@@ -19,3 +19,10 @@ DRIVER_FOLDER=$(find / -name infortrend | grep cinder/volume/drivers | sed 's#in
 echo "Putting $CUSTOMER driver to directory: $DRIVER_FOLDER"
 mv ./${CUSTOMER} $DRIVER_FOLDER
 
+CINDER_FOLDER=$(echo -e ${DRIVER_FOLDER} | sed 's#/volume/drivers/##g')
+cat <<EOF >>$CINDER_FOLDER/exception.py
+class ${CUSTOMER}CliException(CinderException):
+    message = _("$CUSTOMER CLI exception: %(err)s Param: %(param)s "
+                    "(Return Code: %(rc)s) (Output: %(out)s)")
+EOF
+
