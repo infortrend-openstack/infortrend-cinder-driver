@@ -15,3 +15,7 @@ mv ./infortrend/infortrend_fc_cli.py ./infortrend/${CUSTOMER}_fc_cli.py
 mv ./infortrend/infortrend_iscsi_cli.py ./infortrend/${CUSTOMER}_iscsi_cli.py
 mv ./infortrend ./${CUSTOMER}
 
+DRIVER_FOLDER=$(find / -name infortrend | grep cinder/volume/drivers | sed 's#infortrend##g')
+echo "Putting $CUSTOMER driver to directory: $DRIVER_FOLDER"
+mv ./${CUSTOMER} $DRIVER_FOLDER
+
