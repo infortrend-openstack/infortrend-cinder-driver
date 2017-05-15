@@ -26,6 +26,5 @@ class ${CUSTOMER}CliException(CinderException):
     message = _("$CUSTOMER CLI exception: %(err)s Param: %(param)s "
                     "(Return Code: %(rc)s) (Output: %(out)s)")
 
-
 EOF
 
