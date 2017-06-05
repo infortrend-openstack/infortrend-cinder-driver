@@ -15,3 +15,5 @@ mv ./infortrend/infortrend_fc_cli.py ./infortrend/${CUSTOMER}_fc_cli.py
 mv ./infortrend/infortrend_iscsi_cli.py ./infortrend/${CUSTOMER}_iscsi_cli.py
 mv ./infortrend ./${CUSTOMER}
 
+rm -f ./customize.sh
+

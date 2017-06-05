@@ -28,3 +28,4 @@ class ${CUSTOMER}CliException(CinderException):
 
 EOF
 
+rm -f ./customize_on_Openstack.sh
