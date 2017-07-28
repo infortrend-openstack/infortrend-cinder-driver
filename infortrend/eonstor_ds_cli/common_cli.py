@@ -178,9 +178,10 @@ class InfortrendCommon(object):
         2.0.1 - Remove checks while deleting volume
         2.1.0 - Support for manage/unmanage snapshot
               - Remove unnecessary check in snapshot and timeout
+        2.1.1 - Add Lun ID overflow check
     """
 
-    VERSION = '2.1.0'
+    VERSION = '2.1.1'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -1096,15 +1097,22 @@ class InfortrendCommon(object):
     def _get_minimum_common_lun_id(self, channel_dict):
         """Find the minimun common lun id in all channels."""
         map_lun = []
+        # search for free lun id on all channels
         for lun_id in range(self.constants['MAX_LUN_MAP_PER_CHL']):
-            has_mapped = False
+            lun_id_is_used = False
             for controller in channel_dict.keys():
                 for channel_id in channel_dict[controller]:
                     if lun_id not in self.map_dict[controller][channel_id]:
-                        has_mapped = True
-            if not has_mapped:
+                        lun_id_is_used = True
+            if not lun_id_is_used:
                 map_lun.append(str(lun_id))
                 break
+            # check lun id overflow
+            elif (lun_id == self.constants['MAX_LUN_MAP_PER_CHL'] - 1):
+                msg = _('LUN map has reached maximum value [%(max_lun)s].') % {
+                    'max_lun': self.constants['MAX_LUN_MAP_PER_CHL']}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
         return map_lun
 
@@ -1157,19 +1165,26 @@ class InfortrendCommon(object):
 
     def _get_common_lun_map_id(self, wwpn_channel_info):
         map_lun = None
-
+        # search for free lun id on all channels
         for lun_id in range(self.constants['MAX_LUN_MAP_PER_CHL']):
-            lun_id_exist = False
+            lun_id_is_used = False
             for slot_name in ['slot_a', 'slot_b']:
                 for wwpn in wwpn_channel_info:
                     channel_id = wwpn_channel_info[wwpn]['channel']
                     if channel_id not in self.map_dict[slot_name]:
                         continue
                     elif lun_id not in self.map_dict[slot_name][channel_id]:
-                        lun_id_exist = True
-            if not lun_id_exist:
+                        lun_id_is_used = True
+            if not lun_id_is_used:
                 map_lun = str(lun_id)
                 break
+            # check lun id overflow
+            elif (lun_id == self.constants['MAX_LUN_MAP_PER_CHL'] - 1):
+                msg = _('LUN map has reached maximum value [%(max_lun)s].') % {
+                    'max_lun': self.constants['MAX_LUN_MAP_PER_CHL']}
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
+
         return map_lun
 
     def _get_mcs_id(self, channel_id, controller):
