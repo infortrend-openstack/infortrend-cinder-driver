@@ -193,6 +193,7 @@ class InfortrendCommon(object):
     TIERING_SET_KEY = 'infortrend:tiering'
 
     PROVISIONING_VALUES = ['thin', 'full']
+    TIERING_VALUES = [0, 1, 2, 3]
 
     def __init__(self, protocol, configuration=None):
 
@@ -988,7 +989,7 @@ class InfortrendCommon(object):
                         value = [int(i) for i in value]
                         value = list(set(value))
 
-                        if value[-1] in range(4):
+                        if value[-1] in self.TIERING_VALUES:
                             extraspecs_set[pool]['tiering'] = value
                         else:
                             extraspecs_set[pool]['tiering'] = 'Err:%s' % value
