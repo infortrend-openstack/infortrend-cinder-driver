@@ -22,6 +22,7 @@ import time
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
+from oslo_utils import strutils
 import six
 
 from cinder.i18n import _LE
@@ -256,7 +257,8 @@ class CLIBaseCommand(BaseCommand):
     @retry_cli
     def execute(self, *args, **kwargs):
         command_line = self._generate_command(args)
-        LOG.debug('Executing: %(command)s', {'command': command_line})
+        LOG.debug('Executing: %(command)s', {
+            'command': strutils.mask_password(command_line)})
         rc = 0
         result = None
         try:
@@ -269,7 +271,7 @@ class CLIBaseCommand(BaseCommand):
             LOG.error(_LE(
                 'Error on execute %(command)s. '
                 'Error code: %(exit_code)d Error msg: %(result)s'), {
-                    'command': command_line,
+                    'command': strutils.mask_password(command_line),
                     'exit_code': pe.exit_code,
                     'result': result})
         return rc, result
