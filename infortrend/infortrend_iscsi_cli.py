@@ -183,9 +183,8 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
-        }
+        :param existing_ref: Driver-specific information used to identify
+                             a volume
         """
         LOG.debug(
             'manage_existing volume: %(volume)s '

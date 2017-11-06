@@ -38,7 +38,7 @@ from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
-infortrend_esds_opts = [
+infortrend_opts = [
     cfg.StrOpt('infortrend_pools_name',
                default='',
                help='The Infortrend logical volumes name list. '
@@ -77,7 +77,7 @@ infortrend_esds_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(infortrend_esds_opts)
+CONF.register_opts(infortrend_opts)
 
 CLI_RC_FILTER = {
     'CreatePartition': {'error': _('Failed to create partition.')},
@@ -166,6 +166,9 @@ class InfortrendCommon(object):
     """The Infortrend's Common Command using CLI.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
         1.0.2 - Support GS/GSe Family
@@ -173,19 +176,20 @@ class InfortrendCommon(object):
         1.0.4 - Fix Nova live migration (bug #1481968)
         1.1.0 - Improve driver performance
         1.1.1 - Fix creating volume on a wrong pool
-              - Fix manage-existing volume issue
+                Fix manage-existing volume issue
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
         2.0.1 - Improve speed for deleting volume
         2.0.2 - Remove timeout for replication
         2.0.3 - Use full ID for volume name
         2.1.0 - Support for list manageable volume
-              - Support for list/manage/unmanage snapshot
-              - Remove unnecessary check in snapshot
+                Support for list/manage/unmanage snapshot
+                Remove unnecessary check in snapshot
         2.1.1 - Add Lun ID overflow check
+        2.1.2 - Support for force detach volume
     """
 
-    VERSION = '2.1.1'
+    VERSION = '2.1.2'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -196,13 +200,14 @@ class InfortrendCommon(object):
     TIERING_SET_KEY = 'infortrend:tiering'
 
     PROVISIONING_VALUES = ['thin', 'full']
+    TIERING_VALUES = [0, 1, 2, 3]
 
     def __init__(self, protocol, configuration=None):
 
         self.protocol = protocol
         self.configuration = configuration
         self.configuration.append_config_values(san.san_opts)
-        self.configuration.append_config_values(infortrend_esds_opts)
+        self.configuration.append_config_values(infortrend_opts)
 
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
@@ -309,7 +314,7 @@ class InfortrendCommon(object):
                         'Please check Java is installed.')
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
-        LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
+        LOG.debug('Raidcmd [%s:%s] start!', self.pid, self.fd)
 
     def _set_raidcmd(self):
         cli_io_timeout = str(self.cli_timeout - 10)
@@ -791,17 +796,17 @@ class InfortrendCommon(object):
     def _get_volume_type_extraspecs(self, volume):
         """Example for Infortrend extraspecs settings:
 
-            Using a global setting:
-                infortrend:provisoioning: 'thin'
-                infortrend:tiering: '0,1,2'
+        Using a global setting:
+            infortrend:provisoioning: 'thin'
+            infortrend:tiering: '0,1,2'
 
-            Using an individual setting:
-                infortrend:provisoioning: 'LV0:thin;LV1:full'
-                infortrend:tiering: 'LV0:0,1,3; LV1:1'
+        Using an individual setting:
+            infortrend:provisoioning: 'LV0:thin;LV1:full'
+            infortrend:tiering: 'LV0:0,1,3; LV1:1'
 
-            Using a mixed setting:
-                infortrend:provisoioning: 'LV0:thin;LV1:full'
-                infortrend:tiering: 'all'
+        Using a mixed setting:
+            infortrend:provisoioning: 'LV0:thin;LV1:full'
+            infortrend:tiering: 'all'
         """
         # extraspecs default setting
         extraspecs_set = {
@@ -994,7 +999,7 @@ class InfortrendCommon(object):
                         value = [int(i) for i in value]
                         value = list(set(value))
 
-                        if value[-1] in range(4):
+                        if value[-1] in self.TIERING_VALUES:
                             extraspecs_set[pool]['tiering'] = value
                         else:
                             extraspecs_set[pool]['tiering'] = 'Err:%s' % value
@@ -1595,7 +1600,7 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
-        LOG.debug('Connector_info: %s' % connector)
+        LOG.debug('Connector_info: %s', connector)
 
         @lockutils.synchronized(
             '%s-connection' % system_id, 'infortrend-', True)
@@ -1961,8 +1966,18 @@ class InfortrendCommon(object):
             if part_id is None:
                 part_id = self._get_part_id(volume['id'])
 
-            self._delete_map(part_id, connector)
+            # Support for force detach volume
+            if not connector:
+                self._delete_all_map(part_id)
+                LOG.warning(
+                    'Connection Info Error: detach all connections '
+                    'for volume: %(volume_id)s.', {
+                        'volume_id': volume['id']})
+                return
 
+            self._delete_host_map(part_id, connector)
+
+            # Check if this iqn is none used
             if self.protocol == 'iSCSI':
                 lun_map_exist = self._check_initiator_has_lun_map(
                     connector['initiator'])
@@ -1971,6 +1986,7 @@ class InfortrendCommon(object):
                         connector['initiator'])
                     self._execute('DeleteIQN', host_name)
 
+            # FC should return info
             elif self.protocol == 'FC':
                 conn_info = {'driver_volume_type': 'fibre_channel',
                              'data': {}}
@@ -1992,8 +2008,9 @@ class InfortrendCommon(object):
             return conn_info
         return lock_terminate_conn()
 
-    def _delete_map(self, part_id, connector):
+    def _delete_host_map(self, part_id, connector):
         rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
+
         if self.protocol == 'iSCSI':
             host = connector['initiator'].lower()
             host = (host,)
@@ -2019,6 +2036,12 @@ class InfortrendCommon(object):
                         temp_ch = entry['Ch']
                         temp_tid = entry['Target']
                         temp_lun = entry['LUN']
+        return
+
+    def _delete_all_map(self, part_id):
+        rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
+        if len(part_map_info) > 0:
+            self._execute('DeleteMap', 'part', part_id, '-y')
         return
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
@@ -2600,10 +2623,8 @@ class InfortrendCommon(object):
         return
 
     def _get_snapshot_ref_data(self, ref):
-        """Check the existance of SI for the specified partition
+        """Check the existance of SI for the specified partition."""
 
-           Returns the `show si` entry of specified snapshot.
-        """
         if 'source-name' in ref:
             key = 'Name'
             content = ref['source-name']
