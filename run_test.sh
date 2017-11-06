@@ -15,6 +15,10 @@ if [ ! -d "$CINDER_DIR/$INFORTREND_DRIVER_DIR" ]; then
     mkdir $CINDER_DIR/$INFORTREND_DRIVER_DIR
 fi
 
+if [ ! -d "$CINDER_DIR/$INFORTREND_TEST_DIR" ]; then
+    mkdir $CINDER_DIR/$INFORTREND_TEST_DIR
+fi
+
 cp ./infortrend/* $CINDER_DIR/$INFORTREND_DRIVER_DIR/ -r
 cp ./test/* $CINDER_DIR/$INFORTREND_TEST_DIR/ -r
 
