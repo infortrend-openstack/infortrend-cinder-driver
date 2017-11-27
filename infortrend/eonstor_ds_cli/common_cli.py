@@ -37,7 +37,7 @@ from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
-infortrend_esds_opts = [
+infortrend_opts = [
     cfg.StrOpt('infortrend_pools_name',
                default='',
                help='The Infortrend logical volumes name list. '
@@ -76,7 +76,7 @@ infortrend_esds_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(infortrend_esds_opts)
+CONF.register_opts(infortrend_opts)
 
 CLI_RC_FILTER = {
     'CreatePartition': {'error': _('Failed to create partition.')},
