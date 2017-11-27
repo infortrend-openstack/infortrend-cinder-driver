@@ -180,9 +180,10 @@ class InfortrendCommon(object):
               - Support for list/manage/unmanage snapshot
               - Remove unnecessary check in snapshot
         2.1.1 - Add Lun ID overflow check
+        2.1.2 - Support for force detach volume
     """
 
-    VERSION = '2.1.1'
+    VERSION = '2.1.2'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -1979,6 +1980,13 @@ class InfortrendCommon(object):
 
     def _delete_map(self, part_id, connector):
         rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
+
+        # Support for force detach volume
+        if not connector:
+            if len(part_map_info) > 0:
+                self._execute('DeleteMap', 'part', part_id, '-y')
+            return
+
         if self.protocol == 'iSCSI':
             host = connector['initiator'].lower()
             host = (host,)
