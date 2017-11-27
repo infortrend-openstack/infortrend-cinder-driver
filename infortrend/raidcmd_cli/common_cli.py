@@ -201,7 +201,7 @@ class InfortrendCommon(object):
         self.protocol = protocol
         self.configuration = configuration
         self.configuration.append_config_values(san.san_opts)
-        self.configuration.append_config_values(infortrend_esds_opts)
+        self.configuration.append_config_values(infortrend_opts)
 
         self.path = self.configuration.infortrend_cli_path
         self.password = self.configuration.san_password
