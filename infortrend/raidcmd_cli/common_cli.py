@@ -1947,8 +1947,18 @@ class InfortrendCommon(object):
             if part_id is None:
                 part_id = self._get_part_id(volume['id'])
 
-            self._delete_map(part_id, connector)
+            # Support for force detach volume
+            if not connector:
+                self._delete_all_map(part_id)
+                LOG.info(
+                    'Successfully force-detach all connections '
+                    'for volume: %(volume_id)s.', {
+                        'volume_id': volume['id']})
+                return
 
+            self._delete_host_map(part_id, connector)
+
+            # Check if this iqn is none used
             if self.protocol == 'iSCSI':
                 lun_map_exist = self._check_initiator_has_lun_map(
                     connector['initiator'])
@@ -1957,6 +1967,7 @@ class InfortrendCommon(object):
                         connector['initiator'])
                     self._execute('DeleteIQN', host_name)
 
+            # FC should return info
             elif self.protocol == 'FC':
                 conn_info = {'driver_volume_type': 'fibre_channel',
                              'data': {}}
@@ -1978,14 +1989,8 @@ class InfortrendCommon(object):
             return conn_info
         return lock_terminate_conn()
 
-    def _delete_map(self, part_id, connector):
+    def _delete_host_map(self, part_id, connector):
         rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
-
-        # Support for force detach volume
-        if not connector:
-            if len(part_map_info) > 0:
-                self._execute('DeleteMap', 'part', part_id, '-y')
-            return
 
         if self.protocol == 'iSCSI':
             host = connector['initiator'].lower()
@@ -2012,6 +2017,12 @@ class InfortrendCommon(object):
                         temp_ch = entry['Ch']
                         temp_tid = entry['Target']
                         temp_lun = entry['LUN']
+        return
+
+    def _delete_all_map(self, part_id):
+        rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
+        if len(part_map_info) > 0:
+            self._execute('DeleteMap', 'part', part_id, '-y')
         return
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
