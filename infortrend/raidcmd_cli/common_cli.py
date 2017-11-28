@@ -1950,8 +1950,8 @@ class InfortrendCommon(object):
             # Support for force detach volume
             if not connector:
                 self._delete_all_map(part_id)
-                LOG.info(
-                    'Successfully force-detach all connections '
+                LOG.warning(
+                    'Connection Info Error: detach all connections '
                     'for volume: %(volume_id)s.', {
                         'volume_id': volume['id']})
                 return
