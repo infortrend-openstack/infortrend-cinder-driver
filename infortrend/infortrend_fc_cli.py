@@ -149,34 +149,34 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         correspond to the list of remote wwn(s) that will export the volume.
         The initiator_target_map is a map that represents the remote wwn(s)
         and a list of wwns which are visible to the remote wwn(s).
-        Example return values:
+        Example return values::
 
-        {
-            'driver_volume_type': 'fibre_channel'
-            'data': {
-                'target_discovered': True,
-                'target_lun': 1,
-                'target_wwn': '1234567890123',
-                'initiator_target_map': {
-                    '1122334455667788': ['1234567890123']
+            {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': '1234567890123',
+                    'initiator_target_map': {
+                        '1122334455667788': ['1234567890123']
+                    }
                 }
             }
-        }
 
-        or
+            or
 
-        {
-            'driver_volume_type': 'fibre_channel'
-            'data': {
-                'target_discovered': True,
-                'target_lun': 1,
-                'target_wwn': ['1234567890123', '0987654321321'],
-                'initiator_target_map': {
-                    '1122334455667788': ['1234567890123',
-                                         '0987654321321']
+            {
+                'driver_volume_type': 'fibre_channel'
+                'data': {
+                    'target_discovered': True,
+                    'target_lun': 1,
+                    'target_wwn': ['1234567890123', '0987654321321'],
+                    'initiator_target_map': {
+                        '1122334455667788': ['1234567890123',
+                                             '0987654321321']
+                    }
                 }
             }
-        }
         """
         LOG.debug(
             'initialize_connection volume id=%(volume_id)s '

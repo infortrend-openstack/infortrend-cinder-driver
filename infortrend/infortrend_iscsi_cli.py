@@ -142,15 +142,15 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         The format of the driver data is defined in _get_iscsi_properties.
         Example return value::
 
-        {
-            'driver_volume_type': 'iscsi'
-            'data': {
-                'target_discovered': True,
-                'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
-                'target_portal': '127.0.0.0.1:3260',
-                'volume_id': 1,
+            {
+                'driver_volume_type': 'iscsi'
+                'data': {
+                    'target_discovered': True,
+                    'target_iqn': 'iqn.2010-10.org.openstack:volume-00000001',
+                    'target_portal': '127.0.0.0.1:3260',
+                    'volume_id': 1,
+                }
             }
-        }
         """
         LOG.debug(
             'initialize_connection volume id=%(volume_id)s '
