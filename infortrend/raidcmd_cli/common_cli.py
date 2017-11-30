@@ -308,7 +308,7 @@ class InfortrendCommon(object):
                         'Please check Java is installed.')
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
-        LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
+        LOG.debug('Raidcmd [%s:%s] start!', self.pid, self.fd)
 
     def _set_raidcmd(self):
         cli_io_timeout = str(self.cli_timeout - 10)
@@ -788,17 +788,17 @@ class InfortrendCommon(object):
     def _get_volume_type_extraspecs(self, volume):
         """Example for Infortrend extraspecs settings:
 
-            Using a global setting:
-                infortrend:provisoioning: 'thin'
-                infortrend:tiering: '0,1,2'
+        Using a global setting:
+            infortrend:provisoioning: 'thin'
+            infortrend:tiering: '0,1,2'
 
-            Using an individual setting:
-                infortrend:provisoioning: 'LV0:thin;LV1:full'
-                infortrend:tiering: 'LV0:0,1,3; LV1:1'
+        Using an individual setting:
+            infortrend:provisoioning: 'LV0:thin;LV1:full'
+            infortrend:tiering: 'LV0:0,1,3; LV1:1'
 
-            Using a mixed setting:
-                infortrend:provisoioning: 'LV0:thin;LV1:full'
-                infortrend:tiering: 'all'
+        Using a mixed setting:
+            infortrend:provisoioning: 'LV0:thin;LV1:full'
+            infortrend:tiering: 'all'
         """
         # extraspecs default setting
         extraspecs_set = {
@@ -1585,7 +1585,7 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
-        LOG.debug('Connector_info: %s' % connector)
+        LOG.debug('Connector_info: %s', connector)
 
         @lockutils.synchronized(
             '%s-connection' % system_id, 'infortrend-', True)
@@ -2602,10 +2602,8 @@ class InfortrendCommon(object):
         return
 
     def _get_snapshot_ref_data(self, ref):
-        """Check the existance of SI for the specified partition
+        """Check the existance of SI for the specified partition."""
 
-           Returns the `show si` entry of specified snapshot.
-        """
         if 'source-name' in ref:
             key = 'Name'
             content = ref['source-name']

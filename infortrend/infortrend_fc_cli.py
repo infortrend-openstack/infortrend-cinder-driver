@@ -151,32 +151,32 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         and a list of wwns which are visible to the remote wwn(s).
         Example return values:
 
-            {
-                'driver_volume_type': 'fibre_channel'
-                'data': {
-                    'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': '1234567890123',
-                    'initiator_target_map': {
-                        '1122334455667788': ['1234567890123']
-                    }
+        {
+            'driver_volume_type': 'fibre_channel'
+            'data': {
+                'target_discovered': True,
+                'target_lun': 1,
+                'target_wwn': '1234567890123',
+                'initiator_target_map': {
+                    '1122334455667788': ['1234567890123']
                 }
             }
+        }
 
-            or
+        or
 
-             {
-                'driver_volume_type': 'fibre_channel'
-                'data': {
-                    'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': ['1234567890123', '0987654321321'],
-                    'initiator_target_map': {
-                        '1122334455667788': ['1234567890123',
-                                             '0987654321321']
-                    }
+        {
+            'driver_volume_type': 'fibre_channel'
+            'data': {
+                'target_discovered': True,
+                'target_lun': 1,
+                'target_wwn': ['1234567890123', '0987654321321'],
+                'initiator_target_map': {
+                    '1122334455667788': ['1234567890123',
+                                         '0987654321321']
                 }
             }
+        }
         """
         LOG.debug(
             'initialize_connection volume id=%(volume_id)s '
@@ -210,9 +210,8 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
-        }
+        :param existing_ref: Driver-specific information used to identify
+                             a volume
         """
         LOG.debug(
             'manage_existing volume: %(volume)s '
