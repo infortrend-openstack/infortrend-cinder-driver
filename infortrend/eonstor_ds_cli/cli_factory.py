@@ -337,9 +337,10 @@ class CreatePartition(CLIBaseCommand):
 
     """Create Partition.
 
-    create part [LV-ID] [name] [size={partition-size}]
-                [min={minimal-reserve-size}] [init={switch}]
-                [tier={tier-level-list}]
+    create part
+        [LV-ID] [name] [size={partition-size}]
+        [min={minimal-reserve-size}] [init={switch}]
+        [tier={tier-level-list}]
     """
 
     def __init__(self, *args, **kwargs):
@@ -363,8 +364,8 @@ class SetPartition(CLIBaseCommand):
 
     """Set Partition.
 
-    set part [partition-ID] [name={partition-name}]
-             [min={minimal-reserve-size}]
+    set part
+    [partition-ID] [name={partition-name}] [min={minimal-reserve-size}]
     set part expand [partition-ID] [size={expand-size}]
     set part purge [partition-ID] [number] [rule-type]
     set part reclaim [partition-ID]
@@ -404,8 +405,9 @@ class CreateMap(CLIBaseCommand):
 
     """Map the Partition on the channel.
 
-    create map [part] [partition-ID] [Channel-ID]
-               [Target-ID] [LUN-ID] [assign={assign-to}]
+    create map
+        [part] [partition-ID] [Channel-ID]
+        [Target-ID] [LUN-ID] [assign={assign-to}]
     """
 
     def __init__(self, *args, **kwargs):
@@ -417,8 +419,9 @@ class DeleteMap(CLIBaseCommand):
 
     """Unmap the Partition on the channel.
 
-    delete map [part] [partition-ID] [Channel-ID]
-               [Target-ID] [LUN-ID] [-y]
+    delete map
+        [part] [partition-ID] [Channel-ID]
+        [Target-ID] [LUN-ID] [-y]
     """
 
     def __init__(self, *args, **kwargs):
@@ -454,11 +457,12 @@ class CreateReplica(CLIBaseCommand):
 
     """Create partition or snapshot's replica.
 
-    create replica [name] [part | si] [source-volume-ID]
-                   [part] [target-volume-ID] [type={replication-mode}]
-                   [priority={level}] [desc={description}]
-                   [incremental={switch}] [timeout={value}]
-                   [compression={switch}]
+    create replica
+        [name] [part | si] [source-volume-ID]
+        [part] [target-volume-ID] [type={replication-mode}]
+        [priority={level}] [desc={description}]
+        [incremental={switch}] [timeout={value}]
+        [compression={switch}]
     """
 
     def __init__(self, *args, **kwargs):
@@ -482,9 +486,10 @@ class CreateIQN(CLIBaseCommand):
 
     """Create host iqn for CHAP or lun filter.
 
-    create iqn [IQN] [IQN-alias-name] [user={username}] [password={secret}]
-               [target={name}] [target-password={secret}] [ip={ip-address}]
-               [mask={netmask-ip}]
+    create iqn
+        [IQN] [IQN-alias-name] [user={username}] [password={secret}]
+        [target={name}] [target-password={secret}] [ip={ip-address}]
+        [mask={netmask-ip}]
     """
 
     def __init__(self, *args, **kwargs):
@@ -773,7 +778,7 @@ class ShowLicense(ShowCommand):
             'EonPath': {
                 'Amount': '---',
                 'Support': True
-             }
+            }
         }
 
         :param content: The parse Content.

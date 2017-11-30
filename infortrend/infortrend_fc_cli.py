@@ -143,7 +143,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         correspond to the list of remote wwn(s) that will export the volume.
         The initiator_target_map is a map that represents the remote wwn(s)
         and a list of wwns which are visible to the remote wwn(s).
-        Example return values:
+        Example return values::
 
             {
                 'driver_volume_type': 'fibre_channel'
@@ -159,7 +159,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
             or
 
-             {
+            {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
                     'target_discovered': True,
@@ -204,9 +204,8 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
-        }
+        :param existing_ref: Driver-specific information used to identify
+                             a volume
         """
         LOG.debug(
             'manage_existing volume: %(volume)s '

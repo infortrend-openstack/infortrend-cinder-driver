@@ -165,19 +165,25 @@ class InfortrendCommon(object):
     """The Infortrend's Common Command using CLI.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         1.0.1 - Support DS4000
         1.0.2 - Support GS/GSe Family
         1.0.3 - Add iSCSI MPIO support
         1.0.4 - Fix Nova live migration (bug #1481968)
         1.1.0 - Improve driver performance
-        1.1.1 - Fix creating volume on the wrong pool
-              - Fix manage-existing issues
+        1.1.1 - Fix creating volume on a wrong pool
+                Fix manage-existing volume issue
         1.1.2 - Add volume migration check
         2.0.0 - Enhance extraspecs usage and refactor retype
-        2.0.1 - Remove checks while deleting volume
-        2.1.0 - Support for manage/unmanage snapshot
-              - Remove unnecessary check in snapshot and timeout
+        2.0.1 - Improve speed for deleting volume
+        2.0.2 - Remove timeout for replication
+        2.0.3 - Use full ID for volume name
+        2.1.0 - Support for list manageable volume
+                Support for list/manage/unmanage snapshot
+                Remove unnecessary check in snapshot
         2.1.1 - Add Lun ID overflow check
         2.1.2 - Support for force detach volume
     """
@@ -305,7 +311,7 @@ class InfortrendCommon(object):
                         'Please check Java is installed.')
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
-        LOG.debug('Raidcmd [%s:%s] start!' % (self.pid, self.fd))
+        LOG.debug('Raidcmd [%s:%s] start!', self.pid, self.fd)
 
     def _set_raidcmd(self):
         cli_io_timeout = str(self.cli_timeout - 10)
@@ -787,17 +793,17 @@ class InfortrendCommon(object):
     def _get_volume_type_extraspecs(self, volume):
         """Example for Infortrend extraspecs settings:
 
-            Using a global setting:
-                infortrend:provisoioning: 'thin'
-                infortrend:tiering: '0,1,2'
+        Using a global setting:
+            infortrend:provisoioning: 'thin'
+            infortrend:tiering: '0,1,2'
 
-            Using an individual setting:
-                infortrend:provisoioning: 'LV0:thin;LV1:full'
-                infortrend:tiering: 'LV0:0,1,3; LV1:1'
+        Using an individual setting:
+            infortrend:provisoioning: 'LV0:thin;LV1:full'
+            infortrend:tiering: 'LV0:0,1,3; LV1:1'
 
-            Using a mixed setting:
-                infortrend:provisoioning: 'LV0:thin;LV1:full'
-                infortrend:tiering: 'all'
+        Using a mixed setting:
+            infortrend:provisoioning: 'LV0:thin;LV1:full'
+            infortrend:tiering: 'all'
         """
         # extraspecs default setting
         extraspecs_set = {
@@ -1586,7 +1592,7 @@ class InfortrendCommon(object):
 
     def initialize_connection(self, volume, connector):
         system_id = self._get_system_id(self.ip)
-        LOG.debug('Connector_info: %s' % connector)
+        LOG.debug('Connector_info: %s', connector)
 
         @lockutils.synchronized(
             '%s-connection' % system_id, 'infortrend-', True)
@@ -2509,10 +2515,7 @@ class InfortrendCommon(object):
         return
 
     def _get_snapshot_ref_data(self, ref):
-        """Check the existance of SI for the specified partition
-
-           Returns the `show si` entry of specified snapshot.
-        """
+        """Check the existance of SI for the specified partition."""
 
         if 'source-name' in ref:
             key = 'Name'
