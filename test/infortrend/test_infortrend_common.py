@@ -100,9 +100,9 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         self.configuration.san_password = '111111'
         self.configuration.infortrend_provisioning = 'full'
         self.configuration.infortrend_tiering = '0'
-        self.configuration.infortrend_pools_name = 'LV-1, LV-2'
-        self.configuration.infortrend_slots_a_channels_id = '0,5'
-        self.configuration.infortrend_slots_b_channels_id = '0,5'
+        self.configuration.infortrend_pools_name = ['LV-1', 'LV-2']
+        self.configuration.infortrend_slots_a_channels_id = [0, 5]
+        self.configuration.infortrend_slots_b_channels_id = [0, 5]
         self.pool_dict = {
             'LV-1': self.cli_data.fake_lv_id[0],
             'LV-2': self.cli_data.fake_lv_id[1],
@@ -557,9 +557,9 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.configuration.san_password = '111111'
         self.configuration.infortrend_provisioning = 'full'
         self.configuration.infortrend_tiering = '0'
-        self.configuration.infortrend_pools_name = 'LV-1, LV-2'
-        self.configuration.infortrend_slots_a_channels_id = '1,2,4'
-        self.configuration.infortrend_slots_b_channels_id = '1,2,4'
+        self.configuration.infortrend_pools_name = ['LV-1', 'LV-2']
+        self.configuration.infortrend_slots_a_channels_id = [1, 2, 4]
+        self.configuration.infortrend_slots_b_channels_id = [1, 2, 4]
         self.pool_dict = {
             'LV-1': self.cli_data.fake_lv_id[0],
             'LV-2': self.cli_data.fake_lv_id[1],

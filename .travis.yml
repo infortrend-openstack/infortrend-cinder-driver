@@ -11,7 +11,7 @@ matrix:
 sudo: false
 
 install:
-  - pip install tox
+  - pip install tox-travis
   - pip install flake8
 
 git:
