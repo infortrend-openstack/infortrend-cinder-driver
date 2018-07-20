@@ -17,6 +17,7 @@ Infortrend Common CLI.
 """
 import math
 import os
+import time
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
@@ -84,7 +85,9 @@ CLI_RC_FILTER = {
     'DeletePartition': {'error': _('Failed to delete partition.')},
     'SetPartition': {'error': _('Failed to set partition.')},
     'CreateMap': {
-        'warning': {20: 'The MCS Channel is grouped.'},
+        'warning': {
+            1: 'RAID return Fail. Might be LUN conflict.',
+            20: 'The MCS Channel is grouped. / LUN Already Used.'},
         'error': _('Failed to create map.'),
     },
     'DeleteMap': {
@@ -123,6 +126,9 @@ CLI_RC_FILTER = {
     'ShowHost': {'error': _('Failed to get host info.')},
     'SetIOTimeout': {'error': _('Failed to set IO timeout.')},
     'ConnectRaid': {'error': _('Failed to connect to raid.')},
+    'InitCache': {
+        'warning': {9: 'Device not connected.'},
+        'error': _('Failed to init cache.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
     'ShellCommand': {'error': _('Failed to execute shell command.')},
 }
@@ -187,9 +193,11 @@ class InfortrendCommon(object):
                 Remove unnecessary check in snapshot
         2.1.1 - Add Lun ID overflow check
         2.1.2 - Support for force detach volume
+        2.1.3 - Add handling for LUN ID conflict for synchronized lock failing
+                Improve speed for attach/detach/polling commands
     """
 
-    VERSION = '2.1.2'
+    VERSION = '2.1.3'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -326,7 +334,7 @@ class InfortrendCommon(object):
         if self.password:
             raid_password = 'password=%s' % self.password
 
-        rc, _ = self._execute('ConnectRaid', self.ip, raid_password)
+        rc, _ = self._execute('ConnectRaid', self.ip, raid_password, '-notiOn')
         LOG.info(_LI('Raid [%s] is connected!'), self.ip)
 
     def _execute_command(self, cli_type, *args, **kwargs):
@@ -359,7 +367,7 @@ class InfortrendCommon(object):
     def _init_map_info(self):
         if not self.map_dict_init:
 
-            rc, channel_info = self._execute('ShowChannel')
+            rc, channel_info = self._execute('ShowChannel', '-noinit')
 
             if 'BID' in channel_info[0]:
                 self._model_type = 'R'
@@ -390,7 +398,7 @@ class InfortrendCommon(object):
             }
         }
         """
-        rc, map_info = self._execute('ShowMap')
+        rc, map_info = self._execute('ShowMap', '-noinit')
 
         self._update_map_info_by_slot(map_info, 'slot_a')
 
@@ -418,7 +426,7 @@ class InfortrendCommon(object):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
     def _check_initiator_has_lun_map(self, initiator_info):
-        rc, map_info = self._execute('ShowMap')
+        rc, map_info = self._execute('ShowMap', '-noinit')
 
         if not isinstance(initiator_info, list):
             initiator_info = (initiator_info,)
@@ -537,7 +545,7 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
     def _check_host_setup(self):
-        rc, host_info = self._execute('ShowHost')
+        rc, host_info = self._execute('ShowHost', '-noinit')
         max_lun = int(host_info[0]['Max LUN per ID'])
         device_type = host_info[0]['Peripheral device type']
 
@@ -708,16 +716,41 @@ class InfortrendCommon(object):
         return ' '.join(parameters_list)
 
     @log_func
-    def _iscsi_create_map(
-            self, part_id, channel_dict, lun_id, host, system_id):
+    def _iscsi_create_map(self, part_id, multipath, host, system_id):
 
+        host_filter = self._create_host_filter(host)
+        rc, net_list = self._execute('ShowNet', '-noinit')
+        self._update_map_info(multipath)
+        rc, part_mapping = self._execute(
+            'ShowMap', 'part=%s' % part_id, '-noinit')
+        map_chl, map_lun = self._get_mapping_info(multipath)
+        lun_id = map_lun[0]
+        save_id = lun_id
+
+        while True:
+            rc, iqns, ips, luns = self._exec_iscsi_create_map(map_chl,
+                                                              part_mapping,
+                                                              host,
+                                                              part_id,
+                                                              lun_id,
+                                                              host_filter,
+                                                              system_id,
+                                                              net_list)
+            if rc == 20:
+                self._delete_all_map(part_id)
+                lun_id = self._find_next_lun_id(lun_id, save_id)
+            else:
+                break
+
+        return iqns, ips, luns
+
+    def _exec_iscsi_create_map(self, channel_dict, part_mapping, host,
+                               part_id, lun_id, host_filter, system_id,
+                               net_list):
         iqns = []
         ips = []
         luns = []
-        host_filter = self._create_host_filter(host)
-        rc, net_list = self._execute('ShowNet')
-        rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id)
-
+        rc = 0
         for controller in sorted(channel_dict.keys()):
             for channel_id in sorted(channel_dict[controller]):
                 target_id = self.target_dict[controller][channel_id]
@@ -730,6 +763,14 @@ class InfortrendCommon(object):
                         host_filter
                     )
                     rc, out = self._execute('CreateMap', *commands)
+                    if (rc == 20) or (rc == 1):
+                        # LUN Conflict detected.
+                        msg = _('Volume[%(part_id)s] LUN conflict detected, '
+                                'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
+                                    'part_id': part_id, 'Ch': channel_id,
+                                    'tid': target_id, 'lun': lun_id}
+                        LOG.warning(msg)
+                        return 20, 0, 0, 0
                     if rc != 0:
                         msg = _('Volume[%(part_id)s] create map failed, '
                                 'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
@@ -756,7 +797,7 @@ class InfortrendCommon(object):
                         channel, net_list, controller))
                     luns.append(exist_lun_id)
 
-        return iqns, ips, luns
+        return rc, iqns, ips, luns
 
     def _check_map(self, channel_id, target_id, part_map_info, host):
         if len(part_map_info) > 0:
@@ -796,17 +837,17 @@ class InfortrendCommon(object):
     def _get_volume_type_extraspecs(self, volume):
         """Example for Infortrend extraspecs settings:
 
-        Using a global setting:
-            infortrend:provisoioning: 'thin'
-            infortrend:tiering: '0,1,2'
+            Using a global setting:
+                infortrend:provisoioning: 'thin'
+                infortrend:tiering: '0,1,2'
 
-        Using an individual setting:
-            infortrend:provisoioning: 'LV0:thin;LV1:full'
-            infortrend:tiering: 'LV0:0,1,3; LV1:1'
+            Using an individual setting:
+                infortrend:provisoioning: 'LV0:thin;LV1:full'
+                infortrend:tiering: 'LV0:0,1,3; LV1:1'
 
-        Using a mixed setting:
-            infortrend:provisoioning: 'LV0:thin;LV1:full'
-            infortrend:tiering: 'all'
+            Using a mixed setting:
+                infortrend:provisoioning: 'LV0:thin;LV1:full'
+                infortrend:tiering: 'all'
         """
         # extraspecs default setting
         extraspecs_set = {
@@ -1041,7 +1082,7 @@ class InfortrendCommon(object):
 
     def _get_system_id(self, system_ip):
         if not self.system_id:
-            rc, device_info = self._execute('ShowDevice')
+            rc, device_info = self._execute('ShowDevice', '-noinit')
             for entry in device_info:
                 if system_ip == entry['Connected-IP']:
                     self.system_id = str(int(entry['ID'], 16))
@@ -1084,6 +1125,12 @@ class InfortrendCommon(object):
             'slot_a': ['1', '2']
         }
         map_lun = ['0']
+
+        mcs_dict = {
+            'slotX' = {
+                'MCSID': ['chID', 'chID']
+            }
+        }
 
         :returns: all mapping channel id per slot and minimun lun id
         """
@@ -1191,7 +1238,7 @@ class InfortrendCommon(object):
                     elif lun_id not in self.map_dict[slot_name][channel_id]:
                         lun_id_is_used = True
             if not lun_id_is_used:
-                map_lun = str(lun_id)
+                map_lun = lun_id
                 break
             # check lun id overflow
             elif (lun_id == self.constants['MAX_LUN_MAP_PER_CHL'] - 1):
@@ -1390,18 +1437,22 @@ class InfortrendCommon(object):
         return self._volume_stats
 
     def _update_volume_stats(self):
+        # Refresh cache
+        rc, out = self._execute('InitCache')
+        if rc != 0:
+            LOG.Warning('[InitCache Failed]')
 
         self.backend_name = self.configuration.safe_get('volume_backend_name')
-
+        system_id = self._get_system_id(self.ip)
         data = {
             'volume_backend_name': self.backend_name,
             'vendor_name': 'Infortrend',
             'driver_version': self.VERSION,
             'storage_protocol': self.protocol,
             'model_type': self._model_type,
-            'system_id': self._get_system_id(self.ip),
+            'system_id': system_id,
             'status': self._check_connection(),
-            'pools': self._update_pools_stats(),
+            'pools': self._update_pools_stats(system_id),
         }
         self._volume_stats = data
 
@@ -1416,7 +1467,7 @@ class InfortrendCommon(object):
         else:
             return 'Error: %s' % out
 
-    def _update_pools_stats(self):
+    def _update_pools_stats(self, system_id):
         self._update_pool_tiers()
         enable_specs_dict = self._get_enable_specs_on_array()
 
@@ -1425,12 +1476,11 @@ class InfortrendCommon(object):
         else:
             provisioning_support = False
 
-        rc, pools_info = self._execute('ShowLV')
+        rc, pools_info = self._execute('ShowLV', '-noinit')
         pools = []
-        system_id = self._get_system_id(self.ip)
 
         if provisioning_support:
-            rc, part_list = self._execute('ShowPartition', '-l')
+            rc, part_list = self._execute('ShowPartition', '-l', '-noinit')
 
         for pool in pools_info:
             if pool['Name'] in self.pool_dict.keys():
@@ -1460,7 +1510,8 @@ class InfortrendCommon(object):
                     provisioned_capacity_gb = round(
                         mi_to_gi(provisioned_space), 2)
                     _pool['provisioned_capacity_gb'] = provisioned_capacity_gb
-                    _pool['max_over_subscription_ratio'] = provisioning_factor
+                    _pool['max_over_subscription_ratio'] = float(
+                        provisioning_factor)
 
                 pools.append(_pool)
 
@@ -1481,7 +1532,7 @@ class InfortrendCommon(object):
             '87654321': [0, 1, 3],    # Pool 87654321 has 3 tiers: 0, 1, 3
         }
         """
-        rc, lv_info = self._execute('ShowLV', 'tier')
+        rc, lv_info = self._execute('ShowLV', 'tier', '-noinit')
 
         temp_dict = {}
         for entry in lv_info:
@@ -1550,16 +1601,32 @@ class InfortrendCommon(object):
                 _LW('Snapshot %(snapshot_id)s provider_location not stored.'),
                 {'snapshot_id': snapshot['id']})
 
-    def _get_part_id(self, volume_id, pool_id=None, part_list=None):
-        if part_list is None:
-            rc, part_list = self._execute('ShowPartition')
-        for entry in part_list:
-            if pool_id is None:
-                if entry['Name'] == volume_id:
-                    return entry['ID']
+    def _get_part_id(self, volume_id, pool_id=None):
+        count = 0
+        while True:
+            if count == 2:
+                rc, part_list = self._execute('ShowPartition')
             else:
-                if entry['Name'] == volume_id and entry['LV-ID'] == pool_id:
-                    return entry['ID']
+                rc, part_list = self._execute('ShowPartition', '-noinit')
+
+            for entry in part_list:
+                if pool_id is None:
+                    if entry['Name'] == volume_id:
+                        return entry['ID']
+                else:
+                    if (entry['Name'] == volume_id and
+                            entry['LV-ID'] == pool_id):
+                        return entry['ID']
+
+            if count >= 3:
+                msg = _('Failed to get partition info '
+                        'from volume_id: %(volume_id)s.') % {
+                    'volume_id': volume_id}
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            else:
+                time.sleep(4)
+            count = count + 1
         return
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -1622,7 +1689,6 @@ class InfortrendCommon(object):
 
     def _initialize_connection_fc(self, volume, connector):
         self._init_map_info()
-        self._update_map_info(True)
 
         map_lun, target_wwpns, initiator_target_map = (
             self._do_fc_connection(volume, connector)
@@ -1654,10 +1720,9 @@ class InfortrendCommon(object):
         initiator_target_map, target_wwpns = self._build_initiator_target_map(
             connector, wwpn_list)
 
-        map_lun = self._get_common_lun_map_id(wwpn_channel_info)
-        rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id)
+        rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id,
+                                         '-noinit')
 
-        create_new_maps = False
         map_lun_list = []
 
         # We need to check all the maps first
@@ -1672,47 +1737,64 @@ class InfortrendCommon(object):
                     ch_id, target_id, part_mapping, initiator_wwpn)
                 map_lun_list.append(exist_lun_id)
 
-        # To check if all the luns are the same
-        if map_lun_list.count(map_lun_list[0]) == len(map_lun_list):
-            if map_lun_list[0] == -1:
-                create_new_maps = True
+        # To check if already mapped
+        if (map_lun_list.count(map_lun_list[0]) == len(map_lun_list) and
+                map_lun_list[0] != -1):
+            map_lun = map_lun_list[0]
+            LOG.info('Already has map. volume: [%(volume)s], '
+                     'mapped_lun_list: %(list)s, ', {
+                         'volume': volume['id'],
+                         'list': map_lun_list})
+            return map_lun, target_wwpns, initiator_target_map
+
+        # Update used LUN list
+        self._update_map_info(True)
+        map_lun = self._get_common_lun_map_id(wwpn_channel_info)
+        save_lun = map_lun
+        while True:
+            ret = self._create_new_fc_maps(
+                initiator_wwpn, initiator_target_map, target_wwpn,
+                wwpn_channel_info, part_id, map_lun)
+            if ret == 20:
+                # Clean up the map for following re-create
+                self._delete_all_map(part_id)
+                map_lun = self._find_next_lun_id(map_lun, save_lun)
             else:
-                map_lun = str(map_lun_list[0])
-        else:
-            create_new_maps = True
-
-        LOG.info(
-            _LI('volume: [%(volume)s], mapped_lun_list: %(list)s, '
-                'create_new_maps: [%(flag)s]'),
-            {'volume': volume['id'],
-             'list': map_lun_list,
-             'flag': create_new_maps}
-        )
-
-        if create_new_maps:
-            for initiator_wwpn in sorted(initiator_target_map):
-                for target_wwpn in initiator_target_map[initiator_wwpn]:
-                    ch_id = wwpn_channel_info[target_wwpn.upper()]['channel']
-                    controller = wwpn_channel_info[target_wwpn.upper()]['slot']
-                    target_id = self.target_dict[controller][ch_id]
-                    host_filter = self._create_host_filter(initiator_wwpn)
-                    commands = (
-                        'part', part_id, ch_id, target_id, map_lun,
-                        host_filter
-                    )
-                    rc, out = self._execute('CreateMap', *commands)
-                    if rc != 0:
-                        msg = _('Volume[%(part_id)s] create map failed, '
-                                'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
-                                    'part_id': part_id, 'Ch': ch_id,
-                                    'tid': target_id, 'lun': map_lun}
-                        LOG.error(msg)
-                        raise exception.VolumeDriverException(message=msg)
-
-                    if int(map_lun) in self.map_dict[controller][ch_id]:
-                        self.map_dict[controller][ch_id].remove(int(map_lun))
+                break
 
         return map_lun, target_wwpns, initiator_target_map
+
+    def _create_new_fc_maps(self, initiator_wwpn, initiator_target_map,
+                            target_wwpn, wwpn_channel_info, part_id, map_lun):
+        for initiator_wwpn in sorted(initiator_target_map):
+            for target_wwpn in initiator_target_map[initiator_wwpn]:
+                ch_id = wwpn_channel_info[target_wwpn.upper()]['channel']
+                controller = wwpn_channel_info[target_wwpn.upper()]['slot']
+                target_id = self.target_dict[controller][ch_id]
+                host_filter = self._create_host_filter(initiator_wwpn)
+                commands = (
+                    'part', part_id, ch_id, target_id, str(map_lun),
+                    host_filter
+                )
+                rc, out = self._execute('CreateMap', *commands)
+                if (rc == 20) or (rc == 1):
+                    msg = _('Volume[%(part_id)s] LUN conflict detected,'
+                            'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
+                                'part_id': part_id, 'Ch': ch_id,
+                                'tid': target_id, 'lun': map_lun}
+                    LOG.warning(msg)
+                    return 20
+                elif rc != 0:
+                    msg = _('Volume[%(part_id)s] create map failed, '
+                            'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
+                                'part_id': part_id, 'Ch': ch_id,
+                                'tid': target_id, 'lun': map_lun}
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+
+                if map_lun in self.map_dict[controller][ch_id]:
+                    self.map_dict[controller][ch_id].remove(map_lun)
+        return rc
 
     def _build_initiator_target_map(self, connector, all_target_wwpns):
         initiator_target_map = {}
@@ -1745,16 +1827,27 @@ class InfortrendCommon(object):
             'driver_volume_type': 'fibre_channel',
             'data': {
                 'target_discovered': True,
-                'target_lun': int(lun_id),
+                'target_lun': lun_id,
                 'target_wwn': target_wwpns,
                 'initiator_target_map': initiator_target_map,
             },
         }
 
+    def _find_next_lun_id(self, lun_id, save_id):
+        lun_id = lun_id + 1
+        if lun_id == self.constants['MAX_LUN_MAP_PER_CHL']:
+            lun_id = 0
+        elif lun_id == save_id:
+            msg = _('No available LUN among [%(max_lun)s] LUNs.'
+                    ) % {'max_lun':
+                         self.constants['MAX_LUN_MAP_PER_CHL']}
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+        return lun_id
+
     @log_func
     def _initialize_connection_iscsi(self, volume, connector, multipath):
         self._init_map_info()
-        self._update_map_info(multipath)
 
         partition_data = self._extract_all_provider_location(
             volume['provider_location'])  # system_id, part_id
@@ -1766,12 +1859,8 @@ class InfortrendCommon(object):
 
         self._set_host_iqn(connector['initiator'])
 
-        map_chl, map_lun = self._get_mapping_info(multipath)
-
-        lun_id = map_lun[0]
-
         iqns, ips, luns = self._iscsi_create_map(
-            part_id, map_chl, lun_id, connector['initiator'], system_id)
+            part_id, multipath, connector['initiator'], system_id)
 
         properties = self._generate_iscsi_connection_properties(
             iqns, ips, luns, volume, multipath)
@@ -1781,12 +1870,13 @@ class InfortrendCommon(object):
 
     def _set_host_iqn(self, host_iqn):
 
-        rc, iqn_list = self._execute('ShowIQN')
+        rc, iqn_list = self._execute('ShowIQN', '-noinit')
 
         check_iqn_exist = False
         for entry in iqn_list:
             if entry['IQN'] == host_iqn:
                 check_iqn_exist = True
+                break
 
         if not check_iqn_exist:
             self._execute(
@@ -1834,7 +1924,7 @@ class InfortrendCommon(object):
         return
 
     def _get_wwpn_list(self):
-        rc, wwn_list = self._execute('ShowWWN')
+        rc, wwn_list = self._execute('ShowWWN', '-noinit')
 
         wwpn_list = []
         wwpn_channel_info = {}
@@ -2009,7 +2099,19 @@ class InfortrendCommon(object):
         return lock_terminate_conn()
 
     def _delete_host_map(self, part_id, connector):
-        rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
+        count = 0
+        while True:
+            rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id,
+                                              '-noinit')
+            if len(part_map_info) > 0:
+                break
+            elif count > 2:
+                # in case of noinit fails
+                rc, part_map_info = self._execute('ShowMap',
+                                                  'part=%s' % part_id)
+                break
+            else:
+                count = count + 1
 
         if self.protocol == 'iSCSI':
             host = connector['initiator'].lower()
@@ -2039,9 +2141,7 @@ class InfortrendCommon(object):
         return
 
     def _delete_all_map(self, part_id):
-        rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
-        if len(part_map_info) > 0:
-            self._execute('DeleteMap', 'part', part_id, '-y')
+        self._execute('DeleteMap', 'part', part_id, '-y')
         return
 
     def migrate_volume(self, volume, host, new_extraspecs=None):
@@ -2204,7 +2304,7 @@ class InfortrendCommon(object):
 
     def _get_enable_specs_on_array(self):
         enable_specs = {}
-        rc, license_list = self._execute('ShowLicense')
+        rc, license_list = self._execute('ShowLicense', '-noinit')
 
         for key, value in license_list.items():
             if value['Support']:
@@ -2277,7 +2377,7 @@ class InfortrendCommon(object):
                 existing_ref=ref, reason=msg)
 
         ref_dict = {}
-        rc, part_list = self._execute('ShowPartition', '-l')
+        rc, part_list = self._execute('ShowPartition', '-l', '-noinit')
 
         for entry in part_list:
             if entry[key] == find_key:

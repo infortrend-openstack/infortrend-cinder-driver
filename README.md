@@ -49,6 +49,7 @@ It manages storage by Infortrend CLI tool.
 
 ## How to setup and use
 
+- If Cinder runs on Ubuntu, run `. setupIFTDriver.sh` to quick update Cinder-volume with this Cinder Driver.
 - Please check our [user manual](https://github.com/infortrend-openstack/openstack-cinder-manaul).
 
 # Run Test

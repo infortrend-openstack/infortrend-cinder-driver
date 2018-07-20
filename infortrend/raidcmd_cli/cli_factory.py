@@ -50,15 +50,21 @@ def retry_cli(func):
 
             LOG.error(
                 _LE('Retry %(retry)s times: %(method)s Failed '
-                    '%(rc)s: %(reason)s'),
-                {'retry': retry_time,
-                 'method': self.__class__.__name__,
-                 'rc': rc,
-                 'reason': out}
-            )
-            # rc == 11 means not exist
+                    '%(rc)s: %(reason)s'), {
+                    'retry': retry_time,
+                    'method': self.__class__.__name__,
+                    'rc': rc,
+                    'reason': out})
+
             # show error log, not retrying
-            if rc == 11:
+            if rc == 1:
+                # RAID return fail
+                break
+            elif rc == 11:
+                # rc == 11 means not exist
+                break
+            elif rc == 20:
+                # rc == 20 means already exist
                 break
 
         LOG.debug(
@@ -314,6 +320,14 @@ class CheckConnection(CLIBaseCommand):
     def __init__(self, *args, **kwargs):
         super(CheckConnection, self).__init__(*args, **kwargs)
         self.command = "lock"
+
+
+class InitCache(CLIBaseCommand):
+    """Refresh cacahe data for update volume status."""
+
+    def __init__(self, *args, **kwargs):
+        super(InitCache, self).__init__(*args, **kwargs)
+        self.command = "utility init-cache"
 
 
 class CreateLD(CLIBaseCommand):
