@@ -184,9 +184,10 @@ class InfortrendCommon(object):
                 Remove unnecessary check in snapshot
         2.1.1 - Add Lun ID overflow check
         2.1.2 - Support for force detach volume
+        2.1.3 - Add handling for LUN ID conflict
     """
 
-    VERSION = '2.1.2'
+    VERSION = '2.1.3'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -791,17 +792,17 @@ class InfortrendCommon(object):
     def _get_volume_type_extraspecs(self, volume):
         """Example for Infortrend extraspecs settings:
 
-        Using a global setting:
-            infortrend:provisoioning: 'thin'
-            infortrend:tiering: '0,1,2'
+            Using a global setting:
+                infortrend:provisoioning: 'thin'
+                infortrend:tiering: '0,1,2'
 
-        Using an individual setting:
-            infortrend:provisoioning: 'LV0:thin;LV1:full'
-            infortrend:tiering: 'LV0:0,1,3; LV1:1'
+            Using an individual setting:
+                infortrend:provisoioning: 'LV0:thin;LV1:full'
+                infortrend:tiering: 'LV0:0,1,3; LV1:1'
 
-        Using a mixed setting:
-            infortrend:provisoioning: 'LV0:thin;LV1:full'
-            infortrend:tiering: 'all'
+            Using a mixed setting:
+                infortrend:provisoioning: 'LV0:thin;LV1:full'
+                infortrend:tiering: 'all'
         """
         # extraspecs default setting
         extraspecs_set = {
@@ -1610,7 +1611,6 @@ class InfortrendCommon(object):
 
     def _initialize_connection_fc(self, volume, connector):
         self._init_map_info()
-        self._update_map_info(True)
 
         map_lun, target_wwpns, initiator_target_map = (
             self._do_fc_connection(volume, connector)
@@ -1641,14 +1641,13 @@ class InfortrendCommon(object):
         initiator_target_map, target_wwpns = self._build_initiator_target_map(
             connector, wwpn_list)
 
-        map_lun = self._get_common_lun_map_id(wwpn_channel_info)
         rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id)
 
-        create_new_maps = False
         map_lun_list = []
 
         # We need to check all the maps first
         # Because fibre needs a consistent lun id
+        # Consistent ID is for multipath compatibility
         for initiator_wwpn in sorted(initiator_target_map):
             for target_wwpn in initiator_target_map[initiator_wwpn]:
                 ch_id = wwpn_channel_info[target_wwpn.upper()]['channel']
@@ -1659,46 +1658,65 @@ class InfortrendCommon(object):
                     ch_id, target_id, part_mapping, initiator_wwpn)
                 map_lun_list.append(exist_lun_id)
 
-        # To check if all the luns are the same
-        if map_lun_list.count(map_lun_list[0]) == len(map_lun_list):
-            if map_lun_list[0] == -1:
-                create_new_maps = True
+        # To check if already mapped
+        if (map_lun_list.count(map_lun_list[0]) == len(map_lun_list) and
+                map_lun_list[0] != -1):
+            map_lun = str(map_lun_list[0])
+            LOG.info('Already has map. volume: [%(volume)s], '
+                     'mapped_lun_list: %(list)s, ', {
+                         'volume': volume['id'],
+                         'list': map_lun_list})
+            return map_lun, target_wwpns, initiator_target_map
+
+        # Update used LUN list
+        self._update_map_info(True)
+
+        while True:
+            map_lun = self._get_common_lun_map_id(wwpn_channel_info)
+
+            ret = self._create_new_fc_maps(
+                initiator_wwpn, initiator_target_map, target_wwpn,
+                wwpn_channel_info, part_id, map_lun)
+
+            if ret == 20:
+                # Clean up the map for following re-create
+                self._delete_all_map(part_id)
             else:
-                map_lun = str(map_lun_list[0])
-        else:
-            create_new_maps = True
-
-        LOG.info('volume: [%(volume)s], '
-                 'mapped_lun_list: %(list)s, '
-                 'create_new_maps: [%(flag)s]', {
-                     'volume': volume['id'],
-                     'list': map_lun_list,
-                     'flag': create_new_maps})
-
-        if create_new_maps:
-            for initiator_wwpn in sorted(initiator_target_map):
-                for target_wwpn in initiator_target_map[initiator_wwpn]:
-                    ch_id = wwpn_channel_info[target_wwpn.upper()]['channel']
-                    controller = wwpn_channel_info[target_wwpn.upper()]['slot']
-                    target_id = self.target_dict[controller][ch_id]
-                    host_filter = self._create_host_filter(initiator_wwpn)
-                    commands = (
-                        'part', part_id, ch_id, target_id, map_lun,
-                        host_filter
-                    )
-                    rc, out = self._execute('CreateMap', *commands)
-                    if rc != 0:
-                        msg = _('Volume[%(part_id)s] create map failed, '
-                                'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
-                                    'part_id': part_id, 'Ch': ch_id,
-                                    'tid': target_id, 'lun': map_lun}
-                        LOG.error(msg)
-                        raise exception.VolumeDriverException(message=msg)
-
-                    if int(map_lun) in self.map_dict[controller][ch_id]:
-                        self.map_dict[controller][ch_id].remove(int(map_lun))
+                break
 
         return map_lun, target_wwpns, initiator_target_map
+
+    def _create_new_fc_maps(self, initiator_wwpn, initiator_target_map,
+                            target_wwpn, wwpn_channel_info, part_id, map_lun):
+        for initiator_wwpn in sorted(initiator_target_map):
+            for target_wwpn in initiator_target_map[initiator_wwpn]:
+                ch_id = wwpn_channel_info[target_wwpn.upper()]['channel']
+                controller = wwpn_channel_info[target_wwpn.upper()]['slot']
+                target_id = self.target_dict[controller][ch_id]
+                host_filter = self._create_host_filter(initiator_wwpn)
+                commands = (
+                    'part', part_id, ch_id, target_id, map_lun,
+                    host_filter
+                )
+                rc, out = self._execute('CreateMap', *commands)
+                if rc == 20:
+                    msg = _('Volume[%(part_id)s] LUN conflicted, '
+                            'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
+                                'part_id': part_id, 'Ch': ch_id,
+                                'tid': target_id, 'lun': map_lun}
+                    LOG.warning(msg)
+                    return 20
+                elif rc != 0:
+                    msg = _('Volume[%(part_id)s] create map failed, '
+                            'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
+                                'part_id': part_id, 'Ch': ch_id,
+                                'tid': target_id, 'lun': map_lun}
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+
+                if int(map_lun) in self.map_dict[controller][ch_id]:
+                    self.map_dict[controller][ch_id].remove(int(map_lun))
+        return rc
 
     def _build_initiator_target_map(self, connector, all_target_wwpns):
         initiator_target_map = {}
