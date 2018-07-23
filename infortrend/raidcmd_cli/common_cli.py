@@ -81,7 +81,7 @@ CLI_RC_FILTER = {
     'DeletePartition': {'error': _('Failed to delete partition.')},
     'SetPartition': {'error': _('Failed to set partition.')},
     'CreateMap': {
-        'warning': {20: 'The MCS Channel is grouped.'},
+        'warning': {20: 'The MCS Channel is grouped. / LUN Already Used.'},
         'error': _('Failed to create map.'),
     },
     'DeleteMap': {
@@ -704,16 +704,38 @@ class InfortrendCommon(object):
         return ' '.join(parameters_list)
 
     @log_func
-    def _iscsi_create_map(
-            self, part_id, channel_dict, lun_id, host, system_id):
+    def _iscsi_create_map(self, part_id, multipath, host, system_id):
 
+        host_filter = self._create_host_filter(host)
+        rc, net_list = self._execute('ShowNet')
+
+        while True:
+            self._update_map_info(multipath)
+            map_chl, map_lun = self._get_mapping_info(multipath)
+            lun_id = map_lun[0]
+            rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id)
+            rc, iqns, ips, luns = self._exec_iscsi_create_map(map_chl,
+                                                              part_mapping,
+                                                              host,
+                                                              part_id,
+                                                              lun_id,
+                                                              host_filter,
+                                                              system_id,
+                                                              net_list)
+            if rc == 20:
+                self._delete_all_map(part_id)
+            else:
+                break
+
+        return iqns, ips, luns
+
+    def _exec_iscsi_create_map(self, channel_dict, part_mapping, host,
+                               part_id, lun_id, host_filter, system_id,
+                               net_list):
         iqns = []
         ips = []
         luns = []
-        host_filter = self._create_host_filter(host)
-        rc, net_list = self._execute('ShowNet')
-        rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id)
-
+        rc = 0
         for controller in sorted(channel_dict.keys()):
             for channel_id in sorted(channel_dict[controller]):
                 target_id = self.target_dict[controller][channel_id]
@@ -726,6 +748,14 @@ class InfortrendCommon(object):
                         host_filter
                     )
                     rc, out = self._execute('CreateMap', *commands)
+                    if rc == 20:
+                        # LUN Conflict detected.
+                        msg = _('Volume[%(part_id)s] LUN conflict detected, '
+                                'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
+                                    'part_id': part_id, 'Ch': channel_id,
+                                    'tid': target_id, 'lun': lun_id}
+                        LOG.warning(msg)
+                        return 20, 0, 0, 0
                     if rc != 0:
                         msg = _('Volume[%(part_id)s] create map failed, '
                                 'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
@@ -752,7 +782,7 @@ class InfortrendCommon(object):
                         channel, net_list, controller))
                     luns.append(exist_lun_id)
 
-        return iqns, ips, luns
+        return rc, iqns, ips, luns
 
     def _check_map(self, channel_id, target_id, part_map_info, host):
         if len(part_map_info) > 0:
@@ -1076,6 +1106,12 @@ class InfortrendCommon(object):
             'slot_a': ['1', '2']
         }
         map_lun = ['0']
+
+        mcs_dict = {
+            'slotX' = {
+                'MCSID': ['chID', 'chID']
+            }
+        }
 
         :returns: all mapping channel id per slot and minimun lun id
         """
@@ -1449,7 +1485,8 @@ class InfortrendCommon(object):
                     provisioned_capacity_gb = round(
                         mi_to_gi(provisioned_space), 2)
                     _pool['provisioned_capacity_gb'] = provisioned_capacity_gb
-                    _pool['max_over_subscription_ratio'] = provisioning_factor
+                    _pool['max_over_subscription_ratio'] = float(
+                        provisioning_factor)
 
                 pools.append(_pool)
 
@@ -1673,7 +1710,6 @@ class InfortrendCommon(object):
 
         while True:
             map_lun = self._get_common_lun_map_id(wwpn_channel_info)
-
             ret = self._create_new_fc_maps(
                 initiator_wwpn, initiator_target_map, target_wwpn,
                 wwpn_channel_info, part_id, map_lun)
@@ -1700,7 +1736,7 @@ class InfortrendCommon(object):
                 )
                 rc, out = self._execute('CreateMap', *commands)
                 if rc == 20:
-                    msg = _('Volume[%(part_id)s] LUN conflicted, '
+                    msg = _('Volume[%(part_id)s] LUN conflict detected,'
                             'Ch:[%(Ch)s] ID:[%(tid)s] LUN:[%(lun)s].') % {
                                 'part_id': part_id, 'Ch': ch_id,
                                 'tid': target_id, 'lun': map_lun}
@@ -1758,7 +1794,6 @@ class InfortrendCommon(object):
     @log_func
     def _initialize_connection_iscsi(self, volume, connector, multipath):
         self._init_map_info()
-        self._update_map_info(multipath)
 
         partition_data = self._extract_all_provider_location(
             volume['provider_location'])  # system_id, part_id
@@ -1770,12 +1805,8 @@ class InfortrendCommon(object):
 
         self._set_host_iqn(connector['initiator'])
 
-        map_chl, map_lun = self._get_mapping_info(multipath)
-
-        lun_id = map_lun[0]
-
         iqns, ips, luns = self._iscsi_create_map(
-            part_id, map_chl, lun_id, connector['initiator'], system_id)
+            part_id, multipath, connector['initiator'], system_id)
 
         properties = self._generate_iscsi_connection_properties(
             iqns, ips, luns, volume, multipath)
@@ -1791,6 +1822,7 @@ class InfortrendCommon(object):
         for entry in iqn_list:
             if entry['IQN'] == host_iqn:
                 check_iqn_exist = True
+                break
 
         if not check_iqn_exist:
             self._execute(
