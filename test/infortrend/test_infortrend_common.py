@@ -223,11 +223,11 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
             test_volume, test_connector)
 
         expect_cli_cmd = [
-            mock.call('ShowDevice'),
-            mock.call('ShowChannel'),
-            mock.call('ShowWWN'),
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
-            mock.call('ShowMap'),
+            mock.call('ShowDevice', '-noinit'),
+            mock.call('ShowChannel', '-noinit'),
+            mock.call('ShowWWN', '-noinit'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
+            mock.call('ShowMap', '-noinit'),
             mock.call('CreateMap', 'part', test_partition_id, '5', '48', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
             mock.call('CreateMap', 'part', test_partition_id, '5', '48', '0',
@@ -308,11 +308,11 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
             [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
 
         expect_cli_cmd = [
-            mock.call('ShowDevice'),
-            mock.call('ShowChannel'),
-            mock.call('ShowWWN'),
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
-            mock.call('ShowMap'),
+            mock.call('ShowDevice', '-noinit'),
+            mock.call('ShowChannel', '-noinit'),
+            mock.call('ShowWWN', '-noinit'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
+            mock.call('ShowMap', '-noinit'),
             mock.call('CreateMap', 'part', test_partition_id, '0', '112', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
             mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
@@ -360,11 +360,11 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
             [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
 
         expect_cli_cmd = [
-            mock.call('ShowDevice'),
-            mock.call('ShowChannel'),
-            mock.call('ShowWWN'),
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
-            mock.call('ShowMap'),
+            mock.call('ShowDevice', '-noinit'),
+            mock.call('ShowChannel', '-noinit'),
+            mock.call('ShowWWN', '-noinit'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
+            mock.call('ShowMap', '-noinit'),
             mock.call('CreateMap', 'part', test_partition_id, '5', '112', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
             mock.call('CreateMap', 'part', test_partition_id, '0', '113', '0',
@@ -414,11 +414,11 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
             [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
 
         expect_cli_cmd = [
-            mock.call('ShowDevice'),
-            mock.call('ShowChannel'),
-            mock.call('ShowWWN'),
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
-            mock.call('ShowMap'),
+            mock.call('ShowDevice', '-noinit'),
+            mock.call('ShowChannel', '-noinit'),
+            mock.call('ShowWWN', '-noinit'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
+            mock.call('ShowMap', '-noinit'),
             mock.call('CreateMap', 'part', test_partition_id, '5', '48', '0',
                       'wwn=%s' % test_initiator_wwpns[0]),
             mock.call('CreateMap', 'part', test_partition_id, '0', '33', '0',
@@ -452,13 +452,14 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
         self.driver.terminate_connection(test_volume, test_connector)
 
         expect_cli_cmd = [
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('ShowDevice', '-noinit'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '0', '112', '0', '-y'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '5', '112', '0', '-y'),
-            mock.call('ShowMap'),
-            mock.call('ShowWWN'),
+            mock.call('ShowMap', '-noinit'),
+            mock.call('ShowWWN', '-noinit'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -496,13 +497,13 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
             [mock.call(test_connector['wwpns'], test_all_target_wwpns)])
 
         expect_cli_cmd = [
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '0', '112', '0', '-y'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '5', '112', '0', '-y'),
-            mock.call('ShowMap'),
-            mock.call('ShowWWN'),
+            mock.call('ShowMap', '-noinit'),
+            mock.call('ShowWWN', '-noinit'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
 
@@ -536,10 +537,10 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
             test_volume, test_connector)
 
         expect_cli_cmd = [
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '0', '112', '0', '-y'),
-            mock.call('ShowMap'),
+            mock.call('ShowMap', '-noinit'),
         ]
         expect_conn_info = {'driver_volume_type': 'fibre_channel',
                             'data': {}}
@@ -1413,13 +1414,13 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.assertDictEqual(test_iscsi_properties, properties)
 
         expect_cli_cmd = [
-            mock.call('ShowDevice'),
-            mock.call('ShowChannel'),
-            mock.call('ShowIQN'),
+            mock.call('ShowDevice', '-noinit'),
+            mock.call('ShowChannel', '-noinit'),
+            mock.call('ShowIQN', '-noinit'),
             mock.call('CreateIQN', test_initiator, test_initiator[-16:]),
-            mock.call('ShowNet'),
-            mock.call('ShowMap'),
-            mock.call('ShowMap', 'part=6A41315B0EDC8EB7'),
+            mock.call('ShowNet', '-noinit'),
+            mock.call('ShowMap', '-noinit'),
+            mock.call('ShowMap', 'part=6A41315B0EDC8EB7', '-noinit'),
             mock.call('CreateMap', 'part', test_partition_id, '2', '0', '0',
                       'iqn=%s' % test_connector['initiator']),
         ]
@@ -1640,14 +1641,15 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.driver.terminate_connection(test_volume, test_connector)
 
         expect_cli_cmd = [
-            mock.call('ShowMap', 'part=%s' % test_partition_id),
+            mock.call('ShowDevice', '-noinit'),
+            mock.call('ShowMap', 'part=%s' % test_partition_id, '-noinit'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '1', '0', '0', '-y'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '1', '0', '1', '-y'),
             mock.call('DeleteMap',
                       'part', test_partition_id, '4', '0', '0', '-y'),
-            mock.call('ShowMap'),
+            mock.call('ShowMap', '-noinit'),
             mock.call('DeleteIQN', test_connector['initiator'][-16:]),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
@@ -1709,7 +1711,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
                       test_volume['id'],
                       'size=%s' % (test_volume['size'] * 1024),
                       ''),
-            mock.call('ShowPartition'),
+            mock.call('ShowPartition', '-noinit'),
             mock.call('CreateReplica',
                       'Cinder-Migrate',
                       'part', test_src_part_id,
@@ -1758,7 +1760,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         self.driver.system_id = 'DEEC'
 
         self.assertRaises(
-            exception.VolumeDriverException,
+            exception.VolumeBackendAPIException,
             self.driver.migrate_volume,
             test_volume,
             test_host)
@@ -1805,7 +1807,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume, test_ref_volume)
 
         expect_cli_cmd = [
-            mock.call('ShowPartition', '-l'),
+            mock.call('ShowPartition', '-l', '-noinit'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(20, size)
@@ -1828,7 +1830,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume, test_ref_volume)
 
         expect_cli_cmd = [
-            mock.call('ShowPartition', '-l'),
+            mock.call('ShowPartition', '-l', '-noinit'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(20, size)
@@ -1923,10 +1925,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
             test_volume, test_ref_volume)
 
         expect_cli_cmd = [
-            mock.call('ShowPartition', '-l'),
+            mock.call('ShowPartition', '-l', '-noinit'),
             mock.call('SetPartition', test_partition_id,
                       'name=%s' % test_volume['id']),
-            mock.call('ShowDevice'),
+            mock.call('ShowDevice', '-noinit'),
         ]
         self._assert_cli_has_calls(expect_cli_cmd)
         self.assertEqual(1, log_info.call_count)
@@ -2366,7 +2368,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
                 'size=%s' % (test_volume['size'] * 1024),
                 create_params,
             ),
-            mock.call('ShowPartition'),
+            mock.call('ShowPartition', '-noinit'),
             mock.call(
                 'CreateReplica',
                 'Cinder-Migrate',
