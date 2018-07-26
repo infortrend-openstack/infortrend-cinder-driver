@@ -49,7 +49,6 @@ class InfortrendTestCase(test.TestCase):
         if configuration is None:
             configuration = self.configuration
         self.driver = self._get_driver(configuration)
-        self.driver.pool_dict = self.pool_dict
 
         mock_commands_execute = self._mock_command_execute(mock_commands)
         mock_cli = mock.Mock(side_effect=mock_commands_execute)
@@ -115,7 +114,10 @@ class InfortrendFCCommonTestCase(InfortrendTestCase):
     @mock.patch.object(
         common_cli.InfortrendCommon, '_set_raidcmd', mock.Mock())
     def _get_driver(self, conf):
-        return common_cli.InfortrendCommon('FC', configuration=conf)
+        driver = common_cli.InfortrendCommon('FC', configuration=conf)
+        driver.do_setup()
+        driver.pool_dict = self.pool_dict
+        return driver
 
     def test_normal_channel(self):
 
@@ -577,7 +579,10 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     @mock.patch.object(
         common_cli.InfortrendCommon, '_set_raidcmd', mock.Mock())
     def _get_driver(self, conf):
-        return common_cli.InfortrendCommon('iSCSI', configuration=conf)
+        driver = common_cli.InfortrendCommon('iSCSI', configuration=conf)
+        driver.do_setup()
+        driver.pool_dict = self.pool_dict
+        return driver
 
     @mock.patch.object(common_cli.LOG, 'warning')
     def test_create_map_warning_return_code(self, log_warning):

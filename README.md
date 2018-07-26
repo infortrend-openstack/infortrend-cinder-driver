@@ -55,7 +55,8 @@ It manages storage by Infortrend CLI tool.
 
 Execute Bash file and it would git clone cinder driver to run unit test.
 ```
-./run_test.sh
+./run_test.sh py27
+./run_test.sh py35
 ```
 
 [travis-ci-img]: https://img.shields.io/travis/infortrend-openstack/infortrend-cinder-driver.svg?style=flat-square

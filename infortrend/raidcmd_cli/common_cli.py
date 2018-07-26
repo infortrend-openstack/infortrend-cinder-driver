@@ -187,7 +187,7 @@ class InfortrendCommon(object):
                 Remove unnecessary check in snapshot
         2.1.1 - Add Lun ID overflow check
         2.1.2 - Support for force detach volume
-        2.1.3 - Add handling for LUN ID conflict for synchronized lock failing
+        2.1.3 - Add handling for LUN ID conflict for Active/Active cinder
                 Improve speed for attach/detach/polling commands
     """
 
@@ -222,16 +222,6 @@ class InfortrendCommon(object):
         self.unmanaged_prefix = 'cinder-unmanaged-%s'
         self.java_path = self.configuration.java_path
 
-        if self.ip == '':
-            msg = _('san_ip is not set.')
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
-        if self.cli_timeout < 40:
-            msg = _('infortrend_cli_timeout should be larger than 40.')
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
         self.fc_lookup_service = fczm_utils.create_lookup_service()
 
         self.backend_name = None
@@ -246,19 +236,32 @@ class InfortrendCommon(object):
             'slot_b': {},
         }
         self.map_dict_init = False
-
         self.target_dict = {
             'slot_a': {},
             'slot_b': {},
         }
-
         if self.protocol == 'iSCSI':
             self.mcs_dict = {
                 'slot_a': {},
                 'slot_b': {},
             }
-
         self.tier_pools_dict = {}
+
+    def check_for_setup_error(self):
+        # These two checks needs raidcmd to be ready
+        self._check_pools_setup()
+        self._check_host_setup()
+
+    def do_setup(self):
+        if self.ip == '':
+            msg = _('san_ip is not set.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        if self.cli_timeout < 40:
+            msg = _('infortrend_cli_timeout should be larger than 40.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
 
         self._init_pool_dict()
         self._init_channel_list()
@@ -308,7 +311,14 @@ class InfortrendCommon(object):
         if not self.pid:
             self.pid, self.fd = os.forkpty()
             if self.pid == 0:
-                os.execv(self.java_path, [self.java_path, '-jar', self.path])
+                try:
+                    os.execv(self.java_path,
+                             [self.java_path, '-jar', self.path])
+                except OSError:
+                    msg = _('Raidcmd failed to start. '
+                            'Please check Java is installed.')
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
 
             check_java_start = cli.os_read(self.fd, 1024, 'RAIDCmd:>', 10)
             if 'Raidcmd timeout' in check_java_start:
@@ -554,10 +564,6 @@ class InfortrendCommon(object):
                  'max LUN setting is: [%(luns)s]', {
                      'device': system_id,
                      'luns': self.constants['MAX_LUN_MAP_PER_CHL']})
-
-    def check_for_setup_error(self):
-        self._check_pools_setup()
-        self._check_host_setup()
 
     def create_volume(self, volume):
         """Create a Infortrend partition."""
@@ -1461,7 +1467,7 @@ class InfortrendCommon(object):
         pools = []
 
         if provisioning_support:
-            rc, part_list = self._execute('ShowPartition', '-l', '-noinit')
+            rc, part_list = self._execute('ShowPartition', '-noinit')
 
         for pool in pools_info:
             if pool['Name'] in self.pool_dict.keys():
