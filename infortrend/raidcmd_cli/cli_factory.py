@@ -54,9 +54,16 @@ def retry_cli(func):
                     'method': self.__class__.__name__,
                     'rc': rc,
                     'reason': out})
-            # rc == 11 means not exist
+
             # show error log, not retrying
-            if rc == 11:
+            if rc == 1:
+                # RAID return fail
+                break
+            elif rc == 11:
+                # rc == 11 means not exist
+                break
+            elif rc == 20:
+                # rc == 20 means already exist
                 break
 
         LOG.debug(

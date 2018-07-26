@@ -40,6 +40,15 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
             'FC', configuration=self.configuration)
         self.VERSION = self.common.VERSION
 
+    def do_setup(self, context):
+        """Any initialization the volume driver does while starting.
+
+            note: This runs before check_for_setup_error
+        """
+
+        LOG.debug('do_setup start')
+        self.common.do_setup()
+
     def check_for_setup_error(self):
         LOG.debug('check_for_setup_error start')
         self.common.check_for_setup_error()
@@ -149,7 +158,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         correspond to the list of remote wwn(s) that will export the volume.
         The initiator_target_map is a map that represents the remote wwn(s)
         and a list of wwns which are visible to the remote wwn(s).
-        Example return values::
+        Example return values:
 
             {
                 'driver_volume_type': 'fibre_channel'
