@@ -6,22 +6,25 @@ export INFORTREND_TEST_DIR="cinder/tests/unit/volume/drivers/infortrend"
 export INFORTREND_DRIVER_DIR="cinder/volume/drivers/infortrend"
 
 echo "Running Flake8..."
-flake8 $CINDER_DIR/$INFORTREND_DRIVER_DIR/
+flake8 infortrend/
 if [ $? -ne 0 ]; then
     exit 1
 fi
-flake8 $CINDER_DIR/$INFORTREND_TEST_DIR/
+flake8 test/infortrend/
 if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "Complete."
 
-if [ -d "${CINDER_DIR}" ]; then
-    echo "Deleting $CINDER_DIR"
-    rm -rf $CINDER_DIR
+if [ -z "${2}" ]; then
+    if [ -d "${CINDER_DIR}" ]; then
+        echo "Deleting $CINDER_DIR"
+        rm -rf $CINDER_DIR
+    fi
+    git clone $CINDER_REPO_URL --depth=1
+else
+    echo "Skip Cloning cinder."
 fi
-
-git clone $CINDER_REPO_URL --depth=1
 
 if [ ! -d "$CINDER_DIR/$INFORTREND_DRIVER_DIR" ]; then
     mkdir $CINDER_DIR/$INFORTREND_DRIVER_DIR
@@ -42,6 +45,13 @@ else
     echo "Setup infortrend opts/exceptions.."
     source setupIFTdriver.sh
 fi
+
+sed -i '125 ifrom cinder.volume.drivers.infortrend.raidcmd_cli import common_cli as \\\n    cinder_volume_drivers_infortrend' ./cinder/cinder/opts.py
+sed -i '305 i\\                cinder_volume_drivers_infortrend.infortrend_opts,' ./cinder/cinder/opts.py
+echo '# Infortrend Driver' >> ./cinder/cinder/exception.py
+echo 'class InfortrendCliException(CinderException):' >> ./cinder/cinder/exception.py
+echo '    message = _("Infortrend CLI exception: %(err)s Param: %(param)s "' >> ./cinder/cinder/exception.py
+echo '                "(Return Code: %(rc)s) (Output: %(out)s)")' >> ./cinder/cinder/exception.py
 
 cd $CINDER_DIR
 

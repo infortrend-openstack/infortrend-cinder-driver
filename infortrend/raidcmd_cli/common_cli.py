@@ -37,10 +37,10 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 infortrend_opts = [
-    cfg.StrOpt('infortrend_pools_name',
-               default='',
-               help='The Infortrend logical volumes name list. '
-               'It is separated with comma.'),
+    cfg.ListOpt('infortrend_pools_name',
+                default='',
+                help='The Infortrend logical volumes name list. '
+                'It is separated with comma.'),
     cfg.StrOpt('infortrend_cli_path',
                default='/opt/bin/Infortrend/raidcmd_ESDS10.jar',
                help='The Infortrend CLI absolute path.'),
@@ -50,25 +50,26 @@ infortrend_opts = [
     cfg.IntOpt('infortrend_cli_timeout',
                default=60,
                help='The timeout for CLI in seconds.'),
-    cfg.StrOpt('infortrend_slots_a_channels_id',
-               default='',
-               help='Infortrend raid channel ID list on Slot A '
-               'for OpenStack usage. It is separated with comma.'),
-    cfg.StrOpt('infortrend_slots_b_channels_id',
-               default='',
-               help='Infortrend raid channel ID list on Slot B '
-               'for OpenStack usage. It is separated with comma.'),
+    cfg.ListOpt('infortrend_slots_a_channels_id',
+                default='',
+                help='Infortrend raid channel ID list on Slot A '
+                'for OpenStack usage. It is separated with comma.'),
+    cfg.ListOpt('infortrend_slots_b_channels_id',
+                default='',
+                help='Infortrend raid channel ID list on Slot B '
+                'for OpenStack usage. It is separated with comma.'),
     cfg.StrOpt('infortrend_iqn_prefix',
                default='iqn.2002-10.com.infortrend',
                help='Infortrend iqn prefix for iSCSI.'),
     cfg.BoolOpt('infortrend_cli_cache',
                 default=False,
                 help='The Infortrend CLI cache. '
-                'Make sure the array is only managed by Openstack, '
-                'and it is only used by one cinder-volume node. '
-                'Otherwise, never enable it! '
-                'The data might be asynchronous '
-                'if there were any other operations.'),
+                'While set True, the RAID status report will use cache '
+                'stored in the CLI. Never enable this unless the RAID is '
+                'managed only by Openstack and only by one infortrend '
+                'cinder-volume backend. Otherwise, CLI might report '
+                'out-dated status to cinder and thus there might be some '
+                'race condition among all backend/CLIs.'),
     cfg.StrOpt('java_path',
                default='/usr/bin/java',
                help='The Java absolute path.'),
@@ -285,7 +286,7 @@ class InfortrendCommon(object):
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        tmp_pool_list = pools_name.split(',')
+        tmp_pool_list = pools_name
         for pool in tmp_pool_list:
             self.pool_dict[pool.strip()] = ''
 
@@ -295,16 +296,16 @@ class InfortrendCommon(object):
             'slot_b': [],
         }
         tmp_channel_list = (
-            self.configuration.infortrend_slots_a_channels_id.split(',')
+            self.configuration.infortrend_slots_a_channels_id
         )
         self.channel_list['slot_a'] = (
-            [channel.strip() for channel in tmp_channel_list]
+            [str(channel) for channel in tmp_channel_list]
         )
         tmp_channel_list = (
-            self.configuration.infortrend_slots_b_channels_id.split(',')
+            self.configuration.infortrend_slots_b_channels_id
         )
         self.channel_list['slot_b'] = (
-            [channel.strip() for channel in tmp_channel_list]
+            [str(channel) for channel in tmp_channel_list]
         )
 
     def _init_raidcmd(self):

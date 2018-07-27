@@ -7,7 +7,6 @@ matrix:
   - python: "3.5"
     env: TEST_PY=py35
 
-
 sudo: false
 
 install:
