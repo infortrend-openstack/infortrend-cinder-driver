@@ -38,6 +38,15 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
             'iSCSI', configuration=self.configuration)
         self.VERSION = self.common.VERSION
 
+    def do_setup(self, context):
+        """Any initialization the volume driver does while starting.
+
+            note: This runs before check_for_setup_error
+        """
+
+        LOG.debug('do_setup start')
+        self.common.do_setup()
+
     def check_for_setup_error(self):
         LOG.debug('check_for_setup_error start')
         self.common.check_for_setup_error()
@@ -183,9 +192,8 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
-        }
+        :param existing_ref: Driver-specific information used to identify
+                             a volume
         """
         LOG.debug(
             'manage_existing volume: %(volume)s '
