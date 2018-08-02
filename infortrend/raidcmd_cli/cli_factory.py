@@ -321,6 +321,14 @@ class CheckConnection(CLIBaseCommand):
         self.command = "lock"
 
 
+class InitCache(CLIBaseCommand):
+    """Refresh cacahe data for update volume status."""
+
+    def __init__(self, *args, **kwargs):
+        super(InitCache, self).__init__(*args, **kwargs)
+        self.command = "utility init-cache"
+
+
 class CreateLD(CLIBaseCommand):
 
     """The Create LD Command."""

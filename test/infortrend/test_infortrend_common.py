@@ -1103,6 +1103,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_volume_states = self.cli_data.test_volume_states_full
 
         mock_commands = {
+            'InitCache': SUCCEED,
             'ShowLicense': self.cli_data.get_test_show_license_full(),
             'ShowLV': [self.cli_data.get_test_show_lv_tier(),
                        self.cli_data.get_test_show_lv()],
@@ -1115,6 +1116,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
 
         volume_states = self.driver.get_volume_stats(True)
 
+        self.assertDictEqual.__self__.maxDiff = None
         self.assertDictEqual(test_volume_states, volume_states)
 
     @mock.patch.object(common_cli.LOG, 'info', mock.Mock())
@@ -1123,6 +1125,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
         test_volume_states = self.cli_data.test_volume_states_thin
 
         mock_commands = {
+            'InitCache': SUCCEED,
             'ShowLicense': self.cli_data.get_test_show_license_thin(),
             'ShowLV': [self.cli_data.get_test_show_lv_tier(),
                        self.cli_data.get_test_show_lv()],
@@ -1142,6 +1145,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCase):
     def test_get_volume_stats_fail(self):
 
         mock_commands = {
+            'InitCache': SUCCEED,
             'ShowLicense': self.cli_data.get_test_show_license_thin(),
             'ShowLV': FAKE_ERROR_RETURN,
         }
