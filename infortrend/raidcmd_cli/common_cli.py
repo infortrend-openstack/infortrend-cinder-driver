@@ -124,6 +124,9 @@ CLI_RC_FILTER = {
     'ShowHost': {'error': _('Failed to get host info.')},
     'SetIOTimeout': {'error': _('Failed to set IO timeout.')},
     'ConnectRaid': {'error': _('Failed to connect to raid.')},
+    'InitCache': {
+        'warning': {9: 'Device not connected.'},
+        'error': _('Failed to init cache.')},
     'ExecuteCommand': {'error': _('Failed to execute common command.')},
     'ShellCommand': {'error': _('Failed to execute shell command.')},
 }
@@ -1429,6 +1432,10 @@ class InfortrendCommon(object):
         return self._volume_stats
 
     def _update_volume_stats(self):
+        # Refresh cache
+        rc, out = self._execute('InitCache')
+        if rc != 0:
+            LOG.Warning('[InitCache Failed]')
 
         self.backend_name = self.configuration.safe_get('volume_backend_name')
         system_id = self._get_system_id(self.ip)
