@@ -49,13 +49,18 @@ It manages storage by Infortrend CLI tool.
 
 ## How to setup and use
 
+- If Cinder runs on Ubuntu, run `setupIFTDriver.sh` to quick update Cinder-volume with this Cinder Driver.
 - Please check our [user manual](https://github.com/infortrend-openstack/openstack-cinder-manaul).
 
 # Run Test
 
 Execute Bash file and it would git clone cinder driver to run unit test.
 ```
-./run_test.sh
+bash run_test.sh py27
+bash run_test.sh py34
+
+bash run_test.sh py27 1 # Not to re-clone cinder
+bash run_test.sh py34 1 # Not to re-clone cinder
 ```
 
 [travis-ci-img]: https://img.shields.io/travis/infortrend-openstack/infortrend-cinder-driver.svg?style=flat-square
