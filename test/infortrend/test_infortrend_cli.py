@@ -149,6 +149,17 @@ class InfortrendCLITestData(object):
         'provider_location': fake_snapshot_id[0],
     }
 
+    test_snapshot_without_provider_location = {
+        'id': 'ffa9bc5e-1172-4021-acaf-cdcd78a9584d',
+        'volume_id': test_volume['id'],
+        'volume_name': test_volume['name'],
+        'volume_size': 2,
+        'project_id': 'project',
+        'display_name': None,
+        'display_description': 'SI-1',
+        'volume_type_id': None,
+    }
+
     test_iqn = [(
         'iqn.2002-10.com.infortrend:raid.uid%s.%s%s%s') % (
             int(fake_system_id[0], 16), 1, 0, 1), (

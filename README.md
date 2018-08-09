@@ -49,13 +49,19 @@ It manages storage by Infortrend CLI tool.
 
 ## Require Tools
 
-- Infortrend CLI, please download from [release](https://github.com/infortrend-openstack/eonstor-ds-cinder-driver/releases).
+- If Cinder runs on Ubuntu, run `setupIFTDriver.sh` to quick update Cinder-volume with this Cinder Driver.
+- Please check our [user manual](https://github.com/infortrend-openstack/openstack-cinder-manaul).
 
 # Run Test
 
 Execute Bash file and it would git clone cinder driver to run unit test.
 ```
-./run_test.sh
+bash run_test.sh py27
+bash run_test.sh py35
+
+# Not to re-clone cinder:
+bash run_test.sh py27 1
+bash run_test.sh py35 1
 ```
 
 [travis-ci-img]: https://img.shields.io/travis/infortrend-openstack/infortrend-cinder-driver.svg?style=flat-square
