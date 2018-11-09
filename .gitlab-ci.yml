@@ -1,0 +1,30 @@
+stages:
+  - style-test
+  - unit-test
+
+FLAKE8:
+  image: "python:3.5"
+  stage: style-test
+  before_script:
+    - pip install flake8
+  script:
+    - flake8 infortrend/
+    - flake8 test/infortrend/
+
+PY27_TEST:
+  image: "python:2.7"
+  stage: unit-test
+  before_script:
+    - pip install tox
+    - chmod +x ./run_test.sh
+  script:
+    - ./run_test.sh py27
+
+PY35_TEST:
+  image: "python:3.5"
+  stage: unit-test
+  before_script:
+    - pip install tox
+    - chmod +x ./run_test.sh
+  script:
+    - ./run_test.sh py35

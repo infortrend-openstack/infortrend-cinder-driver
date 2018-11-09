@@ -21,6 +21,8 @@ branches:
   - gh-pages
 
 before_script:
+  - flake8 infortrend/
+  - flake8 test/infortrend/
   - chmod +x ./run_test.sh
 
 script:
