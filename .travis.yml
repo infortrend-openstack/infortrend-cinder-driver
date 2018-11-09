@@ -2,6 +2,8 @@ language: python
 
 matrix:
   include:
+  - python: "3.5"
+    env: TEST_PY=flake8
   - python: "2.7"
     env: TEST_PY=py27
   - python: "3.5"
@@ -21,8 +23,6 @@ branches:
   - gh-pages
 
 before_script:
-  - flake8 infortrend/
-  - flake8 test/infortrend/
   - chmod +x ./run_test.sh
 
 script:

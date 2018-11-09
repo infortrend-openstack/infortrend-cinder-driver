@@ -10,6 +10,9 @@ FLAKE8:
   script:
     - flake8 infortrend/
     - flake8 test/infortrend/
+  tags:
+    - Ubuntu
+    - Docker
 
 PY27_TEST:
   image: "python:2.7"
@@ -19,6 +22,9 @@ PY27_TEST:
     - chmod +x ./run_test.sh
   script:
     - ./run_test.sh py27
+  tags:
+    - Ubuntu
+    - Docker
 
 PY35_TEST:
   image: "python:3.5"
@@ -28,3 +34,6 @@ PY35_TEST:
     - chmod +x ./run_test.sh
   script:
     - ./run_test.sh py35
+  tags:
+    - Ubuntu
+    - Docker
