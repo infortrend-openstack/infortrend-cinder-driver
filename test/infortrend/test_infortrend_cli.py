@@ -542,7 +542,7 @@ RAIDCmd:>
         }])
 
     def get_fake_show_snapshot(self):
-        msg = """
+        msg = r"""
 show si
 \/\/\/-
 \
