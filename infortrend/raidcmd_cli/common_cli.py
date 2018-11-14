@@ -19,16 +19,10 @@ import math
 import os
 import time
 
-#from oslo_concurrency import lockutils
 from cinder.openstack.common import lockutils
-#form oslo_config import cfg
 from oslo.config import cfg
 from cinder.openstack.common import log as logging
-#from oslo_log import log as logging
-#from oslo_service import loopingcall
 from cinder.openstack.common import loopingcall
-#from oslo_utils import timeutils
-#from oslo_utils import units
 from cinder.openstack.common import units
 from cinder.openstack.common import timeutils
 
@@ -1490,6 +1484,7 @@ class InfortrendCommon(object):
 
                 total_capacity_gb = round(mi_to_gi(total_space), 2)
                 free_capacity_gb = round(mi_to_gi(available_space), 2)
+                conf = self.configuration
 
                 _pool = {
                     'pool_name': pool['Name'],
@@ -1502,14 +1497,13 @@ class InfortrendCommon(object):
                     'thick_provisioning_support': True,
                     'thin_provisioning_support': provisioning_support,
                 }
-                
+
                 if provisioning_support:
-                    if 'max_over_subscription_ratio' in self.configuration.keys():
+                    if 'max_over_subscription_ratio' in conf.keys():
                         provisioning_factor = self.configuration.safe_get(
                             'max_over_subscription_ratio')
                     else:
                         provisioning_factor = None
-
                     provisioned_space = self._get_provisioned_space(
                         pool['ID'], part_list)
                     provisioned_capacity_gb = round(
@@ -1518,7 +1512,7 @@ class InfortrendCommon(object):
                     if provisioning_factor is not None:
                         _pool['max_over_subscription_ratio'] = float(
                             provisioning_factor)
-                
+
                 pools.append(_pool)
         LOG.debug('pools is')
         LOG.debug(pools)
@@ -2169,11 +2163,7 @@ class InfortrendCommon(object):
 
             LOG.info('Migrate Volume %(volume_id)s completed.', {
                 'volume_id': volume['id']})
-        #elif volume['volume_type']['volume_backend_name'] != host['volume_backend_name']:
-        #    volume['volume_type']['volume_backend_name'] = host['volume_backend_name']
-        #    model_update = {
-        #        "provider_location": volume['provider_location'],
-        #    }
+
         else:
             model_update = {
                 "provider_location": volume['provider_location'],

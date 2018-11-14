@@ -20,10 +20,7 @@ import abc
 import os
 import time
 from cinder.openstack.common import processutils
-#from oslo_concurrency import processutils
-#from oslo_log import log as logging
 from cinder.openstack.common import log as logging
-#from oslo_utils import strutils
 from cinder.openstack.common import strutils
 import six
 

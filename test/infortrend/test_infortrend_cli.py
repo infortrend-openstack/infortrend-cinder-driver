@@ -374,7 +374,6 @@ class InfortrendCLITestData(object):
         'thin_provisioning_support': True,
         'provisioned_capacity_gb':
             round((40000) / 1024, 2),
-        #'max_over_subscription_ratio': 20.0,
     }]
 
     test_volume_states_thin = {
