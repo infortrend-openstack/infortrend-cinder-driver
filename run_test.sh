@@ -29,15 +29,20 @@ source setupIFTdriver.sh $CINDER_DIR
 
 cd $CINDER_DIR
 
-# if grep "'{posargs}' --concurrency" -q "tox.ini"; then
-#     echo "Concurrency already set."
-# else
-#     echo "Setup concurrency=4 for travisCI.."
-#     sed -i "s#stestr run '{posargs}'#stestr run '{posargs}' --concurrency=4#g" tox.ini
-# fi
+if grep "python setup.py testr --slowest --testr-args='--concurrency 4 {posargs}'" -q "tox.ini"; then
+    echo "Concurrency already set."
+else
+    echo "Setup concurrency=4 for travisCI.."
+    sed -i "s#python setup.py testr --slowest --testr-args='--concurrency 1 {posargs}'#python setup.py testr --slowest --testr-args='--concurrency 4 {posargs}'#g" tox.ini
+fi
 
-#tox -e ${1} test_infortrend_ -- --concurrency=4
-tox -e ${1} test_infortrend_cli -- --concurrency=4
-tox -e ${1} test_infortrend_common -- --concurrency=4
+if grep "psycopg2~=2.7" -q "test-requirements.txt"; then
+    echo "psycopg2~=2.7 already set."
+else
+    echo "Setup psycopg2~=2.7 for travisCI.."
+    sed -i "s#psycopg2<=2.6#psycopg2~=2.7#g" test-requirements.txt
+fi
+
+tox -e ${1} test_infortrend_
 
 cd ..
