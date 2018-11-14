@@ -1,6 +1,7 @@
 #!/bin/bash
 
-export INFORTREND_TEST_DIR="tests/unit/volume/drivers/infortrend"
+#export INFORTREND_TEST_DIR="tests/unit/volume/drivers/infortrend"
+export INFORTREND_TEST_DIR="tests/volume/drivers/infortrend"
 export INFORTREND_DRIVER_DIR="volume/drivers/infortrend"
 
 if [ -z "${1}" ]; then
@@ -27,8 +28,8 @@ if grep "infortrend" -q "$BASE/opts.py"; then
 else
     # 131 & 325 will need to change as if opts.py/exceptions.py is updated
     echo "Setup infortrend opts/exceptions.."
-    sed -i '131 ifrom cinder.volume.drivers.infortrend.raidcmd_cli import common_cli as \\\n    cinder_volume_drivers_infortrend' $BASE/opts.py
-    sed -i '325 i\\                cinder_volume_drivers_infortrend.infortrend_opts,' $BASE/opts.py
+   # sed -i '131 ifrom cinder.volume.drivers.infortrend.raidcmd_cli import common_cli as \\\n    cinder_volume_drivers_infortrend' $BASE/opts.py
+   # sed -i '325 i\\                cinder_volume_drivers_infortrend.infortrend_opts,' $BASE/opts.py
     echo '# Infortrend Driver' >> $BASE/exception.py
     echo 'class InfortrendCliException(CinderException):' >> $BASE/exception.py
     echo '    message = _("Infortrend CLI exception: %(err)s Param: %(param)s "' >> $BASE/exception.py

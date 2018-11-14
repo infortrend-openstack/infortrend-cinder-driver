@@ -3,7 +3,7 @@ stages:
   - unit-test
 
 FLAKE8:
-  image: "python:3.5"
+  image: "python:3.4"
   stage: style-test
   before_script:
     - pip install flake8
@@ -27,4 +27,4 @@ PY35_TEST:
     - pip install tox
     - chmod +x ./run_test.sh
   script:
-    - ./run_test.sh py35
+    - ./run_test.sh py34

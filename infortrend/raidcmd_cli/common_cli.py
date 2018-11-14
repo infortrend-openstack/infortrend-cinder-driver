@@ -19,12 +19,18 @@ import math
 import os
 import time
 
-from oslo_concurrency import lockutils
-from oslo_config import cfg
-from oslo_log import log as logging
-from oslo_service import loopingcall
-from oslo_utils import timeutils
-from oslo_utils import units
+#from oslo_concurrency import lockutils
+from cinder.openstack.common import lockutils
+#form oslo_config import cfg
+from oslo.config import cfg
+from cinder.openstack.common import log as logging
+#from oslo_log import log as logging
+#from oslo_service import loopingcall
+from cinder.openstack.common import loopingcall
+#from oslo_utils import timeutils
+#from oslo_utils import units
+from cinder.openstack.common import units
+from cinder.openstack.common import timeutils
 
 from cinder import exception
 from cinder.i18n import _
@@ -832,7 +838,7 @@ class InfortrendCommon(object):
             msg = _('Failed to get pool id with pool %(pool_name)s.') % {
                 'pool_name': pool_name}
             LOG.error(msg)
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.VolumeDriverException(message=msg)
 
         return pool_id
 
@@ -1076,7 +1082,7 @@ class InfortrendCommon(object):
             msg = _('Pool [%(pool_name)s] not set in cinder conf.') % {
                 'pool_name': pool_name}
             LOG.error(msg)
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.VolumeDriverException(message=msg)
 
     def _get_system_id(self, system_ip):
         if not self.system_id:
@@ -1383,7 +1389,7 @@ class InfortrendCommon(object):
         if not provider_location:
             msg = _('Failed to get provider location.')
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         provider_location_dict = self._extract_all_provider_location(
             provider_location)
@@ -1496,20 +1502,26 @@ class InfortrendCommon(object):
                     'thick_provisioning_support': True,
                     'thin_provisioning_support': provisioning_support,
                 }
-
+                
                 if provisioning_support:
-                    provisioning_factor = self.configuration.safe_get(
-                        'max_over_subscription_ratio')
+                    if 'max_over_subscription_ratio' in self.configuration.keys():
+                        provisioning_factor = self.configuration.safe_get(
+                            'max_over_subscription_ratio')
+                    else:
+                        provisioning_factor = None
+
                     provisioned_space = self._get_provisioned_space(
                         pool['ID'], part_list)
                     provisioned_capacity_gb = round(
                         mi_to_gi(provisioned_space), 2)
                     _pool['provisioned_capacity_gb'] = provisioned_capacity_gb
-                    _pool['max_over_subscription_ratio'] = float(
-                        provisioning_factor)
-
+                    if provisioning_factor is not None:
+                        _pool['max_over_subscription_ratio'] = float(
+                            provisioning_factor)
+                
                 pools.append(_pool)
-
+        LOG.debug('pools is')
+        LOG.debug(pools)
         return pools
 
     def _get_provisioned_space(self, pool_id, part_list):
@@ -1553,7 +1565,7 @@ class InfortrendCommon(object):
             msg = _('Failed to get Partition ID for volume %(volume_id)s.') % {
                 'volume_id': volume_id}
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         @lockutils.synchronized(
             'snapshot-' + part_id, 'infortrend-', True)
@@ -1618,7 +1630,7 @@ class InfortrendCommon(object):
                         'from volume_id: %(volume_id)s.') % {
                     'volume_id': volume_id}
                 LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
+                raise exception.VolumeBackendAPIException(message=msg)
             else:
                 time.sleep(4)
             count = count + 1
@@ -1632,7 +1644,7 @@ class InfortrendCommon(object):
                     'from snapshot: %(snapshot_id)s.') % {
                         'snapshot_id': snapshot['id']}
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         self._create_partition_by_default(volume)
         dst_part_id = self._get_part_id(volume['id'])
@@ -2157,6 +2169,11 @@ class InfortrendCommon(object):
 
             LOG.info('Migrate Volume %(volume_id)s completed.', {
                 'volume_id': volume['id']})
+        #elif volume['volume_type']['volume_backend_name'] != host['volume_backend_name']:
+        #    volume['volume_type']['volume_backend_name'] = host['volume_backend_name']
+        #    model_update = {
+        #        "provider_location": volume['provider_location'],
+        #    }
         else:
             model_update = {
                 "provider_location": volume['provider_location'],
@@ -2319,12 +2336,12 @@ class InfortrendCommon(object):
             msg = _('The specified volume is mapped. '
                     'Please unmap first for Openstack using.')
             LOG.error(msg)
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.VolumeDriverException(message=msg)
 
         if volume_data['LV-ID'] != volume_pool_id:
             msg = _('The specified volume pool is wrong.')
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         return int(math.ceil(mi_to_gi(float(volume_data['Size']))))
 
@@ -2703,7 +2720,7 @@ class InfortrendCommon(object):
         if si_id is None:
             msg = _('Failed to get snapshot provider location.')
             LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            raise exception.VolumeBackendAPIException(message=msg)
 
         self._execute('SetSnapshot', si_id,
                       'name=cinder-unmanaged-%s' % snapshot.id[:-17])
