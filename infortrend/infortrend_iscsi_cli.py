@@ -12,7 +12,7 @@ class iSCSI_VolumeDriver(driver.VolumeDriver):
     def __init__(self, *args, **kwargs):
         super(iSCSI_VolumeDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(
-            'FC', configuration=self.configuration)
+            'iSCSI', configuration=self.configuration)
         self.VERSION = self.common.VERSION
 
     def do_setup(self, context):

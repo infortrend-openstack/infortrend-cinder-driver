@@ -20,11 +20,10 @@ import os
 import time
 
 from cinder.openstack.common import lockutils
-from oslo.config import cfg
 from cinder.openstack.common import log as logging
 from cinder.openstack.common import loopingcall
-from cinder.openstack.common import units
 from cinder.openstack.common import timeutils
+from cinder.openstack.common import units
 
 from cinder import exception
 from cinder.i18n import _
@@ -33,6 +32,8 @@ from cinder.volume.drivers.san import san
 from cinder.volume import utils
 from cinder.volume import volume_types
 from cinder.zonemanager import utils as fczm_utils
+
+from oslo.config import cfg
 
 LOG = logging.getLogger(__name__)
 

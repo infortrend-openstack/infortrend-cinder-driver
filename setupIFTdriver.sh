@@ -11,10 +11,12 @@ else
 fi
 
 if [ ! -d "$BASE/$INFORTREND_DRIVER_DIR" ]; then
+    pwd
     mkdir $BASE/$INFORTREND_DRIVER_DIR
 fi
 
 if [ ! -d "$BASE/$INFORTREND_TEST_DIR" ]; then
+    pwd
     mkdir $BASE/$INFORTREND_TEST_DIR
 fi
 

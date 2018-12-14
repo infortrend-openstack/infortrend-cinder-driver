@@ -18,11 +18,12 @@ Infortrend basic CLI factory.
 
 import abc
 import os
-import time
-from cinder.openstack.common import processutils
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import strutils
 import six
+import time
+
+from cinder.openstack.common import log as logging
+from cinder.openstack.common import processutils
+from cinder.openstack.common import strutils
 
 from cinder import utils
 
