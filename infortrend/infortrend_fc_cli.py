@@ -22,7 +22,6 @@ from oslo_log import log as logging
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli
-from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
