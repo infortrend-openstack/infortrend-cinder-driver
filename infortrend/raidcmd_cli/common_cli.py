@@ -1696,6 +1696,7 @@ class InfortrendCommon(object):
                  'target_wwn: %(target_wwn)s, '
                  'initiator_target_map: %(initiator_target_map)s, '
                  'lun: %(target_lun)s.', properties['data'])
+        fczm_utils.add_fc_zone(properties)
         return properties
 
     @log_func
@@ -2087,6 +2088,7 @@ class InfortrendCommon(object):
                 'for volume: %(volume_id)s.', {
                     'volume_id': volume['id']})
 
+            fczm_utils.remove_fc_zone(conn_info)
             return conn_info
         return lock_terminate_conn()
 
