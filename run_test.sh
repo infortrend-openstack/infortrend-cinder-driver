@@ -29,7 +29,7 @@ function test_tox {
         echo "Concurrency already set."
     else
         echo "Setup concurrency=4 for travisCI.."
-        sed -i "s#python setup.py testr --slowest --testr-args='--concurrency 1 {posargs}'#python setup.py testr --slowest --testr-args='--concurrency 4 {posargs}'#g" tox.ini
+        sed -i "s#python setup.py testr --slowest --testr-args='--concurrency 1 {posargs}'#python setup.py install#g" tox.ini
     fi
 
     if grep "psycopg2~=2.7" -q "test-requirements.txt"; then
