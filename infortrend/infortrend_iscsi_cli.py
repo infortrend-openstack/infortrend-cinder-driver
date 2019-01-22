@@ -133,6 +133,10 @@ class iSCSI_VolumeDriver(driver.VolumeDriver):
             'volume_id': volume['id'], 'host': host['host']})
         return self.common.migrate_volume(volume, host)
 
+    def ensure_export(self, context, volume):
+        """Synchronously recreates an export for a volume."""
+        pass
+
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type.
 
