@@ -193,9 +193,10 @@ class InfortrendCommon(object):
         2.1.2 - Support for force detach volume
         2.1.3 - Add handling for LUN ID conflict for Active/Active cinder
                 Improve speed for attach/detach/polling commands
+        2.1.4 - Check CLI connection first for polling process
     """
 
-    VERSION = '2.1.3'
+    VERSION = '2.1.4'
 
     constants = {
         'ISCSI_PORT': 3260,
@@ -1432,6 +1433,9 @@ class InfortrendCommon(object):
         return self._volume_stats
 
     def _update_volume_stats(self):
+        # Ensure the CLI is connected.
+        status = self._check_connection()
+
         # Refresh cache
         rc, out = self._execute('InitCache')
         if rc != 0:
@@ -1446,7 +1450,7 @@ class InfortrendCommon(object):
             'storage_protocol': self.protocol,
             'model_type': self._model_type,
             'system_id': system_id,
-            'status': self._check_connection(),
+            'status': status,
             'pools': self._update_pools_stats(system_id),
         }
         self._volume_stats = data
@@ -1696,6 +1700,7 @@ class InfortrendCommon(object):
                  'target_wwn: %(target_wwn)s, '
                  'initiator_target_map: %(initiator_target_map)s, '
                  'lun: %(target_lun)s.', properties['data'])
+        fczm_utils.add_fc_zone(properties)
         return properties
 
     @log_func
@@ -2087,6 +2092,7 @@ class InfortrendCommon(object):
                 'for volume: %(volume_id)s.', {
                     'volume_id': volume['id']})
 
+            fczm_utils.remove_fc_zone(conn_info)
             return conn_info
         return lock_terminate_conn()
 

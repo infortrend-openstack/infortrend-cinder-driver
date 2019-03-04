@@ -22,7 +22,6 @@ from oslo_log import log as logging
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.infortrend.raidcmd_cli import common_cli
-from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -146,7 +145,6 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         """Removes an export for a volume."""
         pass
 
-    @fczm_utils.add_fc_zone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection information.
 
@@ -194,7 +192,6 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
                 'initiator': connector['initiator']})
         return self.common.initialize_connection(volume, connector)
 
-    @fczm_utils.remove_fc_zone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         LOG.debug('terminate_connection volume id=%(volume_id)s', {
