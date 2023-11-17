@@ -165,6 +165,11 @@ def ti_to_mi(ti_size):
     return ti_size * units.Ti / units.Mi
 
 
+class InfortrendCliException(exception.CinderException):
+    message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
+                "(Return Code: %(rc)s) (Output: %(out)s)")
+
+
 class InfortrendCommon(object):
 
     """The Infortrend's Common Command using CLI.
@@ -368,7 +373,7 @@ class InfortrendCommon(object):
             else:
                 msg = CLI_RC_FILTER[cli_type]['error']
                 LOG.error(msg)
-                raise exception.InfortrendCliException(
+                raise InfortrendCliException(
                     err=msg, param=args, rc=rc, out=out)
         return rc, out
 
@@ -376,7 +381,7 @@ class InfortrendCommon(object):
     def _init_map_info(self):
         if not self.map_dict_init:
 
-            rc, channel_info = self._execute('ShowChannel', '-noinit')
+            rc, channel_info = self._execute('ShowChannel')
 
             if 'BID' in channel_info[0]:
                 self._model_type = 'R'
@@ -407,7 +412,7 @@ class InfortrendCommon(object):
             }
         }
         """
-        rc, map_info = self._execute('ShowMap', '-noinit')
+        rc, map_info = self._execute('ShowMap')
 
         self._update_map_info_by_slot(map_info, 'slot_a')
 
@@ -435,7 +440,7 @@ class InfortrendCommon(object):
                     self.map_dict[slot_key][ch].remove(int(lun))
 
     def _check_initiator_has_lun_map(self, initiator_info):
-        rc, map_info = self._execute('ShowMap', '-noinit')
+        rc, map_info = self._execute('ShowMap')
 
         if not isinstance(initiator_info, list):
             initiator_info = (initiator_info,)
@@ -553,7 +558,7 @@ class InfortrendCommon(object):
             raise exception.VolumeDriverException(message=msg)
 
     def _check_host_setup(self):
-        rc, host_info = self._execute('ShowHost', '-noinit')
+        rc, host_info = self._execute('ShowHost')
         max_lun = int(host_info[0]['Max LUN per ID'])
         device_type = host_info[0]['Peripheral device type']
 
@@ -722,10 +727,10 @@ class InfortrendCommon(object):
     def _iscsi_create_map(self, part_id, multipath, host, system_id):
 
         host_filter = self._create_host_filter(host)
-        rc, net_list = self._execute('ShowNet', '-noinit')
+        rc, net_list = self._execute('ShowNet')
         self._update_map_info(multipath)
         rc, part_mapping = self._execute(
-            'ShowMap', 'part=%s' % part_id, '-noinit')
+            'ShowMap', 'part=%s' % part_id)
         map_chl, map_lun = self._get_mapping_info(multipath)
         lun_id = map_lun[0]
         save_id = lun_id
@@ -1081,7 +1086,7 @@ class InfortrendCommon(object):
 
     def _get_system_id(self, system_ip):
         if not self.system_id:
-            rc, device_info = self._execute('ShowDevice', '-noinit')
+            rc, device_info = self._execute('ShowDevice')
             for entry in device_info:
                 if system_ip == entry['Connected-IP']:
                     self.system_id = str(int(entry['ID'], 16))
@@ -1475,11 +1480,11 @@ class InfortrendCommon(object):
         else:
             provisioning_support = False
 
-        rc, pools_info = self._execute('ShowLV', '-noinit')
+        rc, pools_info = self._execute('ShowLV')
         pools = []
 
         if provisioning_support:
-            rc, part_list = self._execute('ShowPartition', '-noinit')
+            rc, part_list = self._execute('ShowPartition')
 
         for pool in pools_info:
             if pool['Name'] in self.pool_dict.keys():
@@ -1531,7 +1536,7 @@ class InfortrendCommon(object):
             '87654321': [0, 1, 3],    # Pool 87654321 has 3 tiers: 0, 1, 3
         }
         """
-        rc, lv_info = self._execute('ShowLV', 'tier', '-noinit')
+        rc, lv_info = self._execute('ShowLV', 'tier')
 
         temp_dict = {}
         for entry in lv_info:
@@ -1606,7 +1611,7 @@ class InfortrendCommon(object):
             if count == 2:
                 rc, part_list = self._execute('ShowPartition')
             else:
-                rc, part_list = self._execute('ShowPartition', '-noinit')
+                rc, part_list = self._execute('ShowPartition')
 
             for entry in part_list:
                 if pool_id is None:
@@ -1719,8 +1724,7 @@ class InfortrendCommon(object):
         initiator_target_map, target_wwpns = self._build_initiator_target_map(
             connector, wwpn_list)
 
-        rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id,
-                                         '-noinit')
+        rc, part_mapping = self._execute('ShowMap', 'part=%s' % part_id)
 
         map_lun_list = []
 
@@ -1869,7 +1873,7 @@ class InfortrendCommon(object):
 
     def _set_host_iqn(self, host_iqn):
 
-        rc, iqn_list = self._execute('ShowIQN', '-noinit')
+        rc, iqn_list = self._execute('ShowIQN')
 
         check_iqn_exist = False
         for entry in iqn_list:
@@ -1923,7 +1927,7 @@ class InfortrendCommon(object):
         return
 
     def _get_wwpn_list(self):
-        rc, wwn_list = self._execute('ShowWWN', '-noinit')
+        rc, wwn_list = self._execute('ShowWWN')
 
         wwpn_list = []
         wwpn_channel_info = {}
@@ -2099,8 +2103,7 @@ class InfortrendCommon(object):
     def _delete_host_map(self, part_id, connector):
         count = 0
         while True:
-            rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id,
-                                              '-noinit')
+            rc, part_map_info = self._execute('ShowMap', 'part=%s' % part_id)
             if len(part_map_info) > 0:
                 break
             elif count > 2:
@@ -2264,7 +2267,7 @@ class InfortrendCommon(object):
                 'part_id': part_id, 'new_volume': dst_volume_id})
         try:
             self._execute('SetPartition', part_id, 'name=%s' % src_volume_id)
-        except exception.InfortrendCliException:
+        except InfortrendCliException:
             LOG.exception('Failed to rename %(new_volume)s into '
                           '%(volume)s.', {'new_volume': new_volume['id'],
                                           'volume': volume['id']})
@@ -2301,7 +2304,7 @@ class InfortrendCommon(object):
 
     def _get_enable_specs_on_array(self):
         enable_specs = {}
-        rc, license_list = self._execute('ShowLicense', '-noinit')
+        rc, license_list = self._execute('ShowLicense')
 
         for key, value in license_list.items():
             if value['Support']:
@@ -2374,7 +2377,7 @@ class InfortrendCommon(object):
                 existing_ref=ref, reason=msg)
 
         ref_dict = {}
-        rc, part_list = self._execute('ShowPartition', '-l', '-noinit')
+        rc, part_list = self._execute('ShowPartition', '-l')
 
         for entry in part_list:
             if entry[key] == find_key:
